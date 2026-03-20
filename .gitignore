@@ -1,0 +1,35 @@
+# Maven
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.eclipse/
+.settings/
+.project
+.classpath
+
+# Terraform
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/tfplan
+terraform/*.tfvars
+terraform/backend-override.tf
+!terraform/variables.tf
+
+# Secrets — never commit
+.env
+*.pem
+*.key
+secrets/
+
+# OS
+.DS_Store
+Thumbs.db

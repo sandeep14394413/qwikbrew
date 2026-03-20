@@ -1,0 +1,97 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        # Auth routes — no JWT required
+        - id: user-service-public
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/users/login,/api/v1/users/register,/api/v1/users/refresh-token
+
+        # User service — JWT required
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/users/**
+          filters:
+            - JwtAuth
+
+        # Menu — GET is public, write needs JWT
+        - id: menu-service-read
+          uri: lb://menu-service
+          predicates:
+            - Path=/api/v1/menu/**
+            - Method=GET
+
+        - id: menu-service-write
+          uri: lb://menu-service
+          predicates:
+            - Path=/api/v1/menu/**
+          filters:
+            - JwtAuth
+
+        # Order service
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - JwtAuth
+            - name: CircuitBreaker
+              args:
+                name: orderCircuitBreaker
+                fallbackUri: forward:/fallback/orders
+
+        # Payment service
+        - id: payment-service
+          uri: lb://payment-service
+          predicates:
+            - Path=/api/v1/payments/**
+          filters:
+            - JwtAuth
+
+        # Notification service
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/v1/notifications/**
+          filters:
+            - JwtAuth
+
+      globalcors:
+        cors-configurations:
+          "[/**]":
+            allowedOriginPatterns: "*"
+            allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+            allowedHeaders: "*"
+            allowCredentials: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+
+jwt:
+  secret: ${JWT_SECRET:local-dev-secret-key-must-be-at-least-64-chars-long-for-hs512-algorithm}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      orderCircuitBreaker:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
