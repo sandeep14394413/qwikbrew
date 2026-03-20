@@ -222,22 +222,26 @@ resource "aiven_pg_database" "dbs" {
 resource "aiven_kafka" "qwikbrew" {
   project      = var.aiven_project
   cloud_name   = var.aiven_cloud_region
-  plan         = "startup-2"
+  # startup-4: 3-broker HA cluster — minimum plan for Kafka 4.x
+  # startup-2 is deprecated for Kafka 3.9 and above
+  plan         = "startup-4"
   service_name = "qwikbrew-kafka"
 
   maintenance_window_dow  = "sunday"
   maintenance_window_time = "03:00:00"
 
   kafka_user_config {
-    # kafka_version is intentionally omitted — Aiven picks the current default.
-    # Specifying a version string causes "Invalid Kafka version" errors.
+    # Kafka 4.0 — latest confirmed on Aiven.
+    # Update to "4.1" once Aiven makes it available in your region.
+    kafka_version   = "4.0"
     kafka_rest      = true
-    schema_registry = false   # disabled to save memory on startup-2
+    schema_registry = true   # enabled — startup-4 has enough memory
 
     kafka {
       auto_create_topics_enable  = false
       num_partitions             = 3
-      default_replication_factor = 1   # startup-2 has 1 broker — replication must be 1
+      # startup-4 has 3 brokers — replication_factor up to 3 is valid
+      default_replication_factor = 2
       min_insync_replicas        = 1
       log_retention_hours        = 168
     }
@@ -257,12 +261,12 @@ resource "aiven_kafka" "qwikbrew" {
 # Six Kafka topics
 locals {
   kafka_topics = {
-    "order-placed"    = { partitions = 1, retention_ms = "604800000" }
-    "order-ready"     = { partitions = 1, retention_ms = "604800000" }
-    "order-cancelled" = { partitions = 1, retention_ms = "604800000" }
-    "wallet-topup"    = { partitions = 1, retention_ms = "604800000" }
-    "points-earned"   = { partitions = 1, retention_ms = "604800000" }
-    "notifications"   = { partitions = 1, retention_ms = "86400000"  }
+    "order-placed"    = { partitions = 3, retention_ms = "604800000" }
+    "order-ready"     = { partitions = 3, retention_ms = "604800000" }
+    "order-cancelled" = { partitions = 3, retention_ms = "604800000" }
+    "wallet-topup"    = { partitions = 3, retention_ms = "604800000" }
+    "points-earned"   = { partitions = 3, retention_ms = "604800000" }
+    "notifications"   = { partitions = 3, retention_ms = "86400000"  }
   }
 }
 
@@ -272,7 +276,7 @@ resource "aiven_kafka_topic" "topics" {
   service_name = aiven_kafka.qwikbrew.service_name
   topic_name   = each.key
   partitions   = each.value.partitions
-  replication  = 1   # startup-2 has 1 broker — must be 1
+  replication  = 2   # startup-4 has 3 brokers — replication 2 is safe
 
   config {
     retention_ms   = each.value.retention_ms
