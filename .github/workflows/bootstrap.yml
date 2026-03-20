@@ -442,16 +442,30 @@ jobs:
           ACCOUNT_ID: ${{ needs.setup-aws-prerequisites.outputs.aws_account_id }}
         run: |
           ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/qwikbrew-github-actions"
+
           if kubectl get configmap aws-auth -n kube-system -o yaml 2>/dev/null | grep -q "$ROLE_ARN"; then
             echo "✅ OIDC role already in aws-auth"
           else
+            # Build the new entry as a plain variable — no printf needed
+            NEW_ENTRY="- rolearn: ${ROLE_ARN}
+    username: github-actions
+    groups:
+    - system:masters"
+
+            # Get existing roles (may be empty)
             EXISTING=$(kubectl get configmap aws-auth -n kube-system \
               -o jsonpath='{.data.mapRoles}' 2>/dev/null || echo "")
-            NEW_ENTRY=$(printf '- rolearn: %s\n  username: github-actions\n  groups:\n  - system:masters\n' "$ROLE_ARN")
-            COMBINED="${EXISTING}"$'\n'"${NEW_ENTRY}"
-            kubectl patch configmap aws-auth -n kube-system \
-              --type merge \
-              -p "{\"data\":{\"mapRoles\":$(echo "$COMBINED" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read()))')}}"
+
+            # Combine and JSON-encode safely using Python
+            PATCH=$(python3 -c "
+import json
+existing = '''$EXISTING'''
+new_entry = '''$NEW_ENTRY'''
+combined = (existing.rstrip() + chr(10) + new_entry) if existing.strip() else new_entry
+print(json.dumps({'data': {'mapRoles': combined}}))
+")
+
+            kubectl patch configmap aws-auth -n kube-system --type merge -p "$PATCH"
             echo "✅ OIDC role added to aws-auth"
           fi
 
