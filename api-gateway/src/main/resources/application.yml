@@ -95,3 +95,21 @@ resilience4j:
         sliding-window-size: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10s
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  cloud:
+    gateway:
+      routes: []   # no routes needed for context load test
+    discovery:
+      enabled: false
+
+eureka:
+  client:
+    enabled: false
+
+jwt:
+  secret: test-secret-key-at-least-64-characters-long-for-hs512-algorithm-ok

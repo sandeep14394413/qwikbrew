@@ -1,25 +1,46 @@
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+package com.qwikbrew.paymentservice.dto;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class PaymentDto {
-    private String id;
-    private String amount;
-    private String currency;
-    private String status;
+import com.qwikbrew.paymentservice.model.WalletTransaction;
+import lombok.*;
+import java.math.BigDecimal;
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+public class ChargeRequest {
+    private String userId;
+    private BigDecimal amount;
+    private WalletTransaction.PayMethod paymentMethod;
+    private String reference;
 }
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-public class PaymentResponseDto {
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+public class ChargeResponse {
     private String transactionId;
-    private String paymentUrl;
-    private String message;
+    private String status;
+    private BigDecimal newBalance;
+}
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+public class RefundRequest {
+    private String userId;
+    private BigDecimal amount;
+    private String orderId;
+}
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+public class RefundResponse {
+    private String transactionId;
+    private BigDecimal newBalance;
+}
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+public class TopUpRequest {
+    private String userId;
+    private BigDecimal amount;
+    private WalletTransaction.PayMethod paymentMethod;
+}
+
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+public class WalletResponse {
+    private String userId;
+    private BigDecimal balance;
 }

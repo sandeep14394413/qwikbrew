@@ -211,11 +211,11 @@ jobs:
         if: always()
         uses: dorny/test-reporter@v1
         with:
-          name:          "Tests — ${{ matrix.service }}"
-          path:          "${{ matrix.service }}/target/surefire-reports/*.xml"
-          reporter:      java-junit
-          fail-on-error: false
-          # Don't fail if no XML files found (service may have no tests yet)
+          name:           "Tests — ${{ matrix.service }}"
+          path:           "${{ matrix.service }}/target/surefire-reports/*.xml"
+          reporter:       java-junit
+          fail-on-error:  false
+          fail-on-empty:  false
 
       - name: 📤 Upload test artifacts
         if: always()

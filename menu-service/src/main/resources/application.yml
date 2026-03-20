@@ -21,17 +21,9 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-  data:
-    redis:
-      host:     ${SPRING_REDIS_HOST:localhost}
-      port:     ${SPRING_REDIS_PORT:6379}
-      password: ${SPRING_REDIS_PASSWORD:}
-      ssl:
-        enabled: ${SPRING_REDIS_SSL_ENABLED:false}
   cache:
-    type: redis
-    redis:
-      time-to-live: ${MENU_CACHE_TTL_MINUTES:15}m
+    type: simple   # in-memory cache — no Redis needed on free tier
+    # Upgrade to type: redis with ElastiCache when moving to paid tier
 
 eureka:
   client:

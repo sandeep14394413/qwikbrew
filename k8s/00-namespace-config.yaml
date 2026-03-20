@@ -96,8 +96,6 @@ spec:
   data:
     - secretKey: JWT_SECRET
       remoteRef: { key: "qwikbrew/ENV/app-secrets", property: JWT_SECRET }
-    - secretKey: REDIS_AUTH_TOKEN
-      remoteRef: { key: "qwikbrew/ENV/app-secrets", property: REDIS_AUTH_TOKEN }
     - secretKey: PAYMENT_GATEWAY_KEY_ID
       remoteRef: { key: "qwikbrew/ENV/app-secrets", property: PAYMENT_GATEWAY_KEY_ID }
     - secretKey: PAYMENT_GATEWAY_SECRET

@@ -138,10 +138,7 @@ spec:
               valueFrom: { secretKeyRef: { name: aiven-credentials, key: DB_USERNAME } }
             - name:  SPRING_DATASOURCE_PASSWORD
               valueFrom: { secretKeyRef: { name: aiven-credentials, key: DB_PASSWORD } }
-            - name:  SPRING_REDIS_HOST
-              value: REDIS_ENDPOINT
-            - name:  SPRING_REDIS_PASSWORD
-              valueFrom: { secretKeyRef: { name: app-secrets, key: REDIS_AUTH_TOKEN } }
+            # Redis removed — menu-service uses in-memory cache (free tier)
           resources:
             requests: { cpu: 250m, memory: 512Mi }
             limits:   { cpu: 500m, memory: 1Gi }

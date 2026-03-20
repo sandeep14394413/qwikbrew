@@ -20,7 +20,8 @@ terraform/.terraform/
 terraform/terraform.tfstate
 terraform/terraform.tfstate.backup
 terraform/tfplan
-terraform/*.tfvars
+terraform/terraform.tfvars
+terraform/*.auto.tfvars
 terraform/backend-override.tf
 !terraform/variables.tf
 
