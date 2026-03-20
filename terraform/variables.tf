@@ -3,7 +3,7 @@ variable "environment"         { default = "staging" }
 variable "domain_name"         { default = "" }
 
 variable "aiven_api_token"     { sensitive = true }
-variable "aiven_project"       {}
+variable "aiven_project"       {default="sandeep14394413-7cb5"}
 variable "aiven_cloud_region"  { default = "aws-ap-south-1" }
 
 variable "payment_gateway_key_id" {
