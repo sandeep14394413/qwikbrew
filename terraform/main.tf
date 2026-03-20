@@ -32,8 +32,9 @@ provider "aiven" {
 }
 
 locals {
-  env        = var.environment
-  is_prod    = local.env == "prod"
+  env     = var.environment
+  is_prod = local.env == "prod"
+
   pg_plan    = local.is_prod ? "business-4" : "startup-4"
   kafka_plan = local.is_prod ? "business-4" : "startup-2"
 }
@@ -57,10 +58,13 @@ module "vpc" {
   enable_dns_hostnames = true
   enable_dns_support   = true
 
-  public_subnet_tags  = { "kubernetes.io/role/elb" = "1" }
+  public_subnet_tags = {
+    "kubernetes.io/role/elb" = "1"
+  }
+
   private_subnet_tags = {
-    "kubernetes.io/role/internal-elb"                           = "1"
-    "kubernetes.io/cluster/qwikbrew-${local.env}"               = "owned"
+    "kubernetes.io/role/internal-elb"             = "1"
+    "kubernetes.io/cluster/qwikbrew-${local.env}" = "owned"
   }
 }
 
@@ -81,37 +85,54 @@ module "eks" {
 
   eks_managed_node_groups = {
     system = {
-      instance_types = ["t3.medium"]
+      instance_types = ["t3.small"]
       min_size       = 2
       max_size       = 4
       desired_size   = 2
-      labels         = { role = "system" }
+      labels = {
+        role = "system"
+      }
     }
+
     app = {
-      instance_types = [local.is_prod ? "t3.large" : "t3.medium"]
+      instance_types = [local.is_prod ? "t3.medium" : "t3.small"]
       min_size       = local.is_prod ? 3 : 2
       max_size       = local.is_prod ? 10 : 4
       desired_size   = local.is_prod ? 3 : 2
-      labels         = { role = "app" }
+      labels = {
+        role = "app"
+      }
       block_device_mappings = {
         xvda = {
           device_name = "/dev/xvda"
-          ebs         = { volume_size = 50, volume_type = "gp3", delete_on_termination = true }
+          ebs = {
+            volume_size           = 50
+            volume_type           = "gp3"
+            delete_on_termination = true
+          }
         }
       }
     }
   }
 
   cluster_addons = {
-    coredns            = { most_recent = true }
-    kube-proxy         = { most_recent = true }
-    vpc-cni            = { most_recent = true }
-    aws-ebs-csi-driver = { most_recent = true }
+    coredns = {
+      most_recent = true
+    }
+    kube-proxy = {
+      most_recent = true
+    }
+    vpc-cni = {
+      most_recent = true
+    }
+    aws-ebs-csi-driver = {
+      most_recent = true
+    }
   }
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ECR — one repo per microservice
+# ECR — one repository per microservice
 # ═══════════════════════════════════════════════════════════════════════════════
 locals {
   services = [
@@ -128,25 +149,62 @@ resource "aws_ecr_repository" "services" {
   for_each             = toset(local.services)
   name                 = "qwikbrew/${each.key}"
   image_tag_mutability = "MUTABLE"
-  image_scanning_configuration { scan_on_push = true }
-  encryption_configuration     { encryption_type = "AES256" }
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  encryption_configuration {
+    encryption_type = "AES256"
+  }
 }
 
 resource "aws_ecr_lifecycle_policy" "cleanup" {
   for_each   = aws_ecr_repository.services
   repository = each.value.name
+
   policy = jsonencode({
-    rules = [{
-      rulePriority = 1
-      description  = "Keep last 10 images"
-      selection    = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 10 }
-      action       = { type = "expire" }
-    }]
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 10 images"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 10
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
   })
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ELASTICACHE REDIS (menu service cache)
+# SECURITY GROUP — Redis
+# ═══════════════════════════════════════════════════════════════════════════════
+resource "aws_security_group" "redis" {
+  name   = "qwikbrew-${local.env}-redis-sg"
+  vpc_id = module.vpc.vpc_id
+
+  ingress {
+    from_port   = 6379
+    to_port     = 6379
+    protocol    = "tcp"
+    cidr_blocks = module.vpc.private_subnets_cidr_blocks
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ELASTICACHE REDIS
 # ═══════════════════════════════════════════════════════════════════════════════
 resource "aws_elasticache_subnet_group" "redis" {
   name       = "qwikbrew-${local.env}-redis-subnet"
@@ -160,7 +218,7 @@ resource "random_password" "redis_auth" {
 
 resource "aws_elasticache_replication_group" "redis" {
   replication_group_id       = "qwikbrew-${local.env}-redis"
-  description                = "QwikBrew Redis cache — ${local.env}"
+  description                = "QwikBrew Redis cache for ${local.env}"
   node_type                  = local.is_prod ? "cache.r6g.large" : "cache.t4g.micro"
   num_cache_clusters         = local.is_prod ? 2 : 1
   automatic_failover_enabled = local.is_prod
@@ -171,25 +229,8 @@ resource "aws_elasticache_replication_group" "redis" {
   security_group_ids         = [aws_security_group.redis.id]
 }
 
-resource "aws_security_group" "redis" {
-  name   = "qwikbrew-${local.env}-redis-sg"
-  vpc_id = module.vpc.vpc_id
-  ingress {
-    from_port   = 6379
-    to_port     = 6379
-    protocol    = "tcp"
-    cidr_blocks = module.vpc.private_subnets_cidr_blocks
-  }
-  egress {
-  from_port   = 0
-  to_port     = 0
-  protocol    = "-1"
-  cidr_blocks = ["0.0.0.0/0"]
-}
-}
-
 # ═══════════════════════════════════════════════════════════════════════════════
-# AIVEN POSTGRESQL — one service, five logical databases
+# AIVEN POSTGRESQL
 # ═══════════════════════════════════════════════════════════════════════════════
 resource "aiven_pg" "qwikbrew" {
   project      = var.aiven_project
@@ -201,21 +242,25 @@ resource "aiven_pg" "qwikbrew" {
   maintenance_window_time = "02:00:00"
 
   pg_user_config {
-    pg_version = "16"
+    pg_version  = "16"
+    backup_hour   = 3
+    backup_minute = 0
 
+    # Slow query logging — log queries over 1 second
     pg {
       idle_in_transaction_session_timeout = 900
       log_min_duration_statement          = 1000
     }
 
+    # PgBouncer connection pooling
+    # Correct attribute name: autodb_pool_mode (NOT pool_mode)
     pgbouncer {
-      autodb_pool_mode = "transaction"   # connection pooling via PgBouncer
+      autodb_pool_mode = "transaction"
     }
 
-    ip_filter_object { network = "0.0.0.0/0" }
-
-    backup_hour   = 3
-    backup_minute = 0
+    ip_filter_object {
+      network = "0.0.0.0/0"
+    }
   }
 
   timeouts {
@@ -225,6 +270,7 @@ resource "aiven_pg" "qwikbrew" {
   }
 }
 
+# Five logical databases — one per microservice
 locals {
   databases = ["userdb", "menudb", "orderdb", "paymentdb", "notificationdb"]
 }
@@ -237,7 +283,7 @@ resource "aiven_pg_database" "dbs" {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# AIVEN KAFKA — one service, six topics
+# AIVEN KAFKA
 # ═══════════════════════════════════════════════════════════════════════════════
 resource "aiven_kafka" "qwikbrew" {
   project      = var.aiven_project
@@ -245,9 +291,15 @@ resource "aiven_kafka" "qwikbrew" {
   plan         = local.kafka_plan
   service_name = "qwikbrew-kafka-${local.env}"
 
-  kafka_user_config {
-    kafka_version = "3.7"
+  maintenance_window_dow  = "sunday"
+  maintenance_window_time = "03:00:00"
 
+  kafka_user_config {
+    kafka_version   = "3.6"
+    kafka_rest      = true
+    schema_registry = true
+
+    # Valid attributes in the nested kafka {} block (verified against official docs)
     kafka {
       auto_create_topics_enable  = false
       num_partitions             = 3
@@ -256,9 +308,9 @@ resource "aiven_kafka" "qwikbrew" {
       log_retention_hours        = 168
     }
 
-    kafka_rest      = true
-    schema_registry = true
-    ip_filter_object { network = "0.0.0.0/0" }
+    ip_filter_object {
+      network = "0.0.0.0/0"
+    }
   }
 
   timeouts {
@@ -268,14 +320,33 @@ resource "aiven_kafka" "qwikbrew" {
   }
 }
 
+# Six Kafka topics
 locals {
   kafka_topics = {
-    "order-placed"    = { partitions = 3, retention_ms = "604800000" }
-    "order-ready"     = { partitions = 3, retention_ms = "604800000" }
-    "order-cancelled" = { partitions = 3, retention_ms = "604800000" }
-    "wallet-topup"    = { partitions = 3, retention_ms = "604800000" }
-    "points-earned"   = { partitions = 3, retention_ms = "604800000" }
-    "notifications"   = { partitions = 6, retention_ms = "86400000"  }
+    "order-placed" = {
+      partitions   = 3
+      retention_ms = "604800000"
+    }
+    "order-ready" = {
+      partitions   = 3
+      retention_ms = "604800000"
+    }
+    "order-cancelled" = {
+      partitions   = 3
+      retention_ms = "604800000"
+    }
+    "wallet-topup" = {
+      partitions   = 3
+      retention_ms = "604800000"
+    }
+    "points-earned" = {
+      partitions   = 3
+      retention_ms = "604800000"
+    }
+    "notifications" = {
+      partitions   = 6
+      retention_ms = "86400000"
+    }
   }
 }
 
@@ -286,10 +357,16 @@ resource "aiven_kafka_topic" "topics" {
   topic_name   = each.key
   partitions   = each.value.partitions
   replication  = local.is_prod ? 2 : 1
+
   config {
     retention_ms   = each.value.retention_ms
     cleanup_policy = "delete"
   }
+}
+
+resource "random_password" "kafka_password" {
+  length  = 32
+  special = false
 }
 
 resource "aiven_kafka_user" "app" {
@@ -297,11 +374,6 @@ resource "aiven_kafka_user" "app" {
   service_name = aiven_kafka.qwikbrew.service_name
   username     = "qwikbrew-app"
   password     = random_password.kafka_password.result
-}
-
-resource "random_password" "kafka_password" {
-  length  = 32
-  special = false
 }
 
 resource "aiven_kafka_acl" "produce" {
@@ -321,20 +393,24 @@ resource "aiven_kafka_acl" "consume" {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# AWS SECRETS MANAGER — stores all Aiven connection strings
-# K8s ExternalSecrets reads from here and injects into pods automatically
+# AWS SECRETS MANAGER
+# Stores all Aiven connection strings so K8s ExternalSecrets can inject them
 # ═══════════════════════════════════════════════════════════════════════════════
+resource "random_password" "jwt_secret" {
+  length  = 64
+  special = false
+}
+
 resource "aws_secretsmanager_secret" "aiven_credentials" {
   name                    = "qwikbrew/${local.env}/aiven-credentials"
   recovery_window_in_days = local.is_prod ? 30 : 0
-  description             = "Aiven PostgreSQL and Kafka credentials for QwikBrew ${local.env}"
+  description             = "Aiven PG and Kafka credentials for QwikBrew ${local.env}"
 }
 
 resource "aws_secretsmanager_secret_version" "aiven_credentials" {
   secret_id = aws_secretsmanager_secret.aiven_credentials.id
 
   secret_string = jsonencode({
-    # Postgres — per-service JDBC URLs (SSL required by Aiven)
     PG_USER     = aiven_pg.qwikbrew.service_username
     PG_PASSWORD = aiven_pg.qwikbrew.service_password
     PG_HOST     = aiven_pg.qwikbrew.service_host
@@ -346,7 +422,6 @@ resource "aws_secretsmanager_secret_version" "aiven_credentials" {
     PAYMENTDB_URL      = "jdbc:postgresql://${aiven_pg.qwikbrew.service_host}:${aiven_pg.qwikbrew.service_port}/paymentdb?sslmode=require"
     NOTIFICATIONDB_URL = "jdbc:postgresql://${aiven_pg.qwikbrew.service_host}:${aiven_pg.qwikbrew.service_port}/notificationdb?sslmode=require"
 
-    # Kafka — SASL_SSL (required by Aiven)
     KAFKA_BOOTSTRAP_SERVERS = "${aiven_kafka.qwikbrew.service_host}:${aiven_kafka.qwikbrew.service_port}"
     KAFKA_SECURITY_PROTOCOL = "SASL_SSL"
     KAFKA_SASL_MECHANISM    = "PLAIN"
@@ -354,7 +429,11 @@ resource "aws_secretsmanager_secret_version" "aiven_credentials" {
     KAFKA_SASL_PASSWORD     = aiven_kafka_user.app.password
   })
 
-  depends_on = [aiven_pg.qwikbrew, aiven_kafka.qwikbrew, aiven_kafka_user.app]
+  depends_on = [
+    aiven_pg.qwikbrew,
+    aiven_kafka.qwikbrew,
+    aiven_kafka_user.app,
+  ]
 }
 
 resource "aws_secretsmanager_secret" "app_secrets" {
@@ -364,6 +443,7 @@ resource "aws_secretsmanager_secret" "app_secrets" {
 
 resource "aws_secretsmanager_secret_version" "app_secrets" {
   secret_id = aws_secretsmanager_secret.app_secrets.id
+
   secret_string = jsonencode({
     JWT_SECRET             = random_password.jwt_secret.result
     REDIS_AUTH_TOKEN       = random_password.redis_auth.result
@@ -375,18 +455,39 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
   })
 }
 
-resource "random_password" "jwt_secret" {
-  length  = 64
-  special = false
-}
-
 # ═══════════════════════════════════════════════════════════════════════════════
 # OUTPUTS
 # ═══════════════════════════════════════════════════════════════════════════════
-output "cluster_name"    { value = module.eks.cluster_name }
-output "cluster_endpoint" { value = module.eks.cluster_endpoint }
-output "redis_endpoint"  { value = aws_elasticache_replication_group.redis.primary_endpoint_address }
-output "pg_host"         { value = aiven_pg.qwikbrew.service_host }
-output "pg_port"         { value = aiven_pg.qwikbrew.service_port }
-output "kafka_bootstrap" { value = "${aiven_kafka.qwikbrew.service_host}:${aiven_kafka.qwikbrew.service_port}" }
-output "ecr_urls"        { value = { for k, v in aws_ecr_repository.services : k => v.repository_url } }
+output "cluster_name" {
+  value = module.eks.cluster_name
+}
+
+output "cluster_endpoint" {
+  value = module.eks.cluster_endpoint
+}
+
+output "redis_endpoint" {
+  value = aws_elasticache_replication_group.redis.primary_endpoint_address
+}
+
+output "pg_host" {
+  value = aiven_pg.qwikbrew.service_host
+}
+
+output "pg_port" {
+  value = aiven_pg.qwikbrew.service_port
+}
+
+output "kafka_bootstrap" {
+  value = "${aiven_kafka.qwikbrew.service_host}:${aiven_kafka.qwikbrew.service_port}"
+}
+
+output "ecr_urls" {
+  value = {
+    for k, v in aws_ecr_repository.services : k => v.repository_url
+  }
+}
+
+output "aiven_secrets_arn" {
+  value = aws_secretsmanager_secret.aiven_credentials.arn
+}
