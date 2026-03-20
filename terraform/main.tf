@@ -80,12 +80,13 @@ module "eks" {
 
   vpc_id                         = module.vpc.vpc_id
   subnet_ids                     = module.vpc.private_subnets
-  cluster_endpoint_public_access = true
-  enable_irsa                    = true
+  cluster_endpoint_public_access           = true
+  enable_irsa                              = true
+  enable_cluster_creator_admin_permissions = true
 
   eks_managed_node_groups = {
     system = {
-      instance_types = ["t3.small"]
+      instance_types = ["t3.medium"]  # minimum for EKS — t3.small (2GB) too small for system pods
       min_size       = 2
       max_size       = 4
       desired_size   = 2
@@ -95,7 +96,7 @@ module "eks" {
     }
 
     app = {
-      instance_types = [local.is_prod ? "t3.medium" : "t3.small"]
+      instance_types = [local.is_prod ? "t3.large" : "t3.medium"]
       min_size       = local.is_prod ? 3 : 2
       max_size       = local.is_prod ? 10 : 4
       desired_size   = local.is_prod ? 3 : 2
@@ -123,9 +124,6 @@ module "eks" {
       most_recent = true
     }
     vpc-cni = {
-      most_recent = true
-    }
-    aws-ebs-csi-driver = {
       most_recent = true
     }
   }
@@ -295,7 +293,6 @@ resource "aiven_kafka" "qwikbrew" {
   maintenance_window_time = "03:00:00"
 
   kafka_user_config {
-    kafka_version   = "3.6"
     kafka_rest      = true
     schema_registry = true
 
