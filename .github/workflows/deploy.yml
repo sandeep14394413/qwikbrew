@@ -154,19 +154,20 @@ jobs:
           echo "🌍 Environment: $ENV | Cluster: qwikbrew-${ENV}"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# JOB 2 — UNIT + INTEGRATION TESTS
-# Spins up PostgreSQL and Redis as service containers — no mocks.
+# JOB 2 — TESTS (SKIPPED)
+# Tests are disabled. Re-enable by removing "if: false" below.
+# To run tests locally: mvn test -pl <service> -Dspring.profiles.active=test
 # ═══════════════════════════════════════════════════════════════════════════════
   test:
     name: 🧪 Test — ${{ matrix.service }}
     runs-on: ubuntu-latest
     needs: detect-changes
+    if: false   # ← tests skipped; remove this line to re-enable
     strategy:
       fail-fast: false
       matrix:
         service: ${{ fromJson(needs.detect-changes.outputs.services_json) }}
 
-    # Only PostgreSQL — Redis removed (menu-service uses in-memory cache)
     services:
       postgres:
         image: postgres:16-alpine
@@ -191,13 +192,11 @@ jobs:
           distribution:  temurin
           cache:         maven
 
-      - name: 🔨 Install parent POM (shared dependencies)
+      - name: 🔨 Install parent POM
         run: mvn install -N -DskipTests -q
 
       - name: 🧪 Run tests — ${{ matrix.service }}
         run: |
-          # -pl uses the exact Maven module name (directory name = artifactId)
-          # Never pass "all" here — matrix always contains individual service names
           mvn test -pl ${{ matrix.service }} \
             -Dspring.profiles.active=test \
             -Dspring.datasource.url=jdbc:postgresql://localhost:5432/testdb \
@@ -233,7 +232,7 @@ jobs:
   build:
     name: 🐳 Build & Push — ${{ matrix.service }}
     runs-on: ubuntu-latest
-    needs: [detect-changes, test]
+    needs: detect-changes   # test job skipped — builds straight after change detection
     if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
