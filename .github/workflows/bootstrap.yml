@@ -1,567 +1,438 @@
-name: 🏗️ Bootstrap — Provision All Infrastructure (AWS + Aiven)
+terraform {
+  required_version = ">= 1.7"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.40"
+    }
+    aiven = {
+      source  = "aiven/aiven"
+      version = "~> 4.20"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
+    }
+  }
+}
 
-# ─────────────────────────────────────────────────────────────────────────────
-#  Run this ONCE from the GitHub Actions UI to provision everything.
-#  After it completes, deploy.yml handles all future deployments automatically.
+provider "aws" {
+  region = var.aws_region
+  default_tags {
+    tags = {
+      Project   = "QwikBrew"
+      ManagedBy = "Terraform"
+    }
+  }
+}
+
+provider "aiven" {
+  api_token = var.aiven_api_token
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VPC
+# Free tier: VPC itself is free. NAT Gateway is NOT free (~$32/month).
+# We use a single NAT Gateway (cheapest option — one AZ only).
+# ═══════════════════════════════════════════════════════════════════════════════
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "5.7.0"
+
+  name = "qwikbrew-vpc"
+  cidr = "10.0.0.0/16"
+
+  azs             = ["${var.aws_region}a", "${var.aws_region}b"]
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
+
+  # Single NAT gateway — covers both AZs from one gateway to minimize cost
+  enable_nat_gateway   = true
+  single_nat_gateway   = true
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  public_subnet_tags = {
+    "kubernetes.io/role/elb" = "1"
+  }
+  private_subnet_tags = {
+    "kubernetes.io/role/internal-elb"  = "1"
+    "kubernetes.io/cluster/qwikbrew"   = "owned"
+  }
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# EKS
+# Note: EKS control plane costs $0.10/hour (~$72/month) — not free tier.
+# This is the minimum viable config for running all 6 microservices.
 #
-#  KEY FIX: Variables are passed as TF_VAR_ environment variables.
-#  Never write secrets into terraform.tfvars — special characters in secret
-#  values break HCL string parsing (multi-line string error).
+# Node: t3.medium (2 vCPU, 4 GB RAM)
+#   - t2.micro/t3.micro (1 GB) — too small, EKS system pods alone use ~1.2 GB
+#   - t3.small (2 GB) — nodes start but go NotReady under full pod load
+#   - t3.medium (4 GB) — minimum that works reliably for EKS
 #
-#  Required GitHub secrets (add before running):
-#    AWS_ACCESS_KEY_ID       — AWS IAM access key
-#    AWS_SECRET_ACCESS_KEY   — AWS IAM secret key
-#    AWS_ACCOUNT_ID          — 12-digit AWS account number
-#    AIVEN_API_TOKEN         — from console.aiven.io → User → Tokens
-#    AIVEN_PROJECT_NAME      — project name from console.aiven.io
-# ─────────────────────────────────────────────────────────────────────────────
-
-on:
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: "Environment to bootstrap"
-        required: true
-        default: "staging"
-        type: choice
-        options: [staging, prod]
-      action:
-        description: "Terraform action"
-        required: true
-        default: "apply"
-        type: choice
-        options: [apply, plan-only, destroy]
-      confirm_destroy:
-        description: "Type DESTROY to confirm teardown (destroy only)"
-        required: false
-        default: ""
-
-concurrency:
-  group: bootstrap-${{ github.event.inputs.environment }}
-  cancel-in-progress: false
-
-env:
-  AWS_REGION: ap-south-1
-  TF_VERSION: 1.7.5
-  TF_DIR:     ./terraform
-
+# Cost saver: single node group, minimum 2 nodes (EKS needs 2 for HA addons)
 # ═══════════════════════════════════════════════════════════════════════════════
-# JOB 1 — AWS PREREQUISITES
-# ═══════════════════════════════════════════════════════════════════════════════
-jobs:
-  setup-aws-prerequisites:
-    name: 🔐 Setup OIDC · IAM Role · S3 Backend
-    runs-on: ubuntu-latest
-    outputs:
-      aws_account_id:  ${{ steps.account.outputs.id }}
-      tf_state_bucket: ${{ steps.backend.outputs.bucket }}
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "20.8.0"
 
-    steps:
-      - uses: actions/checkout@v4
+  cluster_name    = "qwikbrew"
+  cluster_version = "1.29"
 
-      - name: 🔐 Configure AWS credentials (bootstrap access keys)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
+  vpc_id                                   = module.vpc.vpc_id
+  subnet_ids                               = module.vpc.private_subnets
+  cluster_endpoint_public_access           = true
+  enable_irsa                              = true
+  enable_cluster_creator_admin_permissions = true
 
-      - name: 🔍 Get AWS account ID
-        id: account
-        run: |
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          echo "id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
-          echo "✅ AWS Account: $ACCOUNT_ID"
+  eks_managed_node_groups = {
+    nodes = {
+      # Only valid EKS Spot instance types with 4 GB+ RAM
+      instance_types = ["t3.medium", "t3.large"]
+      capacity_type  = "SPOT"
 
-      - name: 🌐 Create GitHub OIDC provider
-        run: |
-          EXISTS=$(aws iam list-open-id-connect-providers \
-            --query "OIDCProviderList[?contains(Arn,'token.actions.githubusercontent.com')].Arn" \
-            --output text)
-          if [ -z "$EXISTS" ]; then
-            aws iam create-open-id-connect-provider \
-              --url "https://token.actions.githubusercontent.com" \
-              --client-id-list "sts.amazonaws.com" \
-              --thumbprint-list "6938fd4d98bab03faadb97b34396831e3780aea1"
-            echo "✅ OIDC provider created"
-          else
-            echo "✅ OIDC provider already exists — skipping"
-          fi
+      min_size     = 2
+      max_size     = 3
+      desired_size = 2
 
-      - name: 👤 Create / update GitHub Actions IAM role
-        env:
-          ACCOUNT_ID: ${{ steps.account.outputs.id }}
-        run: |
-          ROLE_NAME="qwikbrew-github-actions"
+      # Attach all three required managed policies to the node IAM role.
+      # Without AmazonEKS_CNI_Policy, vpc-cni cannot assign pod IPs
+      # and nodes stay in NotReady state even after launching successfully.
+      iam_role_additional_policies = {
+        AmazonEKSWorkerNodePolicy          = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+        AmazonEKS_CNI_Policy               = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+        AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+        AmazonSSMManagedInstanceCore       = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      }
 
-          cat > /tmp/trust-policy.json <<TRUSTEOF
-          {
-            "Version": "2012-10-17",
-            "Statement": [{
-              "Effect": "Allow",
-              "Principal": {
-                "Federated": "arn:aws:iam::${ACCOUNT_ID}:oidc-provider/token.actions.githubusercontent.com"
-              },
-              "Action": "sts:AssumeRoleWithWebIdentity",
-              "Condition": {
-                "StringEquals": {
-                  "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-                },
-                "StringLike": {
-                  "token.actions.githubusercontent.com:sub": "repo:${{ github.repository }}:*"
-                }
-              }
-            }]
+      block_device_mappings = {
+        xvda = {
+          device_name = "/dev/xvda"
+          ebs = {
+            volume_size           = 20
+            volume_type           = "gp2"
+            delete_on_termination = true
           }
-          TRUSTEOF
+        }
+      }
+    }
+  }
 
-          aws iam create-role \
-            --role-name "$ROLE_NAME" \
-            --assume-role-policy-document file:///tmp/trust-policy.json \
-            --description "GitHub Actions OIDC role for QwikBrew CI/CD" 2>/dev/null || \
-          aws iam update-assume-role-policy \
-            --role-name "$ROLE_NAME" \
-            --policy-document file:///tmp/trust-policy.json
-
-          for POLICY_ARN in \
-            "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser" \
-            "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy" \
-            "arn:aws:iam::aws:policy/AmazonVPCFullAccess" \
-            "arn:aws:iam::aws:policy/AmazonElastiCacheFullAccess"; do
-            aws iam attach-role-policy \
-              --role-name "$ROLE_NAME" \
-              --policy-arn "$POLICY_ARN" 2>/dev/null || true
-          done
-
-          cat > /tmp/inline-policy.json <<POLICYEOF
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Sid": "EKSAccess",
-                "Effect": "Allow",
-                "Action": ["eks:*"],
-                "Resource": "arn:aws:eks:${AWS_REGION}:${ACCOUNT_ID}:cluster/qwikbrew-*"
-              },
-              {
-                "Sid": "SecretsManagerAccess",
-                "Effect": "Allow",
-                "Action": [
-                  "secretsmanager:GetSecretValue",
-                  "secretsmanager:CreateSecret",
-                  "secretsmanager:UpdateSecret",
-                  "secretsmanager:DescribeSecret",
-                  "secretsmanager:DeleteSecret",
-                  "secretsmanager:ListSecrets"
-                ],
-                "Resource": "arn:aws:secretsmanager:${AWS_REGION}:${ACCOUNT_ID}:secret:qwikbrew/*"
-              },
-              {
-                "Sid": "TerraformState",
-                "Effect": "Allow",
-                "Action": ["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:ListBucket"],
-                "Resource": [
-                  "arn:aws:s3:::qwikbrew-terraform-state-${ACCOUNT_ID}",
-                  "arn:aws:s3:::qwikbrew-terraform-state-${ACCOUNT_ID}/*"
-                ]
-              },
-              {
-                "Sid": "TerraformLock",
-                "Effect": "Allow",
-                "Action": [
-                  "dynamodb:GetItem","dynamodb:PutItem",
-                  "dynamodb:DeleteItem","dynamodb:DescribeTable"
-                ],
-                "Resource": "arn:aws:dynamodb:${AWS_REGION}:${ACCOUNT_ID}:table/qwikbrew-tf-lock"
-              },
-              {
-                "Sid": "ECRAccess",
-                "Effect": "Allow",
-                "Action": ["ecr:*"],
-                "Resource": "*"
-              }
-            ]
-          }
-          POLICYEOF
-
-          aws iam put-role-policy \
-            --role-name "$ROLE_NAME" \
-            --policy-name "qwikbrew-cicd-access" \
-            --policy-document file:///tmp/inline-policy.json
-
-          echo "✅ IAM role $ROLE_NAME ready"
-
-      - name: 🪣 Create Terraform S3 backend + DynamoDB lock table
-        id: backend
-        env:
-          ACCOUNT_ID: ${{ steps.account.outputs.id }}
-        run: |
-          BUCKET="qwikbrew-terraform-state-${ACCOUNT_ID}"
-          TABLE="qwikbrew-tf-lock"
-
-          if ! aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
-            aws s3api create-bucket \
-              --bucket "$BUCKET" \
-              --region ${{ env.AWS_REGION }} \
-              --create-bucket-configuration LocationConstraint=${{ env.AWS_REGION }}
-            aws s3api put-bucket-versioning \
-              --bucket "$BUCKET" \
-              --versioning-configuration Status=Enabled
-            aws s3api put-bucket-encryption \
-              --bucket "$BUCKET" \
-              --server-side-encryption-configuration \
-              '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
-            aws s3api put-public-access-block \
-              --bucket "$BUCKET" \
-              --public-access-block-configuration \
-              "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
-            echo "✅ S3 bucket created: $BUCKET"
-          else
-            echo "✅ S3 bucket already exists"
-          fi
-
-          if ! aws dynamodb describe-table --table-name "$TABLE" 2>/dev/null; then
-            aws dynamodb create-table \
-              --table-name "$TABLE" \
-              --attribute-definitions AttributeName=LockID,AttributeType=S \
-              --key-schema AttributeName=LockID,KeyType=HASH \
-              --billing-mode PAY_PER_REQUEST \
-              --region ${{ env.AWS_REGION }}
-            echo "✅ DynamoDB lock table created: $TABLE"
-          else
-            echo "✅ DynamoDB lock table already exists"
-          fi
-
-          echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
+  # vpc-cni before coredns — nodes need IP assignment before DNS can start
+  cluster_addons = {
+    vpc-cni = {
+      most_recent              = true
+      before_compute           = true
+      configuration_values     = jsonencode({
+        env = {
+          ENABLE_PREFIX_DELEGATION = "true"
+          WARM_PREFIX_TARGET       = "1"
+        }
+      })
+    }
+    coredns = {
+      most_recent = true
+    }
+    kube-proxy = {
+      most_recent = true
+    }
+  }
+}
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# JOB 2 — TERRAFORM
-# All sensitive values passed as TF_VAR_ environment variables.
-# NO terraform.tfvars file is written — avoids multi-line string errors.
+# ECR — one private repo per microservice
+# Free tier: 500 MB storage free per month
 # ═══════════════════════════════════════════════════════════════════════════════
-  terraform:
-    name: 🏗️ Terraform — EKS + Aiven PostgreSQL + Aiven Kafka
-    runs-on: ubuntu-latest
-    needs: setup-aws-prerequisites
-    environment: ${{ github.event.inputs.environment }}
-    outputs:
-      cluster_name:    ${{ steps.outputs.outputs.cluster_name }}
-      redis_endpoint:  ${{ steps.outputs.outputs.redis_endpoint }}
-      aiven_pg_host:   ${{ steps.outputs.outputs.pg_host }}
-      kafka_bootstrap: ${{ steps.outputs.outputs.kafka_bootstrap }}
+locals {
+  services = [
+    "api-gateway",
+    "user-service",
+    "menu-service",
+    "order-service",
+    "payment-service",
+    "notification-service",
+  ]
+}
 
-    steps:
-      - uses: actions/checkout@v4
+resource "aws_ecr_repository" "services" {
+  for_each             = toset(local.services)
+  name                 = "qwikbrew/${each.key}"
+  image_tag_mutability = "MUTABLE"
 
-      - name: 🔐 Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
 
-      - name: 🔧 Setup Terraform ${{ env.TF_VERSION }}
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-          terraform_wrapper: false
+resource "aws_ecr_lifecycle_policy" "cleanup" {
+  for_each   = aws_ecr_repository.services
+  repository = each.value.name
 
-      # ── Delete any terraform.tfvars before running Terraform ─────────────────
-      # Terraform auto-loads terraform.tfvars if present. If it was accidentally
-      # committed or left from a previous run, Terraform parses it and fails on
-      # masked secret values. Deleting guarantees ALL vars come from TF_VAR_ only.
-      - name: 🗑️ Delete terraform.tfvars (if exists)
-        working-directory: ${{ env.TF_DIR }}
-        run: |
-          rm -f terraform.tfvars *.auto.tfvars
-          echo "✅ Cleared any .tfvars files — variables come from TF_VAR_ env vars"
-
-      # ── Write ONLY the backend config (no secrets — safe to write) ───────────
-      - name: 📝 Write backend config
-        working-directory: ${{ env.TF_DIR }}
-        env:
-          TF_STATE_BUCKET: ${{ needs.setup-aws-prerequisites.outputs.tf_state_bucket }}
-        run: |
-          ENV="${{ github.event.inputs.environment }}"
-          cat > backend-override.tf <<BACKENDEOF
-          terraform {
-            backend "s3" {
-              bucket         = "${TF_STATE_BUCKET}"
-              key            = "eks/${ENV}/terraform.tfstate"
-              region         = "${{ env.AWS_REGION }}"
-              encrypt        = true
-              dynamodb_table = "qwikbrew-tf-lock"
-            }
-          }
-          BACKENDEOF
-          echo "✅ Backend config written"
-
-      # ── All terraform variables injected via TF_VAR_ — no file writing ──────
-      # Terraform automatically reads any env var named TF_VAR_<variable_name>.
-      # This avoids all HCL string quoting/escaping issues with secret values.
-
-      # ── Sanitize Aiven credentials ───────────────────────────────────────────
-      # Strips ALL whitespace, newlines, and quotes from secret values before
-      # passing them to Terraform. Aiven project names must be alphanumeric.
-      - name: 🧹 Sanitize + validate Aiven credentials
-        id: aiven
-        env:
-          RAW_TOKEN:   ${{ secrets.AIVEN_API_TOKEN }}
-          RAW_PROJECT: ${{ secrets.AIVEN_PROJECT_NAME }}
-        run: |
-          # Strip leading/trailing whitespace, newlines, carriage returns, quotes
-          CLEAN_TOKEN=$(echo -n "$RAW_TOKEN"   | tr -d '[:space:]' | tr -d '"' | tr -d "'")
-          CLEAN_PROJECT=$(echo -n "$RAW_PROJECT" | tr -d '[:space:]' | tr -d '"' | tr -d "'")
-
-          # Validate project name — must be alphanumeric + hyphens only
-          if [[ -z "$CLEAN_PROJECT" ]]; then
-            echo "❌ AIVEN_PROJECT_NAME secret is empty!"
-            echo "   Go to: GitHub repo → Settings → Secrets → AIVEN_PROJECT_NAME"
-            echo "   Set it to exactly the project name shown in console.aiven.io"
-            exit 1
-          fi
-
-          if ! [[ "$CLEAN_PROJECT" =~ ^[a-zA-Z0-9_-]+$ ]]; then
-            echo "❌ AIVEN_PROJECT_NAME contains invalid characters: '$CLEAN_PROJECT'"
-            echo "   Aiven project names must be alphanumeric, hyphens, or underscores only."
-            echo "   Check your GitHub secret for accidentally included quotes or spaces."
-            exit 1
-          fi
-
-          if [[ -z "$CLEAN_TOKEN" ]]; then
-            echo "❌ AIVEN_API_TOKEN secret is empty!"
-            exit 1
-          fi
-
-          # Show project name length (value is masked by GitHub)
-          echo "✅ AIVEN_PROJECT_NAME length: ${#CLEAN_PROJECT} chars"
-          echo "✅ AIVEN_API_TOKEN length:    ${#CLEAN_TOKEN} chars"
-          echo "✅ Project name format valid: alphanumeric"
-
-          # Export clean values as step outputs for downstream steps
-          echo "token=$CLEAN_TOKEN"     >> $GITHUB_OUTPUT
-          echo "project=$CLEAN_PROJECT" >> $GITHUB_OUTPUT
-
-      - name: 🔄 Terraform Init
-        working-directory: ${{ env.TF_DIR }}
-        run: terraform init -input=false
-
-      - name: ✅ Terraform Validate
-        working-directory: ${{ env.TF_DIR }}
-        run: terraform validate
-
-      - name: 📋 Terraform Plan
-        working-directory: ${{ env.TF_DIR }}
-        env:
-          TF_VAR_aws_region:         ${{ env.AWS_REGION }}
-          TF_VAR_environment:        ${{ github.event.inputs.environment }}
-          TF_VAR_aiven_api_token:    ${{ steps.aiven.outputs.token }}
-          TF_VAR_aiven_project:      ${{ steps.aiven.outputs.project }}
-          TF_VAR_aiven_cloud_region: "aws-${{ env.AWS_REGION }}"
-        run: |
-          terraform plan -out=tfplan -input=false
-          echo "─── Plan summary ────────────────────────────────────"
-          terraform show -no-color tfplan \
-            | grep -E "^(Plan:|No changes|  \+|  \-|  ~)" \
-            | head -40
-
-      - name: 🚀 Terraform Apply
-        if: github.event.inputs.action == 'apply'
-        working-directory: ${{ env.TF_DIR }}
-        env:
-          TF_VAR_aws_region:         ${{ env.AWS_REGION }}
-          TF_VAR_environment:        ${{ github.event.inputs.environment }}
-          TF_VAR_aiven_api_token:    ${{ steps.aiven.outputs.token }}
-          TF_VAR_aiven_project:      ${{ steps.aiven.outputs.project }}
-          TF_VAR_aiven_cloud_region: "aws-${{ env.AWS_REGION }}"
-        run: terraform apply -auto-approve -input=false tfplan
-
-      - name: 💥 Terraform Destroy
-        if: |
-          github.event.inputs.action == 'destroy' &&
-          github.event.inputs.confirm_destroy == 'DESTROY'
-        working-directory: ${{ env.TF_DIR }}
-        env:
-          TF_VAR_aws_region:         ${{ env.AWS_REGION }}
-          TF_VAR_environment:        ${{ github.event.inputs.environment }}
-          TF_VAR_aiven_api_token:    ${{ steps.aiven.outputs.token }}
-          TF_VAR_aiven_project:      ${{ steps.aiven.outputs.project }}
-          TF_VAR_aiven_cloud_region: "aws-${{ env.AWS_REGION }}"
-        run: terraform destroy -auto-approve -input=false
-
-      - name: 📤 Capture Terraform outputs
-        if: github.event.inputs.action == 'apply'
-        id: outputs
-        working-directory: ${{ env.TF_DIR }}
-        run: |
-          CLUSTER=$(terraform output -raw cluster_name    2>/dev/null || echo "qwikbrew-${{ github.event.inputs.environment }}")
-          REDIS=$(terraform output   -raw redis_endpoint   2>/dev/null || echo "")
-          PG_HOST=$(terraform output -raw pg_host          2>/dev/null || echo "")
-          PG_PORT=$(terraform output -raw pg_port          2>/dev/null || echo "5432")
-          KAFKA=$(terraform output   -raw kafka_bootstrap  2>/dev/null || echo "")
-
-          echo "cluster_name=$CLUSTER"  >> $GITHUB_OUTPUT
-          echo "redis_endpoint=$REDIS"  >> $GITHUB_OUTPUT
-          echo "pg_host=$PG_HOST"       >> $GITHUB_OUTPUT
-          echo "pg_port=$PG_PORT"       >> $GITHUB_OUTPUT
-          echo "kafka_bootstrap=$KAFKA" >> $GITHUB_OUTPUT
-
-          echo "EKS Cluster  : $CLUSTER"
-          echo "Aiven PG     : $PG_HOST:$PG_PORT"
-          echo "Aiven Kafka  : $KAFKA"
-          echo "Redis        : $REDIS"
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 5 images"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 5
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# JOB 3 — POST-INFRA SETUP
+# AIVEN POSTGRESQL
+# Use "startup-4" plan — cheapest paid plan (~$19/month).
+# One service, five logical databases (one per microservice).
 # ═══════════════════════════════════════════════════════════════════════════════
-  post-infra:
-    name: ⚙️ Post-Infra — EKS Config + Helm + K8s Namespace
-    runs-on: ubuntu-latest
-    needs: [setup-aws-prerequisites, terraform]
-    if: github.event.inputs.action == 'apply'
+resource "aiven_pg" "qwikbrew" {
+  project      = var.aiven_project
+  cloud_name   = var.aiven_cloud_region
+  plan         = "startup-4"
+  service_name = "qwikbrew-pg"
 
-    steps:
-      - uses: actions/checkout@v4
+  maintenance_window_dow  = "sunday"
+  maintenance_window_time = "02:00:00"
 
-      - name: 🔐 Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
+  pg_user_config {
+    pg_version    = "16"
+    backup_hour   = 3
+    backup_minute = 0
 
-      - name: ☸️ Update kubeconfig
-        run: |
-          CLUSTER="${{ needs.terraform.outputs.cluster_name }}"
-          aws eks update-kubeconfig --name "$CLUSTER" --region ${{ env.AWS_REGION }}
-          echo "✅ Connected to: $CLUSTER"
-          kubectl get nodes
+    pg {
+      idle_in_transaction_session_timeout = 900
+      log_min_duration_statement          = 1000
+    }
 
-      - name: 🔐 Add OIDC IAM role to EKS aws-auth
-        env:
-          ACCOUNT_ID: ${{ needs.setup-aws-prerequisites.outputs.aws_account_id }}
-        run: |
-          ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/qwikbrew-github-actions"
+    pgbouncer {
+      autodb_pool_mode = "transaction"
+    }
 
-          if kubectl get configmap aws-auth -n kube-system -o yaml 2>/dev/null | grep -q "$ROLE_ARN"; then
-            echo "✅ OIDC role already in aws-auth"
-          else
-            # Build the new entry as a plain variable — no printf needed
-            NEW_ENTRY="- rolearn: ${ROLE_ARN}
-    username: github-actions
-    groups:
-    - system:masters"
+    ip_filter_object {
+      network = "0.0.0.0/0"
+    }
+  }
 
-            # Get existing roles (may be empty)
-            EXISTING=$(kubectl get configmap aws-auth -n kube-system \
-              -o jsonpath='{.data.mapRoles}' 2>/dev/null || echo "")
+  timeouts {
+    create = "30m"
+    update = "15m"
+    delete = "15m"
+  }
+}
 
-            # Combine and JSON-encode safely using Python
-            PATCH=$(python3 -c "
-import json
-existing = '''$EXISTING'''
-new_entry = '''$NEW_ENTRY'''
-combined = (existing.rstrip() + chr(10) + new_entry) if existing.strip() else new_entry
-print(json.dumps({'data': {'mapRoles': combined}}))
-")
+locals {
+  databases = ["userdb", "menudb", "orderdb", "paymentdb", "notificationdb"]
+}
 
-            kubectl patch configmap aws-auth -n kube-system --type merge -p "$PATCH"
-            echo "✅ OIDC role added to aws-auth"
-          fi
+resource "aiven_pg_database" "dbs" {
+  for_each      = toset(local.databases)
+  project       = var.aiven_project
+  service_name  = aiven_pg.qwikbrew.service_name
+  database_name = each.key
+}
 
-      - name: 📦 Add Helm repos
-        run: |
-          helm repo add eks                  https://aws.github.io/eks-charts
-          helm repo add external-secrets     https://charts.external-secrets.io
-          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-          helm repo add autoscaler           https://kubernetes.github.io/autoscaler
-          helm repo update
-          echo "✅ Helm repos updated"
+# ═══════════════════════════════════════════════════════════════════════════════
+# AIVEN KAFKA
+# Use "startup-2" plan — cheapest Kafka plan (~$35/month).
+# kafka_version is omitted — Aiven uses its current default automatically.
+# ═══════════════════════════════════════════════════════════════════════════════
+resource "aiven_kafka" "qwikbrew" {
+  project      = var.aiven_project
+  cloud_name   = var.aiven_cloud_region
+  # startup-4: 3-broker HA cluster — minimum plan for Kafka 4.x
+  # startup-2 is deprecated for Kafka 3.9 and above
+  plan         = "startup-4"
+  service_name = "qwikbrew-kafka"
 
-      - name: 📦 Install AWS Load Balancer Controller
-        run: |
-          CLUSTER="${{ needs.terraform.outputs.cluster_name }}"
-          helm upgrade --install aws-load-balancer-controller \
-            eks/aws-load-balancer-controller \
-            -n kube-system \
-            --set clusterName="$CLUSTER" \
-            --set serviceAccount.create=true \
-            --wait --timeout=300s
-          echo "✅ AWS Load Balancer Controller installed"
+  maintenance_window_dow  = "sunday"
+  maintenance_window_time = "03:00:00"
 
-      - name: 📦 Install External Secrets Operator
-        run: |
-          helm upgrade --install external-secrets \
-            external-secrets/external-secrets \
-            -n external-secrets --create-namespace \
-            --set installCRDs=true \
-            --wait --timeout=300s
-          echo "✅ External Secrets Operator installed"
+  kafka_user_config {
+    # Kafka 4.0 — latest confirmed on Aiven.
+    # Update to "4.1" once Aiven makes it available in your region.
+    kafka_version   = "4.0"
+    kafka_rest      = true
+    schema_registry = true   # enabled — startup-4 has enough memory
 
-      - name: 📦 Install Prometheus + Grafana
-        run: |
-          helm upgrade --install kube-prometheus-stack \
-            prometheus-community/kube-prometheus-stack \
-            -n monitoring --create-namespace \
-            --set grafana.adminPassword=qwikbrew_admin \
-            --set prometheus.prometheusSpec.retention=15d \
-            --wait --timeout=600s
-          echo "✅ Prometheus + Grafana installed"
+    kafka {
+      auto_create_topics_enable  = false
+      num_partitions             = 3
+      # startup-4 has 3 brokers — replication_factor up to 3 is valid
+      default_replication_factor = 2
+      min_insync_replicas        = 1
+      log_retention_hours        = 168
+    }
 
-      - name: 📦 Install Cluster Autoscaler
-        run: |
-          CLUSTER="${{ needs.terraform.outputs.cluster_name }}"
-          helm upgrade --install cluster-autoscaler \
-            autoscaler/cluster-autoscaler \
-            -n kube-system \
-            --set autoDiscovery.clusterName="$CLUSTER" \
-            --set awsRegion=${{ env.AWS_REGION }} \
-            --wait --timeout=180s
-          echo "✅ Cluster Autoscaler installed"
+    ip_filter_object {
+      network = "0.0.0.0/0"
+    }
+  }
 
-      - name: 🌐 Apply K8s namespace + ExternalSecrets
-        run: |
-          ENV="${{ github.event.inputs.environment }}"
-          REDIS="${{ needs.terraform.outputs.redis_endpoint }}"
+  timeouts {
+    create = "30m"
+    update = "15m"
+    delete = "15m"
+  }
+}
 
-          sed -i "s|qwikbrew/ENV/|qwikbrew/${ENV}/|g"  k8s/00-namespace-config.yaml
-          [ -n "$REDIS" ] && sed -i "s|REDIS_ENDPOINT|${REDIS}|g" k8s/01-deployments.yaml
+# Six Kafka topics
+locals {
+  kafka_topics = {
+    "order-placed"    = { partitions = 3, retention_ms = "604800000" }
+    "order-ready"     = { partitions = 3, retention_ms = "604800000" }
+    "order-cancelled" = { partitions = 3, retention_ms = "604800000" }
+    "wallet-topup"    = { partitions = 3, retention_ms = "604800000" }
+    "points-earned"   = { partitions = 3, retention_ms = "604800000" }
+    "notifications"   = { partitions = 3, retention_ms = "86400000"  }
+  }
+}
 
-          kubectl apply -f k8s/00-namespace-config.yaml
-          echo "✅ Namespace + ExternalSecrets applied"
+resource "aiven_kafka_topic" "topics" {
+  for_each     = local.kafka_topics
+  project      = var.aiven_project
+  service_name = aiven_kafka.qwikbrew.service_name
+  topic_name   = each.key
+  partitions   = each.value.partitions
+  replication  = 2   # startup-4 has 3 brokers — replication 2 is safe
 
-      - name: ⏳ Wait for ExternalSecrets to sync
-        run: |
-          for SECRET in aiven-credentials app-secrets; do
-            kubectl wait externalsecret/$SECRET \
-              -n qwikbrew \
-              --for=condition=Ready \
-              --timeout=120s \
-              && echo "✅ $SECRET synced" \
-              || echo "⚠️  $SECRET pending — will sync before first deploy"
-          done
+  config {
+    retention_ms   = each.value.retention_ms
+    cleanup_policy = "delete"
+  }
+}
 
-      - name: 🎉 Bootstrap complete
-        env:
-          CLUSTER:        ${{ needs.terraform.outputs.cluster_name }}
-          REDIS_ENDPOINT: ${{ needs.terraform.outputs.redis_endpoint }}
-          PG_HOST:        ${{ needs.terraform.outputs.aiven_pg_host }}
-          KAFKA:          ${{ needs.terraform.outputs.kafka_bootstrap }}
-          ENV:            ${{ github.event.inputs.environment }}
-        run: |
-          echo ""
-          echo "╔══════════════════════════════════════════════════════════╗"
-          echo "║  ✅  QwikBrew ${ENV} BOOTSTRAP COMPLETE"
-          echo "╠══════════════════════════════════════════════════════════╣"
-          echo "║  EKS Cluster  : ${CLUSTER}"
-          echo "║  Aiven PG     : ${PG_HOST}"
-          echo "║  Aiven Kafka  : ${KAFKA}"
-          echo "║  Redis        : ${REDIS_ENDPOINT}"
-          echo "╠══════════════════════════════════════════════════════════╣"
-          echo "║  📋 Add these GitHub secrets:"
-          echo "║     ${ENV^^}_REDIS_ENDPOINT = ${REDIS_ENDPOINT}"
-          echo "║     ${ENV^^}_ACM_CERT_ARN   = (from AWS Certificate Manager)"
-          echo "╠══════════════════════════════════════════════════════════╣"
-          echo "║  🔒 Delete AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY"
-          echo "║     from GitHub secrets — OIDC takes over from here."
-          echo "╚══════════════════════════════════════════════════════════╝"
+resource "random_password" "kafka_password" {
+  length  = 32
+  special = false
+}
+
+resource "aiven_kafka_user" "app" {
+  project      = var.aiven_project
+  service_name = aiven_kafka.qwikbrew.service_name
+  username     = "qwikbrew-app"
+  password     = random_password.kafka_password.result
+}
+
+resource "aiven_kafka_acl" "produce" {
+  project      = var.aiven_project
+  service_name = aiven_kafka.qwikbrew.service_name
+  username     = aiven_kafka_user.app.username
+  permission   = "write"
+  topic        = "*"
+}
+
+resource "aiven_kafka_acl" "consume" {
+  project      = var.aiven_project
+  service_name = aiven_kafka.qwikbrew.service_name
+  username     = aiven_kafka_user.app.username
+  permission   = "read"
+  topic        = "*"
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# AWS SECRETS MANAGER
+# Stores all connection strings. Pods read these via External Secrets Operator.
+# Free tier: first 10,000 API calls/month free.
+# ═══════════════════════════════════════════════════════════════════════════════
+resource "random_password" "jwt_secret" {
+  length  = 64
+  special = false
+}
+
+resource "aws_secretsmanager_secret" "aiven_credentials" {
+  name                    = "qwikbrew/staging/aiven-credentials"
+  recovery_window_in_days = 0   # instant delete on destroy (no retention cost)
+  description             = "Aiven PG and Kafka credentials for QwikBrew"
+}
+
+resource "aws_secretsmanager_secret_version" "aiven_credentials" {
+  secret_id = aws_secretsmanager_secret.aiven_credentials.id
+
+  secret_string = jsonencode({
+    PG_USER     = aiven_pg.qwikbrew.service_username
+    PG_PASSWORD = aiven_pg.qwikbrew.service_password
+    PG_HOST     = aiven_pg.qwikbrew.service_host
+    PG_PORT     = tostring(aiven_pg.qwikbrew.service_port)
+
+    USERDB_URL         = "jdbc:postgresql://${aiven_pg.qwikbrew.service_host}:${aiven_pg.qwikbrew.service_port}/userdb?sslmode=require"
+    MENUDB_URL         = "jdbc:postgresql://${aiven_pg.qwikbrew.service_host}:${aiven_pg.qwikbrew.service_port}/menudb?sslmode=require"
+    ORDERDB_URL        = "jdbc:postgresql://${aiven_pg.qwikbrew.service_host}:${aiven_pg.qwikbrew.service_port}/orderdb?sslmode=require"
+    PAYMENTDB_URL      = "jdbc:postgresql://${aiven_pg.qwikbrew.service_host}:${aiven_pg.qwikbrew.service_port}/paymentdb?sslmode=require"
+    NOTIFICATIONDB_URL = "jdbc:postgresql://${aiven_pg.qwikbrew.service_host}:${aiven_pg.qwikbrew.service_port}/notificationdb?sslmode=require"
+
+    KAFKA_BOOTSTRAP_SERVERS = "${aiven_kafka.qwikbrew.service_host}:${aiven_kafka.qwikbrew.service_port}"
+    KAFKA_SECURITY_PROTOCOL = "SASL_SSL"
+    KAFKA_SASL_MECHANISM    = "PLAIN"
+    KAFKA_SASL_USERNAME     = aiven_kafka_user.app.username
+    KAFKA_SASL_PASSWORD     = aiven_kafka_user.app.password
+  })
+
+  depends_on = [
+    aiven_pg.qwikbrew,
+    aiven_kafka.qwikbrew,
+    aiven_kafka_user.app,
+  ]
+}
+
+resource "aws_secretsmanager_secret" "app_secrets" {
+  name                    = "qwikbrew/staging/app-secrets"
+  recovery_window_in_days = 0
+  description             = "App secrets for QwikBrew"
+}
+
+resource "aws_secretsmanager_secret_version" "app_secrets" {
+  secret_id = aws_secretsmanager_secret.app_secrets.id
+
+  secret_string = jsonencode({
+    JWT_SECRET             = random_password.jwt_secret.result
+    # No Redis auth token — ElastiCache removed for free tier
+    PAYMENT_GATEWAY_KEY_ID = var.payment_gateway_key_id
+    PAYMENT_GATEWAY_SECRET = var.payment_gateway_secret
+    FCM_SERVER_KEY         = var.fcm_server_key
+    SMTP_USER              = var.smtp_user
+    SMTP_PASS              = var.smtp_pass
+  })
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# OUTPUTS
+# ═══════════════════════════════════════════════════════════════════════════════
+output "cluster_name" {
+  value = module.eks.cluster_name
+}
+
+output "cluster_endpoint" {
+  value = module.eks.cluster_endpoint
+}
+
+output "pg_host" {
+  value = aiven_pg.qwikbrew.service_host
+}
+
+output "pg_port" {
+  value = aiven_pg.qwikbrew.service_port
+}
+
+output "kafka_bootstrap" {
+  value = "${aiven_kafka.qwikbrew.service_host}:${aiven_kafka.qwikbrew.service_port}"
+}
+
+output "ecr_urls" {
+  value = {
+    for k, v in aws_ecr_repository.services : k => v.repository_url
+  }
+}
+
+output "aiven_secrets_arn" {
+  value = aws_secretsmanager_secret.aiven_credentials.arn
+}
+
+# redis_endpoint output removed — ElastiCache not used on free tier
+# Menu service uses Spring's in-memory cache instead (no external dependency)
