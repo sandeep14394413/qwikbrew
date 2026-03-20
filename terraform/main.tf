@@ -84,24 +84,34 @@ module "eks" {
   subnet_ids                               = module.vpc.private_subnets
   cluster_endpoint_public_access           = true
   enable_irsa                              = true
-  # Lets the Terraform IAM role manage the cluster without manual aws-auth edits
   enable_cluster_creator_admin_permissions = true
 
   eks_managed_node_groups = {
     nodes = {
-      # t3.medium: minimum size that keeps EKS nodes in Ready state
-      instance_types = ["t3.medium", "t3.large", "t2.medium"]
+      # Only valid EKS Spot instance types with 4 GB+ RAM
+      instance_types = ["t3.medium", "t3.large"]
       capacity_type  = "SPOT"
-      min_size       = 2
-      max_size       = 3
-      desired_size   = 2
+
+      min_size     = 2
+      max_size     = 3
+      desired_size = 2
+
+      # Attach all three required managed policies to the node IAM role.
+      # Without AmazonEKS_CNI_Policy, vpc-cni cannot assign pod IPs
+      # and nodes stay in NotReady state even after launching successfully.
+      iam_role_additional_policies = {
+        AmazonEKSWorkerNodePolicy          = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+        AmazonEKS_CNI_Policy               = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+        AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+        AmazonSSMManagedInstanceCore       = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      }
 
       block_device_mappings = {
         xvda = {
           device_name = "/dev/xvda"
           ebs = {
-            volume_size           = 20   # 20 GB — reduced from 50 to save cost
-            volume_type           = "gp2"  # gp2 has free tier (30 GB total)
+            volume_size           = 20
+            volume_type           = "gp2"
             delete_on_termination = true
           }
         }
@@ -109,11 +119,24 @@ module "eks" {
     }
   }
 
-  # Only essential addons — ebs-csi-driver excluded (needs extra IRSA setup)
+  # vpc-cni before coredns — nodes need IP assignment before DNS can start
   cluster_addons = {
-    coredns    = { most_recent = true }
-    kube-proxy = { most_recent = true }
-    vpc-cni    = { most_recent = true }
+    vpc-cni = {
+      most_recent              = true
+      before_compute           = true
+      configuration_values     = jsonencode({
+        env = {
+          ENABLE_PREFIX_DELEGATION = "true"
+          WARM_PREFIX_TARGET       = "1"
+        }
+      })
+    }
+    coredns = {
+      most_recent = true
+    }
+    kube-proxy = {
+      most_recent = true
+    }
   }
 }
 
