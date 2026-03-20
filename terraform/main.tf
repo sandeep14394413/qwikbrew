@@ -90,7 +90,8 @@ module "eks" {
   eks_managed_node_groups = {
     nodes = {
       # t3.medium: minimum size that keeps EKS nodes in Ready state
-      instance_types = ["t3.medium"]
+      instance_types = ["t3.medium", "t3.large", "t2.medium"]
+      capacity_type  = "SPOT"
       min_size       = 2
       max_size       = 3
       desired_size   = 2
