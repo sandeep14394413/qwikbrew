@@ -266,7 +266,17 @@ jobs:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
 
-      # ── Write ONLY the backend config (contains no secrets — safe to write) ──
+      # ── Delete any terraform.tfvars before running Terraform ─────────────────
+      # Terraform auto-loads terraform.tfvars if present. If it was accidentally
+      # committed or left from a previous run, Terraform parses it and fails on
+      # masked secret values. Deleting guarantees ALL vars come from TF_VAR_ only.
+      - name: 🗑️ Delete terraform.tfvars (if exists)
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          rm -f terraform.tfvars *.auto.tfvars
+          echo "✅ Cleared any .tfvars files — variables come from TF_VAR_ env vars"
+
+      # ── Write ONLY the backend config (no secrets — safe to write) ───────────
       - name: 📝 Write backend config
         working-directory: ${{ env.TF_DIR }}
         env:
@@ -290,6 +300,48 @@ jobs:
       # Terraform automatically reads any env var named TF_VAR_<variable_name>.
       # This avoids all HCL string quoting/escaping issues with secret values.
 
+      # ── Sanitize Aiven credentials ───────────────────────────────────────────
+      # Strips ALL whitespace, newlines, and quotes from secret values before
+      # passing them to Terraform. Aiven project names must be alphanumeric.
+      - name: 🧹 Sanitize + validate Aiven credentials
+        id: aiven
+        env:
+          RAW_TOKEN:   ${{ secrets.AIVEN_API_TOKEN }}
+          RAW_PROJECT: ${{ secrets.AIVEN_PROJECT_NAME }}
+        run: |
+          # Strip leading/trailing whitespace, newlines, carriage returns, quotes
+          CLEAN_TOKEN=$(echo -n "$RAW_TOKEN"   | tr -d '[:space:]' | tr -d '"' | tr -d "'")
+          CLEAN_PROJECT=$(echo -n "$RAW_PROJECT" | tr -d '[:space:]' | tr -d '"' | tr -d "'")
+
+          # Validate project name — must be alphanumeric + hyphens only
+          if [[ -z "$CLEAN_PROJECT" ]]; then
+            echo "❌ AIVEN_PROJECT_NAME secret is empty!"
+            echo "   Go to: GitHub repo → Settings → Secrets → AIVEN_PROJECT_NAME"
+            echo "   Set it to exactly the project name shown in console.aiven.io"
+            exit 1
+          fi
+
+          if ! [[ "$CLEAN_PROJECT" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+            echo "❌ AIVEN_PROJECT_NAME contains invalid characters: '$CLEAN_PROJECT'"
+            echo "   Aiven project names must be alphanumeric, hyphens, or underscores only."
+            echo "   Check your GitHub secret for accidentally included quotes or spaces."
+            exit 1
+          fi
+
+          if [[ -z "$CLEAN_TOKEN" ]]; then
+            echo "❌ AIVEN_API_TOKEN secret is empty!"
+            exit 1
+          fi
+
+          # Show project name length (value is masked by GitHub)
+          echo "✅ AIVEN_PROJECT_NAME length: ${#CLEAN_PROJECT} chars"
+          echo "✅ AIVEN_API_TOKEN length:    ${#CLEAN_TOKEN} chars"
+          echo "✅ Project name format valid: alphanumeric"
+
+          # Export clean values as step outputs for downstream steps
+          echo "token=$CLEAN_TOKEN"     >> $GITHUB_OUTPUT
+          echo "project=$CLEAN_PROJECT" >> $GITHUB_OUTPUT
+
       - name: 🔄 Terraform Init
         working-directory: ${{ env.TF_DIR }}
         run: terraform init -input=false
@@ -303,8 +355,8 @@ jobs:
         env:
           TF_VAR_aws_region:         ${{ env.AWS_REGION }}
           TF_VAR_environment:        ${{ github.event.inputs.environment }}
-          TF_VAR_aiven_api_token:    ${{ secrets.AIVEN_API_TOKEN }}
-          TF_VAR_aiven_project:      ${{ secrets.AIVEN_PROJECT_NAME }}
+          TF_VAR_aiven_api_token:    ${{ steps.aiven.outputs.token }}
+          TF_VAR_aiven_project:      ${{ steps.aiven.outputs.project }}
           TF_VAR_aiven_cloud_region: "aws-${{ env.AWS_REGION }}"
         run: |
           terraform plan -out=tfplan -input=false
@@ -319,8 +371,8 @@ jobs:
         env:
           TF_VAR_aws_region:         ${{ env.AWS_REGION }}
           TF_VAR_environment:        ${{ github.event.inputs.environment }}
-          TF_VAR_aiven_api_token:    ${{ secrets.AIVEN_API_TOKEN }}
-          TF_VAR_aiven_project:      ${{ secrets.AIVEN_PROJECT_NAME }}
+          TF_VAR_aiven_api_token:    ${{ steps.aiven.outputs.token }}
+          TF_VAR_aiven_project:      ${{ steps.aiven.outputs.project }}
           TF_VAR_aiven_cloud_region: "aws-${{ env.AWS_REGION }}"
         run: terraform apply -auto-approve -input=false tfplan
 
@@ -332,8 +384,8 @@ jobs:
         env:
           TF_VAR_aws_region:         ${{ env.AWS_REGION }}
           TF_VAR_environment:        ${{ github.event.inputs.environment }}
-          TF_VAR_aiven_api_token:    ${{ secrets.AIVEN_API_TOKEN }}
-          TF_VAR_aiven_project:      ${{ secrets.AIVEN_PROJECT_NAME }}
+          TF_VAR_aiven_api_token:    ${{ steps.aiven.outputs.token }}
+          TF_VAR_aiven_project:      ${{ steps.aiven.outputs.project }}
           TF_VAR_aiven_cloud_region: "aws-${{ env.AWS_REGION }}"
         run: terraform destroy -auto-approve -input=false
 
