@@ -1,0 +1,72 @@
+# ── Prometheus ServiceMonitor (scrapes Spring Actuator /prometheus) ───────────
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: qwikbrew-services
+  namespace: qwikbrew
+  labels: { release: prometheus }
+spec:
+  selector:
+    matchExpressions:
+      - { key: app, operator: In, values: [api-gateway, user-service, menu-service, order-service, payment-service, notification-service] }
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s
+      scheme: http
+
+---
+# ── Alert Rules ───────────────────────────────────────────────────────────────
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: qwikbrew-alerts
+  namespace: qwikbrew
+  labels: { release: prometheus }
+spec:
+  groups:
+    - name: qwikbrew.slo
+      rules:
+        - alert: ServiceDown
+          expr: up{namespace="qwikbrew"} == 0
+          for: 1m
+          labels: { severity: critical }
+          annotations:
+            summary: "{{ $labels.app }} is DOWN"
+            description: "Pod {{ $labels.pod }} has been down for >1m"
+
+        - alert: HighErrorRate
+          expr: |
+            rate(http_server_requests_seconds_count{namespace="qwikbrew",status=~"5.."}[5m])
+            /
+            rate(http_server_requests_seconds_count{namespace="qwikbrew"}[5m]) > 0.05
+          for: 2m
+          labels: { severity: warning }
+          annotations:
+            summary: "High 5xx error rate on {{ $labels.app }}"
+            description: "Error rate is {{ $value | humanizePercentage }}"
+
+        - alert: HighLatency
+          expr: |
+            histogram_quantile(0.95,
+              rate(http_server_requests_seconds_bucket{namespace="qwikbrew"}[5m])
+            ) > 2
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: "P95 latency > 2s on {{ $labels.app }}"
+
+        - alert: PodCPUHigh
+          expr: |
+            rate(container_cpu_usage_seconds_total{namespace="qwikbrew"}[5m]) > 0.85
+          for: 5m
+          labels: { severity: warning }
+          annotations:
+            summary: "CPU >85% on {{ $labels.pod }}"
+
+        - alert: OrderServiceCircuitOpen
+          expr: resilience4j_circuitbreaker_state{namespace="qwikbrew",state="open"} == 1
+          for: 1m
+          labels: { severity: critical }
+          annotations:
+            summary: "Circuit breaker OPEN on {{ $labels.app }}"

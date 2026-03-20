@@ -1,0 +1,73 @@
+# ── Namespace ────────────────────────────────────────────────────────────────
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: qwikbrew
+  labels:
+    app.kubernetes.io/managed-by: helm
+
+---
+# ── ConfigMap (non-secret config) ────────────────────────────────────────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qwikbrew-config
+  namespace: qwikbrew
+data:
+  SPRING_PROFILES_ACTIVE: "aws"
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://service-discovery:8761/eureka/"
+  SPRING_REDIS_PORT: "6379"
+  MENU_CACHE_TTL_MINUTES: "15"
+  JWT_ACCESS_EXPIRY_MINUTES: "60"
+  JWT_REFRESH_EXPIRY_DAYS: "30"
+  ORDER_NUMBER_PREFIX: "QBR"
+
+---
+# ── ExternalSecret — pulls from AWS Secrets Manager via ESO ──────────────────
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: qwikbrew-secrets
+  namespace: qwikbrew
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: ClusterSecretStore
+  target:
+    name: qwikbrew-secrets
+    creationPolicy: Owner
+  data:
+    - secretKey: JWT_SECRET
+      remoteRef: { key: "qwikbrew/staging/app-secrets", property: JWT_SECRET }
+    - secretKey: REDIS_AUTH_TOKEN
+      remoteRef: { key: "qwikbrew/staging/app-secrets", property: REDIS_AUTH_TOKEN }
+    - secretKey: PAYMENT_GATEWAY_KEY_ID
+      remoteRef: { key: "qwikbrew/staging/app-secrets", property: PAYMENT_GATEWAY_KEY_ID }
+    - secretKey: PAYMENT_GATEWAY_SECRET
+      remoteRef: { key: "qwikbrew/staging/app-secrets", property: PAYMENT_GATEWAY_SECRET }
+    - secretKey: FCM_SERVER_KEY
+      remoteRef: { key: "qwikbrew/staging/app-secrets", property: FCM_SERVER_KEY }
+    - secretKey: SMTP_USER
+      remoteRef: { key: "qwikbrew/staging/app-secrets", property: SMTP_USER }
+    - secretKey: SMTP_PASS
+      remoteRef: { key: "qwikbrew/staging/app-secrets", property: SMTP_PASS }
+    - secretKey: DB_PASSWORD
+      remoteRef: { key: "qwikbrew/staging/app-secrets", property: DB_PASSWORD }
+
+---
+# ── ClusterSecretStore (IRSA-based) ──────────────────────────────────────────
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterSecretStore
+metadata:
+  name: aws-secretsmanager
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: ap-south-1
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: external-secrets-sa
+            namespace: external-secrets
