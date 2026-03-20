@@ -209,7 +209,7 @@ resource "aiven_pg" "qwikbrew" {
     }
 
     pgbouncer {
-      pool_mode = "transaction"   # connection pooling via PgBouncer
+      autodb_pool_mode = "transaction"   # connection pooling via PgBouncer
     }
 
     ip_filter_object { network = "0.0.0.0/0" }
@@ -254,7 +254,6 @@ resource "aiven_kafka" "qwikbrew" {
       default_replication_factor = local.is_prod ? 2 : 1
       min_insync_replicas        = local.is_prod ? 2 : 1
       log_retention_hours        = 168
-      message_max_bytes          = 1048576
     }
 
     kafka_rest      = true
