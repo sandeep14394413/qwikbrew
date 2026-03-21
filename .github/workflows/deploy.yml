@@ -105,12 +105,15 @@ jobs:
         id: matrix
         run: |
           ALL_SERVICES=("api-gateway" "user-service" "menu-service" "order-service" "payment-service" "notification-service")
-          SERVICES=()
 
-          # Manual trigger — if "all" or blank, build every service
+          # Always build all 6 services on every push.
+          # Change to "smart" mode by replacing the line below with the
+          # paths-filter logic (see git history) to only build changed services.
+          SERVICES=("${ALL_SERVICES[@]}")
+
+          # Manual trigger with a specific single service
           INPUT="${{ github.event.inputs.service }}"
           if [[ -n "$INPUT" && "$INPUT" != "all" ]]; then
-            # Validate the input is an actual service name — reject "all" or garbage
             VALID=false
             for S in "${ALL_SERVICES[@]}"; do
               [[ "$INPUT" == "$S" ]] && VALID=true && break
@@ -119,25 +122,12 @@ jobs:
               SERVICES=("$INPUT")
             else
               echo "⚠️  Unknown service '$INPUT' — building all services instead"
-              SERVICES=("${ALL_SERVICES[@]}")
             fi
-          else
-            [[ "${{ steps.filter.outputs.api-gateway }}"          == "true" ]] && SERVICES+=("api-gateway")
-            [[ "${{ steps.filter.outputs.user-service }}"         == "true" ]] && SERVICES+=("user-service")
-            [[ "${{ steps.filter.outputs.menu-service }}"         == "true" ]] && SERVICES+=("menu-service")
-            [[ "${{ steps.filter.outputs.order-service }}"        == "true" ]] && SERVICES+=("order-service")
-            [[ "${{ steps.filter.outputs.payment-service }}"      == "true" ]] && SERVICES+=("payment-service")
-            [[ "${{ steps.filter.outputs.notification-service }}" == "true" ]] && SERVICES+=("notification-service")
-          fi
-
-          # Default: build all if nothing specific detected
-          if [[ ${#SERVICES[@]} -eq 0 ]]; then
-            SERVICES=("${ALL_SERVICES[@]}")
           fi
 
           JSON=$(echo -n "${SERVICES[@]}" | tr " " "\n" | jq -R . | jq -sc .)
           echo "services_json=$JSON" >> $GITHUB_OUTPUT
-          echo "🎯 Services to process: $JSON"
+          echo "🎯 Services to build: $JSON"
 
       - name: Resolve target environment and EKS cluster name
         id: env
