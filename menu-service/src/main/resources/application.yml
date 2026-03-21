@@ -2,10 +2,6 @@ server:
   port: 8082
 
 spring:
-  autoconfigure:
-    exclude:
-      - org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration
-      - org.springframework.cloud.netflix.eureka.EurekaDiscoveryClientAutoConfiguration
   application:
     name: menu-service
   datasource:
@@ -13,14 +9,18 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:qwikbrew}
     password: ${SPRING_DATASOURCE_PASSWORD:qwikbrew}
     hikari:
+      initialization-fail-timeout: -1  # never fail on pool init — retry in background
       maximum-pool-size: 10
       minimum-idle: 2
   jpa:
+    defer-datasource-initialization: true  # defer until after context is ready
     hibernate:
       ddl-auto: none    # changed from validate — no DB contact at startup
     show-sql: false
     properties:
       hibernate:
+        temp:
+          use_jdbc_metadata_defaults: false  # prevents DB query for dialect detection
         dialect: org.hibernate.dialect.PostgreSQLDialect
   flyway:
     enabled: false
@@ -29,22 +29,26 @@ spring:
     type: simple   # in-memory cache — no Redis needed on free tier
     # Upgrade to type: redis with ElastiCache when moving to paid tier
 
-eureka:
-  client:
-    enabled: false                  # disabled — no Eureka server in K8s; gateway routes directly
-    register-with-eureka: false
-    fetch-registry: false
-    service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://service-discovery:8761/eureka/}
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
+  health:
+    readinessstate:
+      enabled: true
+    livenessstate:
+      enabled: true
+    db:
+      enabled: false      # DB health DOWN won't affect liveness probe
+    kafka:
+      enabled: false      # Kafka health DOWN won't affect liveness probe
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true
 
 ---
 spring:
@@ -57,6 +61,7 @@ spring:
     password:
     driver-class-name: org.h2.Driver
   jpa:
+    defer-datasource-initialization: true  # defer until after context is ready
     hibernate:
       ddl-auto: create-drop
   flyway:
