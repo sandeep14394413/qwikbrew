@@ -2,21 +2,13 @@ server:
   port: 8080
 
 spring:
-  main:
-    allow-bean-definition-overriding: true
   application:
     name: api-gateway
   cloud:
-    discovery:
-      enabled: false
-      reactive:
-        enabled: false    # prevents ANY ReactiveDiscoveryClient bean from being created
-                          # → WeightCalculatorWebFilter.ifAvailable() never fires
-                          # → blockLast() never called → gateway starts successfully
     gateway:
       discovery:
         locator:
-          enabled: false
+          enabled: false  # no auto-routing from service registry
       routes:
         # Auth routes — no JWT required
         - id: user-service-public
