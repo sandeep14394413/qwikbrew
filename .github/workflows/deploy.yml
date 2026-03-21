@@ -457,12 +457,12 @@ jobs:
           REDIS_ENDPOINT: ${{ secrets.STAGING_REDIS_ENDPOINT }}
           CERT_ARN:       ${{ secrets.STAGING_ACM_CERT_ARN }}
         run: |
-          TAG="staging-$(echo $SHORT_SHA | cut -c1-7)"
-          echo "📦 Deploying image tag: $TAG"
+          # Use :latest — build job pushes both a SHA tag AND :latest.
+          # Using :latest avoids branch-name/tag-prefix mismatches.
+          echo "📦 Deploying image tag: latest"
 
           find k8s/ -name "*.yaml" -exec sed -i \
             -e "s|ACCOUNT_ID|${ACCOUNT_ID}|g" \
-            -e "s|:latest|:${TAG}|g" \
             -e "s|REDIS_ENDPOINT|${REDIS_ENDPOINT}|g" \
             -e "s|CERT_ARN|${CERT_ARN}|g" \
             -e "s|qwikbrew/ENV/|qwikbrew/staging/|g" \
@@ -606,7 +606,6 @@ jobs:
 
           find k8s/ -name "*.yaml" -exec sed -i \
             -e "s|ACCOUNT_ID|${ACCOUNT_ID}|g" \
-            -e "s|:latest|:${TAG}|g" \
             -e "s|REDIS_ENDPOINT|${REDIS_ENDPOINT}|g" \
             -e "s|CERT_ARN|${CERT_ARN}|g" \
             -e "s|qwikbrew/ENV/|qwikbrew/prod/|g" \

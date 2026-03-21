@@ -7,6 +7,7 @@ import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mail.MailSender;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 
@@ -48,12 +49,12 @@ class NotificationServiceTest {
 
     @Test @DisplayName("sendOrderConfirmed — sends email and saves in-app notification")
     void sendOrderConfirmed_sendsEmailAndSavesNotification() {
-        doNothing().when(mailSender).send(any(SimpleMailMessage.class));
+        doNothing().when((MailSender) mailSender).send(any(SimpleMailMessage.class));
         when(notifRepo.save(any())).thenReturn(unreadNotif);
 
         notificationService.sendOrderConfirmed("user-001", "arjun@techcorp.in", "QBR-001");
 
-        verify(mailSender).send(any(SimpleMailMessage.class));
+        verify((MailSender) mailSender).send(any(SimpleMailMessage.class));
         verify(notifRepo).save(argThat(n ->
             n.getTitle().contains("Confirmed") &&
             n.getBody().contains("QBR-001") &&
@@ -63,7 +64,7 @@ class NotificationServiceTest {
 
     @Test @DisplayName("sendOrderConfirmed — email failure does not throw (fire and forget)")
     void sendOrderConfirmed_emailFails_doesNotThrow() {
-        doThrow(new RuntimeException("SMTP error")).when(mailSender).send(any(SimpleMailMessage.class));
+        doThrow(new RuntimeException("SMTP error")).when((MailSender) mailSender).send(any(SimpleMailMessage.class));
         when(notifRepo.save(any())).thenReturn(unreadNotif);
 
         assertThatCode(() ->
@@ -75,20 +76,20 @@ class NotificationServiceTest {
 
     @Test @DisplayName("sendOrderReady — includes counter info in notification body")
     void sendOrderReady_includesCounterInfo() {
-        doNothing().when(mailSender).send(any(SimpleMailMessage.class));
+        doNothing().when((MailSender) mailSender).send(any(SimpleMailMessage.class));
         when(notifRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         notificationService.sendOrderReady("user-001", "arjun@techcorp.in", "QBR-001", "3");
 
         verify(notifRepo).save(argThat(n -> n.getBody().contains("Counter 3")));
-        verify(mailSender).send(any(SimpleMailMessage.class));
+        verify((MailSender) mailSender).send(any(SimpleMailMessage.class));
     }
 
     // ── sendOrderCancelled ────────────────────────────────────────────────────
 
     @Test @DisplayName("sendOrderCancelled — sends email and saves notification with refund mention")
     void sendOrderCancelled_sendsEmailAndNotification() {
-        doNothing().when(mailSender).send(any(SimpleMailMessage.class));
+        doNothing().when((MailSender) mailSender).send(any(SimpleMailMessage.class));
         when(notifRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         notificationService.sendOrderCancelled("user-001", "arjun@techcorp.in", "QBR-001");
@@ -101,12 +102,12 @@ class NotificationServiceTest {
 
     @Test @DisplayName("sendWalletTopUp — sends email with amount and new balance")
     void sendWalletTopUp_sendsEmailWithDetails() {
-        doNothing().when(mailSender).send(any(SimpleMailMessage.class));
+        doNothing().when((MailSender) mailSender).send(any(SimpleMailMessage.class));
         when(notifRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         notificationService.sendWalletTopUp("user-001", "arjun@techcorp.in", "500", "1500");
 
-        verify(mailSender).send(argThat(msg -> {
+        verify((MailSender) mailSender).send(argThat(msg -> {
             SimpleMailMessage m = (SimpleMailMessage) msg;
             return m.getText() != null && m.getText().contains("500") && m.getText().contains("1500");
         }));
