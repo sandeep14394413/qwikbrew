@@ -26,7 +26,7 @@ RUN mvn -pl ${SERVICE} -am dependency:go-offline -q
 
 # Copy source and build JAR
 COPY ${SERVICE}/src ${SERVICE}/src
-RUN mvn -pl ${SERVICE} package -DskipTests -q \
+RUN mvn -pl ${SERVICE} package -DskipTests -Dmaven.test.skip=true -q \
     && mv ${SERVICE}/target/*.jar /workspace/app.jar
 
 # ── Stage 2: Minimal runtime (distroless JRE 17 — no shell, no package manager)
