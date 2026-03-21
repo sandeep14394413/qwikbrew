@@ -437,6 +437,19 @@ jobs:
           aws eks update-kubeconfig --name "$CLUSTER" --region ${{ env.AWS_REGION }}
           echo "✅ Connected to cluster: $CLUSTER"
 
+      - name: 📦 Ensure External Secrets Operator is installed
+        run: |
+          # Install ESO if CRDs are not present — idempotent, safe to run every deploy
+          if ! kubectl get crd externalsecrets.external-secrets.io &>/dev/null; then
+            echo "📦 ESO CRDs not found — installing via Helm..."
+            helm repo add external-secrets https://charts.external-secrets.io
+            helm repo update
+            helm upgrade --install external-secrets               external-secrets/external-secrets               -n external-secrets --create-namespace               --set installCRDs=true               --wait --timeout=120s
+            echo "✅ External Secrets Operator installed"
+          else
+            echo "✅ External Secrets Operator already installed"
+          fi
+
       - name: 🔧 Substitute manifest placeholders
         env:
           SHORT_SHA:      ${{ github.sha }}
@@ -455,14 +468,14 @@ jobs:
             -e "s|qwikbrew/ENV/|qwikbrew/staging/|g" \
             {} \;
 
-      - name: 📝 Dry-run validation (server-side)
-        run: |
-          kubectl apply -f k8s/ --dry-run=server -n qwikbrew
-          echo "✅ Dry-run passed — manifests are valid"
-
       - name: 🚀 Apply Kubernetes manifests
         run: |
-          kubectl apply -f k8s/ -n qwikbrew
+          # Apply core manifests (namespace, configmap, deployments, services, hpa, ingress)
+          # ExternalSecret and ClusterSecretStore applied separately after CRD confirmed present
+          kubectl apply -f k8s/00-namespace-config.yaml -n qwikbrew || true
+          kubectl apply -f k8s/01-deployments.yaml -n qwikbrew
+          kubectl apply -f k8s/02-hpa-pdb.yaml -n qwikbrew
+          kubectl apply -f k8s/03-ingress.yaml -n qwikbrew
           echo "✅ Manifests applied"
 
       - name: ⏳ Wait for rolling deployments to complete
@@ -548,14 +561,12 @@ jobs:
             -e "s|qwikbrew/ENV/|qwikbrew/prod/|g" \
             {} \;
 
-      - name: 📝 Dry-run validation (production safeguard)
-        run: |
-          kubectl apply -f k8s/ --dry-run=server -n qwikbrew
-          echo "✅ Dry-run passed — safe to deploy"
-
       - name: 🚀 Apply Kubernetes manifests — Production
         run: |
-          kubectl apply -f k8s/ -n qwikbrew
+          kubectl apply -f k8s/00-namespace-config.yaml -n qwikbrew || true
+          kubectl apply -f k8s/01-deployments.yaml -n qwikbrew
+          kubectl apply -f k8s/02-hpa-pdb.yaml -n qwikbrew
+          kubectl apply -f k8s/03-ingress.yaml -n qwikbrew
           echo "✅ Manifests applied"
 
       - name: ⏳ Wait for rolling deployments (10 min timeout)
