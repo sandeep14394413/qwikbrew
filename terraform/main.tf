@@ -106,6 +106,25 @@ module "eks" {
         AmazonSSMManagedInstanceCore       = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
       }
 
+      # Allow nodes to create/manage Classic Load Balancers for type:LoadBalancer services
+      iam_role_policies = {
+        elb = jsonencode({
+          Version = "2012-10-17"
+          Statement = [{
+            Effect   = "Allow"
+            Action   = [
+              "elasticloadbalancing:*",
+              "ec2:Describe*",
+              "ec2:AuthorizeSecurityGroupIngress",
+              "ec2:RevokeSecurityGroupIngress",
+              "ec2:CreateSecurityGroup",
+              "ec2:DeleteSecurityGroup"
+            ]
+            Resource = "*"
+          }]
+        })
+      }
+
       block_device_mappings = {
         xvda = {
           device_name = "/dev/xvda"
