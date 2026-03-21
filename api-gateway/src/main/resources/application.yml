@@ -4,8 +4,22 @@ server:
 spring:
   application:
     name: api-gateway
+  autoconfigure:
+    exclude:
+      # Exclude Eureka autoconfiguration entirely — gateway uses direct K8s DNS URLs.
+      # Without this exclusion, EurekaAutoServiceRegistration.start() fires at startup
+      # and crashes the gateway with a reactive stream error.
+      - org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration
+      - org.springframework.cloud.netflix.eureka.EurekaDiscoveryClientAutoConfiguration
+      - org.springframework.cloud.netflix.eureka.reactive.EurekaReactiveDiscoveryClientAutoConfiguration
+      - org.springframework.cloud.client.discovery.simple.SimpleDiscoveryClientAutoConfiguration
   cloud:
+    discovery:
+      enabled: false      # no service registry — routes use direct http://service-name:port
     gateway:
+      discovery:
+        locator:
+          enabled: false  # do not auto-create routes from discovery
       routes:
         # Auth routes — no JWT required
         - id: user-service-public
@@ -71,15 +85,13 @@ spring:
             allowedHeaders: "*"
             allowCredentials: true
 
-eureka:
-  client:
-    service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://service-discovery:8761/eureka/}
-    enabled: ${EUREKA_CLIENT_ENABLED:false}       # disabled until service-discovery is deployed
-    register-with-eureka: false
-    fetch-registry: false
-  instance:
-    prefer-ip-address: true
+# Eureka is excluded via spring.autoconfigure.exclude above.
+# Config kept here as reference for when service-discovery is deployed.
+# eureka:
+#   client:
+#     enabled: true
+#     service-url:
+#       defaultZone: http://service-discovery:8761/eureka/
 
 jwt:
   secret: ${JWT_SECRET:local-dev-secret-key-must-be-at-least-64-chars-long-for-hs512-algorithm}

@@ -2,6 +2,10 @@ server:
   port: 8081
 
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration
+      - org.springframework.cloud.netflix.eureka.EurekaDiscoveryClientAutoConfiguration
   application:
     name: user-service
   datasource:
@@ -14,7 +18,7 @@ spring:
       connection-timeout: 30000
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none    # changed from validate — no DB contact at startup
     show-sql: false
     properties:
       hibernate:
