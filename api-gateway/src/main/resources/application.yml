@@ -2,6 +2,8 @@ server:
   port: 8080
 
 spring:
+  main:
+    allow-bean-definition-overriding: true  # lets our no-op weightCalculatorWebFilter replace the auto-configured one
   application:
     name: api-gateway
   cloud:
