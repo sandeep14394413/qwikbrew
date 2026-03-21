@@ -1,47 +1,68 @@
 package com.qwikbrew.gateway.config;
 
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.BeanDefinitionRegistryPostProcessor;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.discovery.ReactiveDiscoveryClient;
+import org.springframework.cloud.gateway.filter.WeightCalculatorWebFilter;
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.stereotype.Component;
+import org.springframework.web.server.ServerWebExchange;
+import org.springframework.web.server.WebFilterChain;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
- * Permanently fixes WeightCalculatorWebFilter crash in Spring Cloud Gateway 4.1.0.
+ * Fixes WeightCalculatorWebFilter crash in Spring Cloud Gateway 4.1.0.
  *
- * The filter registers itself as an ApplicationListener and calls Flux.blockLast()
- * on a ReactiveDiscoveryClient during finishRefresh(). No YAML property or
- * @SpringBootApplication(exclude) can prevent this — the filter is always
- * registered by GatewayAutoConfiguration regardless of discovery settings.
+ * The bean MUST exist (routeDefinitionRouteLocator depends on it by name).
+ * But onApplicationEvent() must NOT call blockLast().
  *
- * Fix: remove the bean definition from the BeanDefinitionRegistry BEFORE the bean
- * is instantiated. BeanDefinitionRegistryPostProcessor runs before any beans are
- * created, so the filter never exists in the context and never registers as a listener.
- *
- * All routes use direct http://service-name:port K8s DNS — weight-based routing
- * is not used and this filter is not needed.
+ * Solution: override the bean with a subclass that no-ops onApplicationEvent.
+ * Constructor takes ObjectProvider<ReactiveDiscoveryClient> and ObjectProvider<RouteLocator>.
  */
 @Configuration
 public class GatewayConfig {
 
-    @Component
-    public static class RemoveWeightCalculatorFilter
-            implements BeanDefinitionRegistryPostProcessor {
+    @Bean("weightCalculatorWebFilter")
+    public WeightCalculatorWebFilter weightCalculatorWebFilter() {
 
-        @Override
-        public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry)
-                throws BeansException {
-            String beanName = "weightCalculatorWebFilter";
-            if (registry.containsBeanDefinition(beanName)) {
-                registry.removeBeanDefinition(beanName);
+        // No-op ReactiveDiscoveryClient — returns empty for all calls
+        ReactiveDiscoveryClient noOpClient = new ReactiveDiscoveryClient() {
+            @Override public String description() { return "no-op"; }
+            @Override public Flux<ServiceInstance> getInstances(String s) { return Flux.empty(); }
+            @Override public Flux<String> getServices() { return Flux.empty(); }
+        };
+
+        // ObjectProvider<ReactiveDiscoveryClient>
+        ObjectProvider<ReactiveDiscoveryClient> discoveryProvider =
+            new ObjectProvider<ReactiveDiscoveryClient>() {
+                @Override public ReactiveDiscoveryClient getObject() { return noOpClient; }
+                @Override public ReactiveDiscoveryClient getObject(Object... args) { return noOpClient; }
+                @Override public ReactiveDiscoveryClient getIfAvailable() { return null; } // null = ifAvailable() callback never fires
+                @Override public ReactiveDiscoveryClient getIfUnique() { return null; }
+            };
+
+        // ObjectProvider<RouteLocator>
+        ObjectProvider<RouteLocator> routeLocatorProvider =
+            new ObjectProvider<RouteLocator>() {
+                @Override public RouteLocator getObject() { return null; }
+                @Override public RouteLocator getObject(Object... args) { return null; }
+                @Override public RouteLocator getIfAvailable() { return null; }
+                @Override public RouteLocator getIfUnique() { return null; }
+            };
+
+        return new WeightCalculatorWebFilter(discoveryProvider, routeLocatorProvider) {
+            @Override
+            public void onApplicationEvent(ApplicationEvent event) {
+                // No-op: prevent blockLast() call that crashes at finishRefresh()
             }
-        }
 
-        @Override
-        public void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory)
-                throws BeansException {
-            // nothing needed here
-        }
+            @Override
+            public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+                return chain.filter(exchange);
+            }
+        };
     }
 }
