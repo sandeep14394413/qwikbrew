@@ -28,6 +28,7 @@ metadata:
   labels: { app: api-gateway }
 spec:
   replicas: 1
+  progressDeadlineSeconds: 600
   selector: { matchLabels: { app: api-gateway } }
   progressDeadlineSeconds: 600
   strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
@@ -42,6 +43,7 @@ spec:
       containers:
         - name: api-gateway
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/api-gateway:latest
+          imagePullPolicy: Always
           ports: [{ containerPort: 8080 }]
           envFrom:
             - configMapRef: { name: qwikbrew-config }
@@ -76,6 +78,7 @@ metadata:
   labels: { app: user-service }
 spec:
   replicas: 1
+  progressDeadlineSeconds: 600
   selector: { matchLabels: { app: user-service } }
   progressDeadlineSeconds: 600
   strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
@@ -87,6 +90,7 @@ spec:
       containers:
         - name: user-service
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/user-service:latest
+          imagePullPolicy: Always
           ports: [{ containerPort: 8081 }]
           envFrom:
             - configMapRef: { name: qwikbrew-config }
@@ -119,6 +123,7 @@ metadata:
   labels: { app: menu-service }
 spec:
   replicas: 1
+  progressDeadlineSeconds: 600
   selector: { matchLabels: { app: menu-service } }
   progressDeadlineSeconds: 600
   strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
@@ -130,6 +135,7 @@ spec:
       containers:
         - name: menu-service
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/menu-service:latest
+          imagePullPolicy: Always
           ports: [{ containerPort: 8082 }]
           envFrom:
             - configMapRef: { name: qwikbrew-config }
@@ -163,6 +169,7 @@ metadata:
   labels: { app: order-service }
 spec:
   replicas: 1
+  progressDeadlineSeconds: 600
   selector: { matchLabels: { app: order-service } }
   progressDeadlineSeconds: 600
   strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
@@ -174,6 +181,7 @@ spec:
       containers:
         - name: order-service
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/order-service:latest
+          imagePullPolicy: Always
           ports: [{ containerPort: 8083 }]
           envFrom:
             - configMapRef: { name: qwikbrew-config }
@@ -218,6 +226,7 @@ metadata:
   labels: { app: payment-service }
 spec:
   replicas: 1
+  progressDeadlineSeconds: 600
   selector: { matchLabels: { app: payment-service } }
   progressDeadlineSeconds: 600
   strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
@@ -229,6 +238,7 @@ spec:
       containers:
         - name: payment-service
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/payment-service:latest
+          imagePullPolicy: Always
           ports: [{ containerPort: 8084 }]
           envFrom:
             - configMapRef: { name: qwikbrew-config }
@@ -261,6 +271,7 @@ metadata:
   labels: { app: notification-service }
 spec:
   replicas: 1
+  progressDeadlineSeconds: 600
   selector: { matchLabels: { app: notification-service } }
   progressDeadlineSeconds: 600
   strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
@@ -272,6 +283,7 @@ spec:
       containers:
         - name: notification-service
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/notification-service:latest
+          imagePullPolicy: Always
           ports: [{ containerPort: 8085 }]
           envFrom:
             - configMapRef: { name: qwikbrew-config }

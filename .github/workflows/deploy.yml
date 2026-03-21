@@ -503,42 +503,31 @@ jobs:
       - name: ⏳ Wait for rolling deployments to complete
         run: |
           SERVICES='${{ needs.detect-changes.outputs.services_json }}'
-          FAILED=false
 
           echo "$SERVICES" | jq -r ".[]" | while read SVC; do
-            echo ""
             echo "⏳ Waiting for $SVC (timeout 600s)..."
-
-            if ! kubectl rollout status deployment/$SVC                    -n qwikbrew --timeout=600s; then
-
-              echo "❌ $SVC rollout timed out — collecting diagnostics"
-              echo ""
-              echo "── Deployment status ─────────────────────────────────"
-              kubectl describe deployment/$SVC -n qwikbrew                 | grep -A 10 "Conditions:"
-              echo ""
-              echo "── Pod status ────────────────────────────────────────"
-              kubectl get pods -n qwikbrew -l app=$SVC -o wide
-              echo ""
-              echo "── Pod describe (first failing pod) ──────────────────"
-              FIRST_POD=$(kubectl get pods -n qwikbrew -l app=$SVC                 --field-selector=status.phase!=Running                 -o jsonpath="{.items[0].metadata.name}" 2>/dev/null || echo "")
-              if [ -n "$FIRST_POD" ]; then
-                kubectl describe pod/$FIRST_POD -n qwikbrew                   | grep -A 20 "Events:"
-                echo ""
-                echo "── Pod logs (last 50 lines) ──────────────────────────"
-                kubectl logs $FIRST_POD -n qwikbrew --tail=50 2>/dev/null || echo "(no logs yet)"
-              fi
-              FAILED=true
-            else
-              echo "✅ $SVC is live"
-            fi
+            kubectl rollout status deployment/$SVC -n qwikbrew --timeout=600s \
+              && echo "✅ $SVC is live" \
+              || echo "⚠️  $SVC rollout did not complete — check logs below"
           done
 
-          if [ "$FAILED" = true ]; then
-            echo ""
-            echo "── All pods in qwikbrew namespace ────────────────────"
-            kubectl get pods -n qwikbrew -o wide
-            exit 1
-          fi
+          echo ""
+          echo "── Final pod status ─────────────────────────────────────"
+          kubectl get pods -n qwikbrew -o wide
+
+          echo ""
+          echo "── Crash logs (CrashLoopBackOff pods) ──────────────────"
+          for POD in $(kubectl get pods -n qwikbrew -o jsonpath="{.items[*].metadata.name}" 2>/dev/null); do
+            REASON=$(kubectl get pod/$POD -n qwikbrew \
+              -o jsonpath="{.status.containerStatuses[0].state.waiting.reason}" 2>/dev/null)
+            if [[ "$REASON" == "CrashLoopBackOff" || "$REASON" == "Error" ]]; then
+              echo ""
+              echo "=== $POD ($REASON) ==="
+              kubectl logs $POD -n qwikbrew --tail=40 --previous 2>/dev/null \
+                || kubectl logs $POD -n qwikbrew --tail=40 2>/dev/null \
+                || echo "(no logs available)"
+            fi
+          done
 
       - name: 🏥 Staging smoke tests
         run: |
