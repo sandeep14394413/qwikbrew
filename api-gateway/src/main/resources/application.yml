@@ -3,16 +3,20 @@ server:
 
 spring:
   main:
-    allow-bean-definition-overriding: true  # lets our no-op weightCalculatorWebFilter replace the auto-configured one
+    allow-bean-definition-overriding: true
   application:
     name: api-gateway
   cloud:
     discovery:
-      enabled: false      # no service registry — routes use direct http://service-name:port
+      enabled: false
+      reactive:
+        enabled: false    # prevents ANY ReactiveDiscoveryClient bean from being created
+                          # → WeightCalculatorWebFilter.ifAvailable() never fires
+                          # → blockLast() never called → gateway starts successfully
     gateway:
       discovery:
         locator:
-          enabled: false  # do not auto-create routes from discovery
+          enabled: false
       routes:
         # Auth routes — no JWT required
         - id: user-service-public
