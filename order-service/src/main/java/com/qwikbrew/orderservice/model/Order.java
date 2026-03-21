@@ -57,29 +57,3 @@ public class Order {
     public enum OrderStatus  { PENDING, CONFIRMED, PREPARING, READY, PICKED_UP, CANCELLED }
     public enum PaymentMethod { WALLET, UPI, CARD, NET_BANKING, BREW_POINTS }
 }
-
-@Entity
-@Table(name = "order_items")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
-class OrderItem {
-
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false)
-    private Order order;
-
-    @Column(nullable = false) private String     menuItemId;
-    @Column(nullable = false) private String     itemName;
-    @Column(nullable = false, precision = 8, scale = 2) private BigDecimal unitPrice;
-    @Column(nullable = false) private Integer    quantity;
-    @Column(nullable = false, precision = 10, scale = 2) private BigDecimal lineTotal;
-
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "order_item_addons", joinColumns = @JoinColumn(name = "order_item_id"))
-    @Column(name = "addon")
-    private List<String> selectedAddOns;
-
-    private String customization;
-}
