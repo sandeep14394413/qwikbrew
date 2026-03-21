@@ -29,6 +29,11 @@ metadata:
 spec:
   replicas: 1
   progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
   selector: { matchLabels: { app: api-gateway } }
   progressDeadlineSeconds: 600
   strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
@@ -82,6 +87,11 @@ metadata:
 spec:
   replicas: 1
   progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
   selector: { matchLabels: { app: user-service } }
   progressDeadlineSeconds: 600
   strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
@@ -127,6 +137,11 @@ metadata:
 spec:
   replicas: 1
   progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
   selector: { matchLabels: { app: menu-service } }
   progressDeadlineSeconds: 600
   strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
@@ -173,6 +188,11 @@ metadata:
 spec:
   replicas: 1
   progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
   selector: { matchLabels: { app: order-service } }
   progressDeadlineSeconds: 600
   strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
@@ -230,6 +250,11 @@ metadata:
 spec:
   replicas: 1
   progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
   selector: { matchLabels: { app: payment-service } }
   progressDeadlineSeconds: 600
   strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
@@ -275,6 +300,11 @@ metadata:
 spec:
   replicas: 1
   progressDeadlineSeconds: 600
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
   selector: { matchLabels: { app: notification-service } }
   progressDeadlineSeconds: 600
   strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
