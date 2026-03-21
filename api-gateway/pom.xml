@@ -15,6 +15,19 @@
     <dependency>
       <groupId>org.springframework.cloud</groupId>
       <artifactId>spring-cloud-starter-gateway</artifactId>
+      <exclusions>
+        <!-- Exclude load balancer — all routes use direct http://service:port K8s DNS.
+             Without this exclusion, WeightCalculatorWebFilter finds a ReactiveLoadBalancerClient
+             via ifAvailable() and crashes at finishRefresh() with a reactor blockLast error. -->
+        <exclusion>
+          <groupId>org.springframework.cloud</groupId>
+          <artifactId>spring-cloud-loadbalancer</artifactId>
+        </exclusion>
+        <exclusion>
+          <groupId>org.springframework.cloud</groupId>
+          <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>org.springframework.cloud</groupId>
