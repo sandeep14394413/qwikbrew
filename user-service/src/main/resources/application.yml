@@ -13,15 +13,19 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:qwikbrew}
     password: ${SPRING_DATASOURCE_PASSWORD:qwikbrew}
     hikari:
+      initialization-fail-timeout: -1  # never fail on pool init — retry in background
       maximum-pool-size: 10
       minimum-idle: 2
       connection-timeout: 30000
   jpa:
+    defer-datasource-initialization: true  # defer until after context is ready
     hibernate:
       ddl-auto: none    # changed from validate — no DB contact at startup
     show-sql: false
     properties:
       hibernate:
+        temp:
+          use_jdbc_metadata_defaults: false  # prevents DB query for dialect detection
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
   flyway:
@@ -46,9 +50,20 @@ management:
     web:
       exposure:
         include: health,info,metrics,prometheus
+  health:
+    readinessstate:
+      enabled: true
+    livenessstate:
+      enabled: true
+    db:
+      enabled: false      # DB health DOWN won't affect liveness probe
+    kafka:
+      enabled: false      # Kafka health DOWN won't affect liveness probe
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true
 
 ---
 spring:
@@ -61,6 +76,7 @@ spring:
     password:
     driver-class-name: org.h2.Driver
   jpa:
+    defer-datasource-initialization: true  # defer until after context is ready
     hibernate:
       ddl-auto: create-drop
   flyway:

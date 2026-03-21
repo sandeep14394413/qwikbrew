@@ -6,13 +6,13 @@ spring:
     name: api-gateway
   autoconfigure:
     exclude:
-      # Exclude Eureka autoconfiguration entirely — gateway uses direct K8s DNS URLs.
-      # Without this exclusion, EurekaAutoServiceRegistration.start() fires at startup
-      # and crashes the gateway with a reactive stream error.
+      # Exclude ALL discovery-related autoconfiguration.
+      # WeightCalculatorWebFilter crashes if any discovery client is partially initialized.
       - org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration
       - org.springframework.cloud.netflix.eureka.EurekaDiscoveryClientAutoConfiguration
       - org.springframework.cloud.netflix.eureka.reactive.EurekaReactiveDiscoveryClientAutoConfiguration
       - org.springframework.cloud.client.discovery.simple.SimpleDiscoveryClientAutoConfiguration
+      - org.springframework.cloud.gateway.discovery.GatewayDiscoveryClientAutoConfiguration
   cloud:
     discovery:
       enabled: false      # no service registry — routes use direct http://service-name:port
@@ -101,9 +101,16 @@ management:
     web:
       exposure:
         include: health,info,metrics,prometheus
+  health:
+    readinessstate:
+      enabled: true
+    livenessstate:
+      enabled: true
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true
 
 resilience4j:
   circuitbreaker:
