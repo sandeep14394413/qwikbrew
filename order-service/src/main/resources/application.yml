@@ -2,6 +2,10 @@ server:
   port: 8083
 
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration
+      - org.springframework.cloud.netflix.eureka.EurekaDiscoveryClientAutoConfiguration
   application:
     name: order-service
   datasource:
@@ -41,6 +45,13 @@ spring:
       sasl.mechanism:     ${SPRING_KAFKA_PROPERTIES_SASL_MECHANISM:PLAIN}
       sasl.jaas.config:   ${SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG:}
 
+eureka:
+  client:
+    enabled: false                  # disabled — no Eureka server in K8s; gateway routes directly
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://service-discovery:8761/eureka/}
 
 management:
   endpoints:

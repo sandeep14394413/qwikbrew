@@ -2,6 +2,10 @@ server:
   port: 8085
 
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration
+      - org.springframework.cloud.netflix.eureka.EurekaDiscoveryClientAutoConfiguration
   application:
     name: notification-service
   datasource:
@@ -26,6 +30,8 @@ spring:
     enabled: false
     locations: classpath:db/migration
   kafka:
+    listener:
+      auto-startup: false   # don't connect to Kafka at startup — waits for real creds via ESO
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     listener:
       auto-startup: false   # don't connect to Kafka at startup — avoids crash on placeholder:9092

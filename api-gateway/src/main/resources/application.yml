@@ -4,6 +4,15 @@ server:
 spring:
   application:
     name: api-gateway
+  autoconfigure:
+    exclude:
+      # Exclude ALL discovery-related autoconfiguration.
+      # WeightCalculatorWebFilter crashes if any discovery client is partially initialized.
+      - org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration
+      - org.springframework.cloud.netflix.eureka.EurekaDiscoveryClientAutoConfiguration
+      - org.springframework.cloud.netflix.eureka.reactive.EurekaReactiveDiscoveryClientAutoConfiguration
+      - org.springframework.cloud.client.discovery.simple.SimpleDiscoveryClientAutoConfiguration
+      - org.springframework.cloud.gateway.discovery.GatewayDiscoveryClientAutoConfiguration
   cloud:
     discovery:
       enabled: false      # no service registry — routes use direct http://service-name:port
