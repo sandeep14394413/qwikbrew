@@ -504,57 +504,33 @@ jobs:
           kubectl apply -f k8s/03-ingress.yaml -n qwikbrew || true
           echo "✅ Manifests applied"
 
-      - name: 🌐 Print NodePort URL
+      - name: 🌐 Print external URL
         run: |
-          # Get public IPs of EKS nodes — NodePort is accessible on every node
-          NODE_IPS=$(kubectl get nodes -o jsonpath="{.items[*].status.addresses[?(@.type=='ExternalIP')].address}" 2>/dev/null || echo "")
-
-          if [ -z "$NODE_IPS" ]; then
-            # Nodes may only have internal IPs — get public IP from EC2
-            INSTANCE_IDS=$(aws ec2 describe-instances \
-              --filters "Name=tag:eks:cluster-name,Values=${{ needs.detect-changes.outputs.eks_cluster }}" \
-                        "Name=instance-state-name,Values=running" \
-              --query "Reservations[*].Instances[*].InstanceId" \
-              --output text --region ${{ env.AWS_REGION }})
-
-            NODE_IPS=$(aws ec2 describe-instances \
-              --instance-ids $INSTANCE_IDS \
-              --query "Reservations[*].Instances[*].PublicIpAddress" \
-              --output text --region ${{ env.AWS_REGION }} | tr "\t" " ")
-          fi
-
-          FIRST_IP=$(echo $NODE_IPS | awk "{print \$1}")
-
-          if [ -n "$FIRST_IP" ]; then
-            echo ""
-            echo "==========================================="
-            echo "  QWIKBREW IS LIVE on NodePort 30080"
-            echo "==========================================="
-            echo "  URL: http://${FIRST_IP}:30080"
-            echo ""
-            echo "  All node IPs: $NODE_IPS"
-            echo ""
-            echo "  Endpoints:"
-            echo "  GET  http://${FIRST_IP}:30080/actuator/health"
-            echo "  GET  http://${FIRST_IP}:30080/api/v1/menu"
-            echo "  POST http://${FIRST_IP}:30080/api/v1/users/register"
-            echo "  POST http://${FIRST_IP}:30080/api/v1/users/login"
-            echo "  POST http://${FIRST_IP}:30080/api/v1/orders"
-            echo "==========================================="
-            echo ""
-            echo "## QwikBrew NodePort URL" >> $GITHUB_STEP_SUMMARY
-            echo "http://${FIRST_IP}:30080" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "All nodes: $NODE_IPS" >> $GITHUB_STEP_SUMMARY
+          echo "⏳ Waiting for LoadBalancer hostname (up to 5 min)..."
+          for i in $(seq 1 30); do
+            LB=$(kubectl get svc api-gateway -n qwikbrew \
+              -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+            if [ -n "$LB" ]; then
+              echo ""
+              echo "==========================================="
+              echo "  QWIKBREW IS LIVE"
+              echo "  http://${LB}"
+              echo "==========================================="
+              echo "  GET  http://${LB}/actuator/health"
+              echo "  GET  http://${LB}/api/v1/menu"
+              echo "  POST http://${LB}/api/v1/users/register"
+              echo "  POST http://${LB}/api/v1/users/login"
+              echo "==========================================="
+              echo "## QwikBrew Live URL" >> $GITHUB_STEP_SUMMARY
+              echo "http://${LB}" >> $GITHUB_STEP_SUMMARY
+              break
+            fi
+            echo "  [$i/30] waiting... current: $(kubectl get svc api-gateway -n qwikbrew --no-headers 2>/dev/null | awk '{print $4}')"
             sleep 10
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-              "http://${FIRST_IP}:30080/actuator/health" --max-time 10 || echo "000")
-            echo "Health check: HTTP $STATUS"
-          else
-            echo "Could not determine node IPs. Run manually:"
-            echo "kubectl get nodes -o wide"
-            kubectl get nodes -o wide
-            kubectl get svc api-gateway -n qwikbrew
+          done
+          if [ -z "$LB" ]; then
+            echo "LB still pending — run bootstrap to apply Terraform ELB permissions"
+            kubectl describe svc api-gateway -n qwikbrew | tail -20
           fi
 
 
