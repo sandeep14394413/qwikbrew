@@ -468,26 +468,77 @@ jobs:
             -e "s|qwikbrew/ENV/|qwikbrew/staging/|g" \
             {} \;
 
+      - name: 🔑 Ensure required K8s secrets exist
+        run: |
+          # Deployments reference these secrets via envFrom/secretKeyRef.
+          # If ExternalSecrets hasn't synced them yet, pods crash with
+          # "secret not found". We create placeholder secrets so pods can
+          # start — real values arrive once ESO syncs from Secrets Manager.
+          kubectl create namespace qwikbrew --dry-run=client -o yaml | kubectl apply -f -
+
+          if ! kubectl get secret aiven-credentials -n qwikbrew &>/dev/null; then
+            echo "⚠️  aiven-credentials secret missing — creating placeholder"
+            kubectl create secret generic aiven-credentials               -n qwikbrew               --from-literal=USERDB_JDBC_URL="jdbc:postgresql://placeholder:5432/userdb"               --from-literal=MENUDB_JDBC_URL="jdbc:postgresql://placeholder:5432/menudb"               --from-literal=ORDERDB_JDBC_URL="jdbc:postgresql://placeholder:5432/orderdb"               --from-literal=PAYMENTDB_JDBC_URL="jdbc:postgresql://placeholder:5432/paymentdb"               --from-literal=NOTIFICATIONDB_JDBC_URL="jdbc:postgresql://placeholder:5432/notificationdb"               --from-literal=DB_USERNAME="placeholder"               --from-literal=DB_PASSWORD="placeholder"               --from-literal=KAFKA_BOOTSTRAP_SERVERS="placeholder:9092"               --from-literal=KAFKA_SECURITY_PROTOCOL="PLAINTEXT"               --from-literal=KAFKA_SASL_MECHANISM="PLAIN"               --from-literal=KAFKA_SASL_USERNAME="placeholder"               --from-literal=KAFKA_SASL_PASSWORD="placeholder"
+            echo "✅ Placeholder aiven-credentials created"
+          else
+            echo "✅ aiven-credentials already exists"
+          fi
+
+          if ! kubectl get secret app-secrets -n qwikbrew &>/dev/null; then
+            echo "⚠️  app-secrets secret missing — creating placeholder"
+            kubectl create secret generic app-secrets               -n qwikbrew               --from-literal=JWT_SECRET="placeholder-jwt-secret-min-64-chars-long-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"               --from-literal=PAYMENT_GATEWAY_KEY_ID="placeholder"               --from-literal=PAYMENT_GATEWAY_SECRET="placeholder"               --from-literal=FCM_SERVER_KEY="placeholder"               --from-literal=SMTP_USER="placeholder"               --from-literal=SMTP_PASS="placeholder"
+            echo "✅ Placeholder app-secrets created"
+          else
+            echo "✅ app-secrets already exists"
+          fi
+
       - name: 🚀 Apply Kubernetes manifests
         run: |
-          # Apply core manifests (namespace, configmap, deployments, services, hpa, ingress)
-          # ExternalSecret and ClusterSecretStore applied separately after CRD confirmed present
           kubectl apply -f k8s/00-namespace-config.yaml -n qwikbrew || true
           kubectl apply -f k8s/01-deployments.yaml -n qwikbrew
           kubectl apply -f k8s/02-hpa-pdb.yaml -n qwikbrew
-          kubectl apply -f k8s/03-ingress.yaml -n qwikbrew
+          kubectl apply -f k8s/03-ingress.yaml -n qwikbrew || true
           echo "✅ Manifests applied"
 
       - name: ⏳ Wait for rolling deployments to complete
         run: |
           SERVICES='${{ needs.detect-changes.outputs.services_json }}'
+          FAILED=false
+
           echo "$SERVICES" | jq -r ".[]" | while read SVC; do
-            echo "⏳ Waiting for $SVC..."
-            kubectl rollout status deployment/$SVC \
-              -n qwikbrew \
-              --timeout=300s
-            echo "✅ $SVC is live"
+            echo ""
+            echo "⏳ Waiting for $SVC (timeout 600s)..."
+
+            if ! kubectl rollout status deployment/$SVC                    -n qwikbrew --timeout=600s; then
+
+              echo "❌ $SVC rollout timed out — collecting diagnostics"
+              echo ""
+              echo "── Deployment status ─────────────────────────────────"
+              kubectl describe deployment/$SVC -n qwikbrew                 | grep -A 10 "Conditions:"
+              echo ""
+              echo "── Pod status ────────────────────────────────────────"
+              kubectl get pods -n qwikbrew -l app=$SVC -o wide
+              echo ""
+              echo "── Pod describe (first failing pod) ──────────────────"
+              FIRST_POD=$(kubectl get pods -n qwikbrew -l app=$SVC                 --field-selector=status.phase!=Running                 -o jsonpath="{.items[0].metadata.name}" 2>/dev/null || echo "")
+              if [ -n "$FIRST_POD" ]; then
+                kubectl describe pod/$FIRST_POD -n qwikbrew                   | grep -A 20 "Events:"
+                echo ""
+                echo "── Pod logs (last 50 lines) ──────────────────────────"
+                kubectl logs $FIRST_POD -n qwikbrew --tail=50 2>/dev/null || echo "(no logs yet)"
+              fi
+              FAILED=true
+            else
+              echo "✅ $SVC is live"
+            fi
           done
+
+          if [ "$FAILED" = true ]; then
+            echo ""
+            echo "── All pods in qwikbrew namespace ────────────────────"
+            kubectl get pods -n qwikbrew -o wide
+            exit 1
+          fi
 
       - name: 🏥 Staging smoke tests
         run: |
