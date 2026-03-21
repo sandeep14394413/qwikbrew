@@ -19,7 +19,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   flyway:
-    enabled: true
+    enabled: false
     locations: classpath:db/migration
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -49,8 +49,11 @@ fcm:
 
 eureka:
   client:
+    enabled: false                  # disabled — no Eureka server in K8s; gateway routes directly
+    register-with-eureka: false
+    fetch-registry: false
     service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://service-discovery:8761/eureka/}
 
 management:
   endpoints:
@@ -60,21 +63,6 @@ management:
   endpoint:
     health:
       show-details: always
-
-# ── Startup resilience ────────────────────────────────────────────────────────
-# Prevents immediate crash if DB/Kafka not available at startup.
-# Pods stay Running and retry — readiness probe fails until infra is ready.
-spring:
-  datasource:
-    hikari:
-      initialization-fail-timeout: -1    # never fail on pool init
-      connection-timeout: 10000
-      connection-test-query: SELECT 1
-  jpa:
-    properties:
-      hibernate:
-        connection:
-          handling_mode: delayed_acquisition_and_release_after_transaction
 
 ---
 spring:

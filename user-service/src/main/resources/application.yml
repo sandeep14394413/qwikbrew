@@ -21,13 +21,16 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
   flyway:
-    enabled: true
+    enabled: false   # disabled until real Aiven DB creds arrive via ESO
     locations: classpath:db/migration
 
 eureka:
   client:
+    enabled: false                  # disabled — no Eureka server in K8s; gateway routes directly
+    register-with-eureka: false
+    fetch-registry: false
     service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://localhost:8761/eureka/}
+      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://service-discovery:8761/eureka/}
 
 jwt:
   secret:               ${JWT_SECRET:local-dev-secret-key-must-be-at-least-64-chars-long-for-hs512}
@@ -42,21 +45,6 @@ management:
   endpoint:
     health:
       show-details: always
-
-# ── Startup resilience ────────────────────────────────────────────────────────
-# Prevents immediate crash if DB/Kafka not available at startup.
-# Pods stay Running and retry — readiness probe fails until infra is ready.
-spring:
-  datasource:
-    hikari:
-      initialization-fail-timeout: -1    # never fail on pool init
-      connection-timeout: 10000
-      connection-test-query: SELECT 1
-  jpa:
-    properties:
-      hibernate:
-        connection:
-          handling_mode: delayed_acquisition_and_release_after_transaction
 
 ---
 spring:

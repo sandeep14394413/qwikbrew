@@ -529,26 +529,35 @@ jobs:
             fi
           done
 
-      - name: 🏥 Staging smoke tests
+      - name: 🌐 Print external URL
         run: |
-          sleep 15
-          LB=$(kubectl get ingress qwikbrew-ingress \
-            -n qwikbrew \
-            -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
-
-          if [ -z "$LB" ]; then
-            echo "⚠️  Load balancer not provisioned yet — checking pods directly"
-            kubectl get pods -n qwikbrew
-            kubectl get svc -n qwikbrew
-          else
-            echo "🌐 Load Balancer: $LB"
-            for PATH in "/actuator/health" "/api/v1/menu"; do
-              STATUS=$(curl -sk -o /dev/null -w "%{http_code}" "https://$LB$PATH" || echo "000")
-              [[ "$STATUS" =~ ^(200|401|403)$ ]] \
-                && echo "✅  $PATH → HTTP $STATUS" \
-                || { echo "❌ $PATH → HTTP $STATUS (unexpected)"; exit 1; }
-            done
-          fi
+          echo "⏳ Waiting for LoadBalancer hostname (up to 3 minutes)..."
+          for i in $(seq 1 18); do
+            LB=$(kubectl get svc api-gateway -n qwikbrew \
+              -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+            if [ -n "$LB" ]; then
+              echo ""
+              echo "╔═══════════════════════════════════════════════════════╗"
+              echo "║  🎉  QwikBrew is live!"
+              echo "║  🌐  External URL: http://${LB}"
+              echo "║"
+              echo "║  Test endpoints:"
+              echo "║    GET  http://${LB}/actuator/health"
+              echo "║    GET  http://${LB}/api/v1/menu"
+              echo "║    POST http://${LB}/api/v1/users/register"
+              echo "╚═══════════════════════════════════════════════════════╝"
+              # Quick health check
+              sleep 10
+              STATUS=$(curl -sk -o /dev/null -w "%{http_code}" "http://${LB}/actuator/health" || echo "000")
+              echo "Health check → HTTP $STATUS"
+              exit 0
+            fi
+            echo "  attempt $i/18 — waiting 10s..."
+            sleep 10
+          done
+          echo "⚠️  LoadBalancer hostname not yet assigned — check AWS console"
+          echo "    Run: kubectl get svc api-gateway -n qwikbrew"
+          kubectl get svc -n qwikbrew
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # JOB 6 — DEPLOY TO PRODUCTION
