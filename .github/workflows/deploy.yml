@@ -500,6 +500,35 @@ jobs:
           kubectl apply -f k8s/03-ingress.yaml -n qwikbrew || true
           echo "✅ Manifests applied"
 
+      - name: 🌐 Get External URL
+        run: |
+          echo "⏳ Waiting for AWS LoadBalancer (up to 5 min)..."
+          for i in $(seq 1 30); do
+            LB=$(kubectl get svc api-gateway -n qwikbrew               -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+            if [ -n "$LB" ]; then
+              echo ""
+              echo "╔══════════════════════════════════════════════════════════════════╗"
+              echo "║  🎉  QWIKBREW IS LIVE — SHARE THIS URL WITH YOUR USERS"
+              echo "╠══════════════════════════════════════════════════════════════════╣"
+              echo "║  🌐  http://${LB}"
+              echo "║"
+              echo "║  Endpoints:"
+              echo "║  POST http://${LB}/api/v1/users/register"
+              echo "║  POST http://${LB}/api/v1/users/login"
+              echo "║  GET  http://${LB}/api/v1/menu"
+              echo "║  GET  http://${LB}/actuator/health"
+              echo "╚══════════════════════════════════════════════════════════════════╝"
+              echo "LB_HOSTNAME=${LB}" >> $GITHUB_STEP_SUMMARY || true
+              echo "## 🌐 QwikBrew Live URL" >> $GITHUB_STEP_SUMMARY || true
+              echo "**http://${LB}**" >> $GITHUB_STEP_SUMMARY || true
+              exit 0
+            fi
+            echo "  waiting... ($i/30)"
+            sleep 10
+          done
+          echo "⚠️  LB not ready yet. Run manually:"
+          echo "kubectl get svc api-gateway -n qwikbrew"
+
       - name: ⏳ Wait for rolling deployments to complete
         run: |
           SERVICES='${{ needs.detect-changes.outputs.services_json }}'
