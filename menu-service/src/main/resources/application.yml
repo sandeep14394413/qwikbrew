@@ -2,10 +2,6 @@ server:
   port: 8082
 
 spring:
-  autoconfigure:
-    exclude:
-      - org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration
-      - org.springframework.cloud.netflix.eureka.EurekaDiscoveryClientAutoConfiguration
   application:
     name: menu-service
   datasource:
@@ -33,13 +29,6 @@ spring:
     type: simple   # in-memory cache — no Redis needed on free tier
     # Upgrade to type: redis with ElastiCache when moving to paid tier
 
-eureka:
-  client:
-    enabled: false                  # disabled — no Eureka server in K8s; gateway routes directly
-    register-with-eureka: false
-    fetch-registry: false
-    service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://service-discovery:8761/eureka/}
 
 management:
   endpoints:

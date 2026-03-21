@@ -2,10 +2,6 @@ server:
   port: 8084
 
 spring:
-  autoconfigure:
-    exclude:
-      - org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration
-      - org.springframework.cloud.netflix.eureka.EurekaDiscoveryClientAutoConfiguration
   application:
     name: payment-service
   datasource:
@@ -30,13 +26,6 @@ spring:
     enabled: false
     locations: classpath:db/migration
 
-eureka:
-  client:
-    enabled: false                  # disabled — no Eureka server in K8s; gateway routes directly
-    register-with-eureka: false
-    fetch-registry: false
-    service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://service-discovery:8761/eureka/}
 
 payment:
   gateway:

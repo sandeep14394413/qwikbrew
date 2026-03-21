@@ -2,10 +2,6 @@ server:
   port: 8081
 
 spring:
-  autoconfigure:
-    exclude:
-      - org.springframework.cloud.netflix.eureka.EurekaClientAutoConfiguration
-      - org.springframework.cloud.netflix.eureka.EurekaDiscoveryClientAutoConfiguration
   application:
     name: user-service
   datasource:
@@ -32,13 +28,6 @@ spring:
     enabled: false   # disabled until real Aiven DB creds arrive via ESO
     locations: classpath:db/migration
 
-eureka:
-  client:
-    enabled: false                  # disabled — no Eureka server in K8s; gateway routes directly
-    register-with-eureka: false
-    fetch-registry: false
-    service-url:
-      defaultZone: ${EUREKA_CLIENT_SERVICEURL_DEFAULTZONE:http://service-discovery:8761/eureka/}
 
 jwt:
   secret:               ${JWT_SECRET:local-dev-secret-key-must-be-at-least-64-chars-long-for-hs512}
