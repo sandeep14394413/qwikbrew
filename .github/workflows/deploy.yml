@@ -437,61 +437,6 @@ jobs:
           aws eks update-kubeconfig --name "$CLUSTER" --region ${{ env.AWS_REGION }}
           echo "✅ Connected to cluster: $CLUSTER"
 
-      - name: 🔐 Fix ELB IAM permissions (ensures LoadBalancer gets EXTERNAL-IP)
-        run: |
-          CLUSTER="${{ needs.detect-changes.outputs.eks_cluster }}"
-
-          # Find node IAM role
-          NODE_ROLE=$(aws iam list-roles \
-            --query "Roles[?contains(RoleName,'eks-node') || contains(RoleName,'qwikbrew')].RoleName" \
-            --output text | tr '\t' '\n' | grep -i "node" | head -1)
-
-          if [ -z "$NODE_ROLE" ]; then
-            echo "⚠️  Node role not found via name — trying EC2 instance profile..."
-            PROFILE_ARN=$(aws ec2 describe-instances \
-              --filters "Name=tag:eks:cluster-name,Values=${CLUSTER}" \
-                        "Name=instance-state-name,Values=running" \
-              --query 'Reservations[0].Instances[0].IamInstanceProfile.Arn' \
-              --output text --region ${{ env.AWS_REGION }} 2>/dev/null || echo "")
-            if [ -n "$PROFILE_ARN" ] && [ "$PROFILE_ARN" != "None" ]; then
-              PROFILE_NAME=$(echo "$PROFILE_ARN" | sed 's|.*/||')
-              NODE_ROLE=$(aws iam get-instance-profile \
-                --instance-profile-name "$PROFILE_NAME" \
-                --query 'InstanceProfile.Roles[0].RoleName' \
-                --output text 2>/dev/null || echo "")
-            fi
-          fi
-
-          if [ -n "$NODE_ROLE" ]; then
-            echo "📋 Attaching ELB policy to: $NODE_ROLE"
-            aws iam put-role-policy \
-              --role-name "$NODE_ROLE" \
-              --policy-name "QwikBrewELBAccess" \
-              --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["elasticloadbalancing:*","ec2:Describe*","ec2:AuthorizeSecurityGroupIngress","ec2:RevokeSecurityGroupIngress","ec2:CreateSecurityGroup","ec2:DeleteSecurityGroup","ec2:CreateTags"],"Resource":"*"}]}'
-            echo "✅ ELB policy attached"
-          else
-            echo "⚠️  Could not find node role — LoadBalancer may stay pending"
-          fi
-
-          # Tag public subnets for ELB placement
-          VPC_ID=$(aws eks describe-cluster \
-            --name "$CLUSTER" \
-            --region ${{ env.AWS_REGION }} \
-            --query 'cluster.resourcesVpcConfig.vpcId' \
-            --output text)
-          echo "🏷️  Tagging public subnets in VPC: $VPC_ID"
-          aws ec2 describe-subnets \
-            --filters "Name=vpc-id,Values=$VPC_ID" \
-            --query 'Subnets[?MapPublicIpOnLaunch==`true`].SubnetId' \
-            --output text \
-            --region ${{ env.AWS_REGION }} | tr '\t' '\n' | while read SUBNET; do
-            [ -z "$SUBNET" ] && continue
-            aws ec2 create-tags \
-              --resources "$SUBNET" \
-              --tags "Key=kubernetes.io/role/elb,Value=1" \
-              --region ${{ env.AWS_REGION }} 2>/dev/null && echo "  ✅ Tagged: $SUBNET" || true
-          done
-
       - name: 📦 Ensure External Secrets Operator is installed
         run: |
           if ! kubectl get crd externalsecrets.external-secrets.io &>/dev/null; then
@@ -559,45 +504,57 @@ jobs:
           kubectl apply -f k8s/03-ingress.yaml -n qwikbrew || true
           echo "✅ Manifests applied"
 
-      - name: 🌐 Ensure LoadBalancer + print URL
+      - name: 🌐 Print NodePort URL
         run: |
-          # Check if LB already has hostname
-          LB=$(kubectl get svc api-gateway -n qwikbrew \
-            -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+          # Get public IPs of EKS nodes — NodePort is accessible on every node
+          NODE_IPS=$(kubectl get nodes -o jsonpath="{.items[*].status.addresses[?(@.type=='ExternalIP')].address}" 2>/dev/null || echo "")
 
-          if [ -z "$LB" ]; then
-            echo "⚠️  EXTERNAL-IP pending — recreating service..."
-            kubectl delete svc api-gateway -n qwikbrew --ignore-not-found
-            sleep 3
-            kubectl patch svc api-gateway -n qwikbrew --type merge -p \
-              "{\"metadata\":{\"annotations\":{\"service.beta.kubernetes.io/aws-load-balancer-type\":\"classic\",\"service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled\":\"true\"}},\"spec\":{\"type\":\"LoadBalancer\",\"selector\":{\"app\":\"api-gateway\"},\"ports\":[{\"name\":\"http\",\"port\":80,\"targetPort\":8080,\"protocol\":\"TCP\"}]}}" 2>/dev/null || \
-            kubectl create service loadbalancer api-gateway \
-              --tcp=80:8080 -n qwikbrew 2>/dev/null || \
-            kubectl apply -n qwikbrew -f k8s/01-deployments.yaml
+          if [ -z "$NODE_IPS" ]; then
+            # Nodes may only have internal IPs — get public IP from EC2
+            INSTANCE_IDS=$(aws ec2 describe-instances \
+              --filters "Name=tag:eks:cluster-name,Values=${{ needs.detect-changes.outputs.eks_cluster }}" \
+                        "Name=instance-state-name,Values=running" \
+              --query "Reservations[*].Instances[*].InstanceId" \
+              --output text --region ${{ env.AWS_REGION }})
+
+            NODE_IPS=$(aws ec2 describe-instances \
+              --instance-ids $INSTANCE_IDS \
+              --query "Reservations[*].Instances[*].PublicIpAddress" \
+              --output text --region ${{ env.AWS_REGION }} | tr "\t" " ")
           fi
 
-          echo "⏳ Waiting for LoadBalancer hostname (up to 5 min)..."
-          for i in $(seq 1 30); do
-            LB=$(kubectl get svc api-gateway -n qwikbrew \
-              -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
-            if [ -n "$LB" ]; then
-              echo ""
-              echo "QWIKBREW IS LIVE: http://${LB}"
-              echo "GET  http://${LB}/actuator/health"
-              echo "GET  http://${LB}/api/v1/menu"
-              echo "POST http://${LB}/api/v1/users/register"
-              echo "POST http://${LB}/api/v1/users/login"
-              echo "## QwikBrew Live URL" >> $GITHUB_STEP_SUMMARY
-              echo "http://${LB}" >> $GITHUB_STEP_SUMMARY
-              break
-            fi
-            echo "  [$i/30] EXTERNAL-IP: $(kubectl get svc api-gateway -n qwikbrew --no-headers 2>/dev/null | awk '{print $4}')"
-            sleep 10
-          done
+          FIRST_IP=$(echo $NODE_IPS | awk "{print \$1}")
 
-          if [ -z "$LB" ]; then
-            echo "LB still pending — check AWS Console EC2 > Load Balancers"
-            kubectl describe svc api-gateway -n qwikbrew | grep -A5 "Events:"
+          if [ -n "$FIRST_IP" ]; then
+            echo ""
+            echo "==========================================="
+            echo "  QWIKBREW IS LIVE on NodePort 30080"
+            echo "==========================================="
+            echo "  URL: http://${FIRST_IP}:30080"
+            echo ""
+            echo "  All node IPs: $NODE_IPS"
+            echo ""
+            echo "  Endpoints:"
+            echo "  GET  http://${FIRST_IP}:30080/actuator/health"
+            echo "  GET  http://${FIRST_IP}:30080/api/v1/menu"
+            echo "  POST http://${FIRST_IP}:30080/api/v1/users/register"
+            echo "  POST http://${FIRST_IP}:30080/api/v1/users/login"
+            echo "  POST http://${FIRST_IP}:30080/api/v1/orders"
+            echo "==========================================="
+            echo ""
+            echo "## QwikBrew NodePort URL" >> $GITHUB_STEP_SUMMARY
+            echo "http://${FIRST_IP}:30080" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "All nodes: $NODE_IPS" >> $GITHUB_STEP_SUMMARY
+            sleep 10
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "http://${FIRST_IP}:30080/actuator/health" --max-time 10 || echo "000")
+            echo "Health check: HTTP $STATUS"
+          else
+            echo "Could not determine node IPs. Run manually:"
+            echo "kubectl get nodes -o wide"
+            kubectl get nodes -o wide
+            kubectl get svc api-gateway -n qwikbrew
           fi
 
 

@@ -168,6 +168,21 @@ resource "aws_iam_role_policy" "node_elb_policy" {
   })
 }
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# NODE SECURITY GROUP — allow internet traffic on NodePort 30080
+# Required for NodePort service to be reachable from outside the cluster
+# ═══════════════════════════════════════════════════════════════════════════════
+resource "aws_security_group_rule" "nodeport_http" {
+  description       = "Allow internet traffic to api-gateway NodePort"
+  type              = "ingress"
+  from_port         = 30080
+  to_port           = 30080
+  protocol          = "tcp"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = module.eks.node_security_group_id
+}
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # ECR — one private repo per microservice
 # Free tier: 500 MB storage free per month
