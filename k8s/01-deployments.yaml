@@ -50,6 +50,15 @@ spec:
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/api-gateway:latest
           imagePullPolicy: Always
           ports: [{ containerPort: 8080 }]
+          env:
+            - name: SPRING_MAIN_ALLOW_BEAN_DEFINITION_OVERRIDING
+              value: "true"
+            - name: SPRING_CLOUD_DISCOVERY_ENABLED
+              value: "false"
+            - name: SPRING_CLOUD_DISCOVERY_REACTIVE_ENABLED
+              value: "false"
+            - name: SPRING_PROFILES_ACTIVE
+              value: "aws"
           envFrom:
             - configMapRef: { name: qwikbrew-config }
             - secretRef:    { name: app-secrets }

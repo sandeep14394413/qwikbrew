@@ -2,13 +2,21 @@ package com.qwikbrew.gateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.builder.SpringApplicationBuilder;
 
-// All routes use direct K8s DNS (http://service-name:port) — no service discovery needed.
-// WeightCalculatorWebFilter crash is fixed via GatewayConfig which provides a no-op
-// ReactiveDiscoveryClient bean so blockLast() completes on Flux.empty().
+// WeightCalculatorWebFilter crash fix: allow-bean-definition-overriding MUST be set
+// programmatically via SpringApplicationBuilder — setting it in application.yml is
+// too late because Spring Cloud Gateway registers the filter before yml is loaded.
+// Our GatewayConfig provides a no-op replacement bean named "weightCalculatorWebFilter".
 @SpringBootApplication
 public class ApiGatewayApplication {
     public static void main(String[] args) {
-        SpringApplication.run(ApiGatewayApplication.class, args);
+        new SpringApplicationBuilder(ApiGatewayApplication.class)
+            .properties(
+                "spring.main.allow-bean-definition-overriding=true",
+                "spring.cloud.discovery.enabled=false",
+                "spring.cloud.discovery.reactive.enabled=false"
+            )
+            .run(args);
     }
 }
