@@ -275,11 +275,12 @@ jobs:
           echo "image_latest=${IMAGE}:latest" >> $GITHUB_OUTPUT
           echo "🏷️ Image tag: $TAG"
 
-      - name: 🔐 Configure AWS credentials (OIDC — no stored keys)
+      - name: 🔐 Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/qwikbrew-github-actions
-          aws-region:     ${{ env.AWS_REGION }}
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
 
       - name: 🔑 Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -338,11 +339,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 🔐 Configure AWS credentials (OIDC)
+      - name: 🔐 Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/qwikbrew-github-actions
-          aws-region:     ${{ env.AWS_REGION }}
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
 
       - name: 🔑 Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
@@ -431,11 +433,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 🔐 Configure AWS credentials (OIDC)
+      - name: 🔐 Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/qwikbrew-github-actions
-          aws-region:     ${{ env.AWS_REGION }}
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
 
       - name: ☸️ Update kubeconfig for Staging EKS
         run: |
@@ -523,11 +526,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 🔐 Configure AWS credentials (OIDC)
+      - name: 🔐 Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/qwikbrew-github-actions
-          aws-region:     ${{ env.AWS_REGION }}
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
 
       - name: ☸️ Update kubeconfig for Production EKS
         run: |
@@ -632,11 +636,12 @@ jobs:
       contents: read
 
     steps:
-      - name: 🔐 Configure AWS credentials (OIDC)
+      - name: 🔐 Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/qwikbrew-github-actions
-          aws-region:     ${{ env.AWS_REGION }}
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
 
       - name: ☸️ Update kubeconfig
         run: |
