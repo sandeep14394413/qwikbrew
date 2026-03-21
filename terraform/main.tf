@@ -106,25 +106,6 @@ module "eks" {
         AmazonSSMManagedInstanceCore       = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
       }
 
-      # Allow nodes to create/manage Classic Load Balancers for type:LoadBalancer services
-      iam_role_policies = {
-        elb = jsonencode({
-          Version = "2012-10-17"
-          Statement = [{
-            Effect   = "Allow"
-            Action   = [
-              "elasticloadbalancing:*",
-              "ec2:Describe*",
-              "ec2:AuthorizeSecurityGroupIngress",
-              "ec2:RevokeSecurityGroupIngress",
-              "ec2:CreateSecurityGroup",
-              "ec2:DeleteSecurityGroup"
-            ]
-            Resource = "*"
-          }]
-        })
-      }
-
       block_device_mappings = {
         xvda = {
           device_name = "/dev/xvda"
@@ -157,6 +138,34 @@ module "eks" {
       most_recent = true
     }
   }
+}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ELB PERMISSIONS — required for type:LoadBalancer services to get EXTERNAL-IP
+# Without this, the cloud controller cannot create Classic Load Balancers
+# ═══════════════════════════════════════════════════════════════════════════════
+resource "aws_iam_role_policy" "node_elb_policy" {
+  name = "qwikbrew-node-elb-policy"
+  role = module.eks.eks_managed_node_groups["nodes"].iam_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "elasticloadbalancing:*",
+          "ec2:Describe*",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:CreateSecurityGroup",
+          "ec2:DeleteSecurityGroup"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
