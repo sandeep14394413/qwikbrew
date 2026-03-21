@@ -1,8 +1,7 @@
 package com.qwikbrew.gateway.config;
 
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.config.BeanPostProcessor;
-import org.springframework.cloud.gateway.filter.WeightCalculatorWebFilter;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.server.ServerWebExchange;
@@ -11,35 +10,38 @@ import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
 /**
- * Fixes WeightCalculatorWebFilter crash in Spring Cloud Gateway 4.1.0.
+ * Fixes WeightCalculatorWebFilter crash — Spring Cloud Gateway 4.1.0.
  *
- * The filter must exist (routeDefinitionRouteLocator depends on it by name).
- * After Spring creates it, this BeanPostProcessor wraps it to:
- *   1. Suppress onApplicationEvent → prevents the blockLast() crash
- *   2. Pass filter() calls through unchanged
+ * Requirements (from Spring's bean registry):
+ *   - Bean name must be "weightCalculatorWebFilter"
+ *   - Must implement WebFilter          (used by gateway filter chain)
+ *   - Must implement ApplicationListener (registered by Spring event multicaster)
  *
- * Uses a subclass created AFTER the bean exists to avoid constructor issues.
+ * Solution: provide a bean that satisfies both interfaces with no-op implementations.
+ * No subclassing of WeightCalculatorWebFilter needed — avoids constructor issues entirely.
+ * onApplicationEvent() is a no-op so blockLast() is never called.
  */
 @Configuration
 public class GatewayConfig {
 
-    @Bean
-    public static BeanPostProcessor weightCalculatorWebFilterFix() {
-        return new BeanPostProcessor() {
-            @Override
-            public Object postProcessAfterInitialization(Object bean, String beanName)
-                    throws BeansException {
+    @Bean("weightCalculatorWebFilter")
+    public CombinedWebFilterAndListener weightCalculatorWebFilter() {
+        return new CombinedWebFilterAndListener();
+    }
 
-                if (!"weightCalculatorWebFilter".equals(beanName)) {
-                    return bean;
-                }
+    public static class CombinedWebFilterAndListener
+            implements WebFilter, ApplicationListener<ApplicationEvent> {
 
-                // Wrap with a WebFilter that:
-                // - passes all requests through (correct routing behaviour)
-                // - is NOT an ApplicationListener (blockLast() never called)
-                return (WebFilter) (ServerWebExchange exchange, WebFilterChain chain)
-                        -> chain.filter(exchange);
-            }
-        };
+        @Override
+        public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
+            // Pass all requests through — weight routing not used (no lb:// routes)
+            return chain.filter(exchange);
+        }
+
+        @Override
+        public void onApplicationEvent(ApplicationEvent event) {
+            // No-op: prevents the blockLast() call that crashes Spring Cloud Gateway 4.1.0
+            // when WeightCalculatorWebFilter tries to refresh routes via ReactiveDiscoveryClient
+        }
     }
 }
