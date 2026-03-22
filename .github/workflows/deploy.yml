@@ -429,14 +429,16 @@ jobs:
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # JOB 5 — DEPLOY TO STAGING
-# Fires automatically only on push to 'staging' or 'develop' branches.
+# Runs for non-production pushes and manual staging dispatches.
 # Pulls Aiven DB + Kafka credentials from K8s ExternalSecrets (no hardcoding).
 # ═══════════════════════════════════════════════════════════════════════════════
   deploy-staging:
     name: 🚢 Deploy → Staging
     runs-on: ubuntu-latest
     needs: [detect-changes, trivy-scan]
-    if: github.event_name == 'push' && (github.ref_name == 'staging' || github.ref_name == 'develop')
+    if: |
+      (github.event_name == 'push' && github.ref_name != 'main') ||
+      (github.event_name == 'workflow_dispatch' && needs.detect-changes.outputs.environment == 'staging')
     environment:
       name: staging
       url:  https://staging-api.qwikbrew.in
