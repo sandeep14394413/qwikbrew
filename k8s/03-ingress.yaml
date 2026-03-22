@@ -16,7 +16,7 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-    - host: api.qwikbrew.in
+    - host: API_HOST
       http:
         paths:
           - path:     /

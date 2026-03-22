@@ -76,9 +76,11 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public OrderResponse getByOrderNumber(String number) {
-        return orderRepository.findByOrderNumber(number)
-            .map(OrderResponse::from)
-            .orElseThrow(() -> new RuntimeException("Order not found: " + number));
+        Order order = orderRepository.findByOrderNumber(number).orElse(null);
+        if (order == null) {
+            throw new RuntimeException("Order not found: " + number);
+        }
+        return OrderResponse.from(order);
     }
 
     @Transactional(readOnly = true)
