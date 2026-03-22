@@ -106,6 +106,25 @@ module "eks" {
         AmazonSSMManagedInstanceCore       = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
       }
 
+      # Allow nodes to create/manage Classic Load Balancers for type:LoadBalancer services
+      iam_role_policies = {
+        elb = jsonencode({
+          Version = "2012-10-17"
+          Statement = [{
+            Effect   = "Allow"
+            Action   = [
+              "elasticloadbalancing:*",
+              "ec2:Describe*",
+              "ec2:AuthorizeSecurityGroupIngress",
+              "ec2:RevokeSecurityGroupIngress",
+              "ec2:CreateSecurityGroup",
+              "ec2:DeleteSecurityGroup"
+            ]
+            Resource = "*"
+          }]
+        })
+      }
+
       block_device_mappings = {
         xvda = {
           device_name = "/dev/xvda"
@@ -138,68 +157,6 @@ module "eks" {
       most_recent = true
     }
   }
-}
-
-
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# ELB + NODEPORT — permissions and subnet tags for internet-facing LoadBalancer
-# The Classic ELB sits in PUBLIC subnets and routes to PRIVATE node IPs.
-# Nodes do NOT need public IP addresses for this to work.
-# ═══════════════════════════════════════════════════════════════════════════════
-
-# Attach ELB permissions to the node role so the cloud controller can
-# create/manage Classic Load Balancers for type:LoadBalancer services.
-resource "aws_iam_role_policy" "node_elb_policy" {
-  name = "qwikbrew-node-elb-policy"
-  role = module.eks.eks_managed_node_groups["nodes"].iam_role_name
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "elasticloadbalancing:*",
-        "ec2:Describe*",
-        "ec2:AuthorizeSecurityGroupIngress",
-        "ec2:RevokeSecurityGroupIngress",
-        "ec2:CreateSecurityGroup",
-        "ec2:DeleteSecurityGroup",
-        "ec2:CreateTags",
-        "ec2:DeleteTags"
-      ]
-      Resource = "*"
-    }]
-  })
-}
-
-# Tag public subnets so AWS knows which subnets to place the internet-facing LB in.
-# kubernetes.io/role/elb=1 is required — without this tag the ELB cannot be created.
-resource "aws_ec2_tag" "public_subnet_elb_tag" {
-  for_each    = toset(module.vpc.public_subnets)
-  resource_id = each.value
-  key         = "kubernetes.io/role/elb"
-  value       = "1"
-}
-
-# Tag private subnets for internal load balancers (future use)
-resource "aws_ec2_tag" "private_subnet_elb_tag" {
-  for_each    = toset(module.vpc.private_subnets)
-  resource_id = each.value
-  key         = "kubernetes.io/role/internal-elb"
-  value       = "1"
-}
-
-# Open port 80 on the node security group so the Classic ELB can reach pods
-resource "aws_security_group_rule" "node_elb_ingress" {
-  description       = "Allow Classic ELB to reach api-gateway pods on port 8080"
-  type              = "ingress"
-  from_port         = 8080
-  to_port           = 8080
-  protocol          = "tcp"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = module.eks.node_security_group_id
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
