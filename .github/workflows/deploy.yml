@@ -504,7 +504,7 @@ jobs:
         run: |
           echo "⏳ Waiting for ALB ingress hostname (up to 5 min)..."
           for i in $(seq 1 30); do
-            ALB=$(kubectl get ingress qwikbrew-ingress -n qwikbrew               -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+            ALB=$(kubectl get ingress qwikbrew-api-ingress -n qwikbrew               -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
             if [ -n "$ALB" ]; then
               echo ""
               echo "==========================================="
@@ -519,12 +519,12 @@ jobs:
               echo "https://staging-api.qwikbrew.in" >> $GITHUB_STEP_SUMMARY
               break
             fi
-            echo "  [$i/30] waiting... current ingress hostname: $(kubectl get ingress qwikbrew-ingress -n qwikbrew -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo pending)"
+            echo "  [$i/30] waiting... current ingress hostname: $(kubectl get ingress qwikbrew-api-ingress -n qwikbrew -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo pending)"
             sleep 10
           done
           if [ -z "$ALB" ]; then
             echo "Ingress still pending — describe the ALB ingress resource"
-            kubectl describe ingress qwikbrew-ingress -n qwikbrew | tail -40
+            kubectl describe ingress qwikbrew-api-ingress -n qwikbrew | tail -40
           fi
 
       - name: ⏳ Wait for deployments + collect crash logs
@@ -558,13 +558,13 @@ jobs:
 
       - name: 🌐 Print external URL
         run: |
-          ALB=$(kubectl get ingress qwikbrew-ingress -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+          ALB=$(kubectl get ingress qwikbrew-api-ingress -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
 
           # ── Wait for ingress hostname if not yet assigned ──────────────────
           if [ -z "$ALB" ]; then
             echo "⏳ Waiting for ALB ingress hostname (up to 5 min)..."
             for i in $(seq 1 30); do
-              ALB=$(kubectl get ingress qwikbrew-ingress -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+              ALB=$(kubectl get ingress qwikbrew-api-ingress -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
               [ -n "$ALB" ] && break
               echo "  [$i/30] pending..."
               sleep 10
@@ -638,7 +638,7 @@ jobs:
 
               echo ""
               echo ">> ingress describe:"
-              kubectl describe ingress qwikbrew-ingress -n qwikbrew
+              kubectl describe ingress qwikbrew-api-ingress -n qwikbrew
             else
               echo "Application is healthy and responding"
             fi
