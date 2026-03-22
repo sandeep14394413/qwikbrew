@@ -415,7 +415,7 @@ jobs:
     if: github.event_name == 'push'
     environment:
       name: staging
-      url:  https://staging-api.qwikbrew.in
+      url:  http://staging-api.qwikbrew.in
 
     permissions:
       id-token: write
@@ -497,7 +497,8 @@ jobs:
           kubectl apply -f k8s/00-namespace-config.yaml -n qwikbrew || true
           kubectl apply -f k8s/01-deployments.yaml -n qwikbrew
           kubectl apply -f k8s/02-hpa-pdb.yaml -n qwikbrew
-          kubectl apply -f k8s/03-ingress.yaml -n qwikbrew || true
+          kubectl delete ingress qwikbrew-ingress qwikbrew-api-ingress qwikbrew-frontend-ingress -n qwikbrew --ignore-not-found=true
+          kubectl apply -f k8s/03-ingress.yaml -n qwikbrew
           echo "✅ Manifests applied"
 
       - name: 🌐 Get External URL
@@ -596,20 +597,19 @@ jobs:
             echo "Check AWS Console -> EC2 -> Load Balancers"
           fi
 
-          # ── Full diagnostics (always runs) ────────────────────────────────
-          echo ""
+          echo
           echo "━━━━ POD STATUS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           kubectl get pods -n qwikbrew -o wide
 
-          echo ""
+          echo
           echo "━━━━ SERVICE + ENDPOINTS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           kubectl get svc -n qwikbrew
-          echo ""
+          echo
           kubectl get endpoints -n qwikbrew
           echo ""
           kubectl get ingress -n qwikbrew
 
-          echo ""
+          echo
           echo "━━━━ HEALTH CHECK ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           if [ -n "$ALB" ]; then
             sleep 15
@@ -624,8 +624,7 @@ jobs:
               echo ""
               echo ">> api-gateway pod readiness:"
               kubectl get pods -n qwikbrew -l app=api-gateway -o wide
-
-              echo ""
+              echo
               echo ">> api-gateway pod describe (events):"
               kubectl describe pods -n qwikbrew -l app=api-gateway | grep -A20 "Events:" | head -25
 
@@ -640,7 +639,7 @@ jobs:
               echo ">> ingress describe:"
               kubectl describe ingress qwikbrew-api-ingress -n qwikbrew
             else
-              echo "Application is healthy and responding"
+              echo 'Application is healthy and responding'
             fi
             echo "  attempt $i/18 — waiting 10s..."
             sleep 10
