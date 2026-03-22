@@ -6,7 +6,6 @@ metadata:
   annotations:
     kubernetes.io/ingress.class:                            alb
     alb.ingress.kubernetes.io/group.name:                   qwikbrew
-    external-dns.alpha.kubernetes.io/hostname:              staging-api.qwikbrew.in,api.qwikbrew.in,staging.qwikbrew.in,qwikbrew.in,www.qwikbrew.in
     alb.ingress.kubernetes.io/group.order:                  "10"
     alb.ingress.kubernetes.io/scheme:                       internet-facing
     alb.ingress.kubernetes.io/target-type:                  ip
@@ -16,16 +15,6 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-    - http:
-        paths:
-          - path: /api
-            pathType: Prefix
-            backend:
-              service: { name: api-gateway, port: { number: 80 } }
-          - path: /actuator
-            pathType: Prefix
-            backend:
-              service: { name: api-gateway, port: { number: 80 } }
     - host: staging-api.qwikbrew.in
       http:
         paths:
@@ -90,22 +79,17 @@ metadata:
   annotations:
     kubernetes.io/ingress.class:                            alb
     alb.ingress.kubernetes.io/group.name:                   qwikbrew
-    external-dns.alpha.kubernetes.io/hostname:              staging.qwikbrew.in,qwikbrew.in,www.qwikbrew.in
     alb.ingress.kubernetes.io/group.order:                  "20"
     alb.ingress.kubernetes.io/scheme:                       internet-facing
     alb.ingress.kubernetes.io/target-type:                  ip
-    alb.ingress.kubernetes.io/listen-ports:                 '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/listen-ports:                 '[{"HTTP":80,"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect:                 "443"
+    alb.ingress.kubernetes.io/certificate-arn:              "CERT_ARN"
     alb.ingress.kubernetes.io/healthcheck-path:             /
     alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
 spec:
   ingressClassName: alb
   rules:
-    - http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service: { name: frontend, port: { number: 80 } }
     - host: staging.qwikbrew.in
       http:
         paths:

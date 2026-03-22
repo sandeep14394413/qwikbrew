@@ -9,6 +9,7 @@
   <artifactId>qwikbrew-parent</artifactId>
   <version>1.0.0</version>
   <packaging>pom</packaging>
+  <name>QwikBrew Corporate Café — Microservices Platform</name>
 
   <modules>
     <module>service-discovery</module>
@@ -23,21 +24,17 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <!-- Spring Boot 3.5.9 — latest stable as of March 2026
-         (User requested 3.5.12 which is not yet released;
-          3.5.9 is the highest available patch release) -->
-    <version>3.5.9</version>
+    <version>3.2.3</version>
     <relativePath/>
   </parent>
 
   <properties>
     <java.version>17</java.version>
-    <!-- Spring Cloud 2025.0.1 — compatible with Spring Boot 3.5.x -->
-    <spring-cloud.version>2025.0.1</spring-cloud.version>
-    <lombok.version>1.18.36</lombok.version>
-    <jjwt.version>0.12.6</jjwt.version>
-    <mapstruct.version>1.6.3</mapstruct.version>
-    <testcontainers.version>1.20.4</testcontainers.version>
+    <spring-cloud.version>2023.0.3</spring-cloud.version>
+    <lombok.version>1.18.30</lombok.version>
+    <jjwt.version>0.12.3</jjwt.version>
+    <mapstruct.version>1.5.5.Final</mapstruct.version>
+    <testcontainers.version>1.19.6</testcontainers.version>
   </properties>
 
   <dependencyManagement>
@@ -49,23 +46,21 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-      <dependency>
-        <groupId>org.testcontainers</groupId>
-        <artifactId>testcontainers-bom</artifactId>
-        <version>${testcontainers.version}</version>
-        <type>pom</type>
-        <scope>import</scope>
-      </dependency>
     </dependencies>
   </dependencyManagement>
 
   <dependencies>
-    <!-- Lombok — available to all modules -->
+    <!-- Lombok — all services -->
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
-      <version>${lombok.version}</version>
       <optional>true</optional>
+    </dependency>
+    <!-- Testing -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-test</artifactId>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -81,25 +76,6 @@
               <artifactId>lombok</artifactId>
             </exclude>
           </excludes>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <release>17</release>
-          <annotationProcessorPaths>
-            <path>
-              <groupId>org.projectlombok</groupId>
-              <artifactId>lombok</artifactId>
-              <version>${lombok.version}</version>
-            </path>
-            <path>
-              <groupId>org.mapstruct</groupId>
-              <artifactId>mapstruct-processor</artifactId>
-              <version>${mapstruct.version}</version>
-            </path>
-          </annotationProcessorPaths>
         </configuration>
       </plugin>
     </plugins>
