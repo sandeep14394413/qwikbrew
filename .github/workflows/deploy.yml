@@ -28,9 +28,11 @@ name: 🚀 QwikBrew — CI/CD Pipeline
 
 on:
   push:
-    branches: [main, staging, develop]
+    branches:
+      - "**"
   pull_request:
-    branches: [main, staging]
+    branches:
+      - "**"
   workflow_dispatch:
     inputs:
       environment:
@@ -147,15 +149,13 @@ jobs:
           echo "🌍 Environment: $ENV | Cluster: $EKS_CLUSTER"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# JOB 2 — TESTS (SKIPPED)
-# Tests are disabled. Re-enable by removing "if: false" below.
-# To run tests locally: mvn test -pl <service> -Dspring.profiles.active=test
+# JOB 2 — TESTS
+# Runs for every pipeline execution before the image build starts.
 # ═══════════════════════════════════════════════════════════════════════════════
   test:
     name: 🧪 Test — ${{ matrix.service }}
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: false   # ← tests skipped; remove this line to re-enable
     strategy:
       fail-fast: false
       matrix:
@@ -225,7 +225,7 @@ jobs:
   build:
     name: 🐳 Build & Push — ${{ matrix.service }}
     runs-on: ubuntu-latest
-    needs: detect-changes   # test job skipped — builds straight after change detection
+    needs: [detect-changes, test]
     if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
@@ -405,14 +405,14 @@ jobs:
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # JOB 5 — DEPLOY TO STAGING
-# Fires automatically on push to 'staging' or 'develop' branches.
+# Fires automatically only on push to 'staging' or 'develop' branches.
 # Pulls Aiven DB + Kafka credentials from K8s ExternalSecrets (no hardcoding).
 # ═══════════════════════════════════════════════════════════════════════════════
   deploy-staging:
     name: 🚢 Deploy → Staging
     runs-on: ubuntu-latest
     needs: [detect-changes, trivy-scan]
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && (github.ref_name == 'staging' || github.ref_name == 'develop')
     environment:
       name: staging
       url:  https://staging-api.qwikbrew.in
@@ -665,7 +665,7 @@ jobs:
     name: 🏭 Deploy → Production
     runs-on: ubuntu-latest
     needs: [detect-changes, trivy-scan]
-    if: false   # disabled — no dedicated prod cluster yet; re-enable when qwikbrew-prod is provisioned
+    if: github.event_name == 'push' && github.ref_name == 'main'
     environment:
       name: production          # ← pauses here — requires your manual approval
       url:  https://api.qwikbrew.in
