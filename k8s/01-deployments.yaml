@@ -60,14 +60,15 @@ spec:
           livenessProbe:  { httpGet: { path: /actuator/health/liveness,  port: 8080 }, initialDelaySeconds: 120 }
 ---
 # api-gateway — exposed publicly through the ALB Ingress in k8s/03-ingress.yaml.
-# Keep the Service internal; the ingress controller handles internet-facing access.
+# Keep the Service non-public, but preserve a nodePort-compatible shape so updates
+# from the previous LoadBalancer service do not fail during kubectl apply.
 apiVersion: v1
 kind: Service
 metadata:
   name: api-gateway
   namespace: qwikbrew
 spec:
-  type: ClusterIP
+  type: NodePort
   selector: { app: api-gateway }
   ports:
     - name: http
@@ -75,6 +76,7 @@ spec:
       targetPort: 8080
       nodePort: 30080
       protocol: TCP
+      nodePort: 30080
 
 ---
 # ── 2. User Service ────────────────────────────────────────────────────────────
