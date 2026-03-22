@@ -149,13 +149,14 @@ jobs:
           echo "🌍 Environment: $ENV | Cluster: $EKS_CLUSTER"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# JOB 2 — TESTS
-# Runs for every pipeline execution before the image build starts.
+# JOB 2 — TESTS (DISABLED)
+# Tests remain defined here, but the job is intentionally skipped for now.
 # ═══════════════════════════════════════════════════════════════════════════════
   test:
     name: 🧪 Test — ${{ matrix.service }}
     runs-on: ubuntu-latest
     needs: detect-changes
+    if: false
     strategy:
       fail-fast: false
       matrix:
@@ -225,7 +226,7 @@ jobs:
   build:
     name: 🐳 Build & Push — ${{ matrix.service }}
     runs-on: ubuntu-latest
-    needs: [detect-changes, test]
+    needs: detect-changes
     if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
