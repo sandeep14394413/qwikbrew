@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.factory.AbstractGatewayFilterFactory;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +28,6 @@ public class JwtAuthFilter extends AbstractGatewayFilterFactory<JwtAuthFilter.Co
         "/api/v1/users/login",
         "/api/v1/users/register",
         "/api/v1/users/refresh-token",
-        "/api/v1/menu",
         "/actuator/health"
     );
 
@@ -39,9 +39,11 @@ public class JwtAuthFilter extends AbstractGatewayFilterFactory<JwtAuthFilter.Co
     public GatewayFilter apply(Config config) {
         return (exchange, chain) -> {
             String path = exchange.getRequest().getURI().getPath();
+            HttpMethod method = exchange.getRequest().getMethod();
 
             // Skip auth for public endpoints
-            if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)) {
+            if (PUBLIC_PATHS.stream().anyMatch(path::startsWith)
+                || (HttpMethod.GET.equals(method) && path.startsWith("/api/v1/menu"))) {
                 return chain.filter(exchange);
             }
 

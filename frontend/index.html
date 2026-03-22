@@ -163,6 +163,14 @@ const SAMPLE_MENU = [
 
 const CATEGORIES = ['All', 'Breakfast', 'South Indian', 'Rice', 'Curry', 'Dal', 'Snacks', 'Beverages', 'Desserts'];
 
+function normalizeMenuItem(item) {
+  return {
+    ...item,
+    isVeg: item.isVeg ?? item.vegetarian ?? true,
+    preparationTime: item.preparationTime ?? item.prepMinutes ?? null,
+  };
+}
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 let toastTimer;
 function Toast({ msg, type }) {
@@ -273,8 +281,8 @@ function MenuScreen({ cart, setCart, showToast }) {
   useEffect(() => {
     api('/api/v1/menu').then(data => {
       const list = Array.isArray(data) ? data : (data.content || data.items || SAMPLE_MENU);
-      setItems(list.length ? list : SAMPLE_MENU);
-    }).catch(() => setItems(SAMPLE_MENU)).finally(() => setLoading(false));
+      setItems((list.length ? list : SAMPLE_MENU).map(normalizeMenuItem));
+    }).catch(() => setItems(SAMPLE_MENU.map(normalizeMenuItem))).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {

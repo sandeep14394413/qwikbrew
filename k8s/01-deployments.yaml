@@ -1,31 +1,14 @@
-# ═══════════════════════════════════════════════════════════════════════════════
-#  QwikBrew — K8s Deployments (all 6 microservices)
-#
-#  Database URLs and Kafka credentials come from the 'aiven-credentials'
-#  K8s Secret, which is synced from AWS Secrets Manager by External Secrets.
-#  No connection strings are hardcoded anywhere.
-#
-#  Placeholders replaced by deploy.yml pipeline:
-#    ACCOUNT_ID      → AWS account ID
-#    :latest         → branch-shortSHA image tag (e.g. staging-a3f7c12)
-#    REDIS_ENDPOINT  → ElastiCache primary endpoint
-#    CERT_ARN        → ACM certificate ARN
-# ═══════════════════════════════════════════════════════════════════════════════
+# QwikBrew Kubernetes deployments and services.
+# Image placeholders are replaced by the deployment pipeline.
 
-# ── Shared helper: Kafka SASL_SSL env block used by order, notification ───────
-# (copy this block into any service that produces/consumes Kafka)
-# - SPRING_KAFKA_BOOTSTRAP_SERVERS     → from aiven-credentials secret
-# - SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL → SASL_SSL
-# - SPRING_KAFKA_PROPERTIES_SASL_MECHANISM    → PLAIN
-# - SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG  → PlainLoginModule with user/pass
-
-# ── 1. API Gateway ─────────────────────────────────────────────────────────────
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: api-gateway
   namespace: qwikbrew
-  labels: { app: api-gateway }
+  labels:
+    app: api-gateway
 spec:
   replicas: 1
   progressDeadlineSeconds: 600
@@ -33,23 +16,25 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
-  selector: { matchLabels: { app: api-gateway } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: api-gateway
   template:
     metadata:
-      labels: { app: api-gateway }
+      labels:
+        app: api-gateway
       annotations:
         prometheus.io/scrape: "true"
-        prometheus.io/port:   "8080"
-        prometheus.io/path:   "/actuator/prometheus"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
         - name: api-gateway
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/api-gateway:latest
           imagePullPolicy: Always
-          ports: [{ containerPort: 8080 }]
+          ports:
+            - containerPort: 8080
           env:
             - name: SPRING_MAIN_ALLOW_BEAN_DEFINITION_OVERRIDING
               value: "true"
@@ -60,17 +45,29 @@ spec:
             - name: SPRING_PROFILES_ACTIVE
               value: "aws"
           envFrom:
-            - configMapRef: { name: qwikbrew-config }
-            - secretRef:    { name: app-secrets }
+            - configMapRef:
+                name: qwikbrew-config
+            - secretRef:
+                name: app-secrets
           resources:
-            requests: { cpu: 100m, memory: 256Mi }
-            limits:   { cpu: 300m, memory: 512Mi }
-          readinessProbe: { httpGet: { path: /actuator/health/liveness, port: 8080 }, initialDelaySeconds: 60 }
-          livenessProbe:  { httpGet: { path: /actuator/health/liveness,  port: 8080 }, initialDelaySeconds: 120 }
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 300m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 60
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 120
+
 ---
-# api-gateway — internet-facing Classic Load Balancer.
-# NLB sits in PUBLIC subnets, routes to private node IPs — nodes do NOT need public IPs.
-# The subnet tags (kubernetes.io/role/elb=1) tell AWS which public subnets to use.
 apiVersion: v1
 kind: Service
 metadata:
@@ -82,7 +79,8 @@ metadata:
     service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
 spec:
   type: LoadBalancer
-  selector: { app: api-gateway }
+  selector:
+    app: api-gateway
   ports:
     - name: http
       port: 80
@@ -90,13 +88,13 @@ spec:
       protocol: TCP
 
 ---
-# ── 2. User Service ────────────────────────────────────────────────────────────
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: user-service
   namespace: qwikbrew
-  labels: { app: user-service }
+  labels:
+    app: user-service
 spec:
   replicas: 1
   progressDeadlineSeconds: 600
@@ -104,49 +102,86 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
-  selector: { matchLabels: { app: user-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: user-service
   template:
     metadata:
-      labels: { app: user-service }
-      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "8081", prometheus.io/path: "/actuator/prometheus" }
+      labels:
+        app: user-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
         - name: user-service
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/user-service:latest
           imagePullPolicy: Always
-          ports: [{ containerPort: 8081 }]
+          ports:
+            - containerPort: 8081
           envFrom:
-            - configMapRef: { name: qwikbrew-config }
-            - secretRef:    { name: app-secrets }
+            - configMapRef:
+                name: qwikbrew-config
+            - secretRef:
+                name: app-secrets
           env:
-            - name:  SPRING_DATASOURCE_URL
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: USERDB_JDBC_URL } }
-            - name:  SPRING_DATASOURCE_USERNAME
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: DB_USERNAME } }
-            - name:  SPRING_DATASOURCE_PASSWORD
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: DB_PASSWORD } }
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: USERDB_JDBC_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: DB_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: DB_PASSWORD
           resources:
-            requests: { cpu: 100m, memory: 256Mi }
-            limits:   { cpu: 300m, memory: 512Mi }
-          readinessProbe: { httpGet: { path: /actuator/health/liveness, port: 8081 }, initialDelaySeconds: 60 }
-          livenessProbe:  { httpGet: { path: /actuator/health/liveness,  port: 8081 }, initialDelaySeconds: 120 }
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 300m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8081
+            initialDelaySeconds: 60
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8081
+            initialDelaySeconds: 120
+
 ---
 apiVersion: v1
 kind: Service
-metadata: { name: user-service, namespace: qwikbrew }
-spec: { type: ClusterIP, selector: { app: user-service }, ports: [{ port: 8081, targetPort: 8081 }] }
+metadata:
+  name: user-service
+  namespace: qwikbrew
+spec:
+  type: ClusterIP
+  selector:
+    app: user-service
+  ports:
+    - port: 8081
+      targetPort: 8081
 
 ---
-# ── 3. Menu Service ────────────────────────────────────────────────────────────
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: menu-service
   namespace: qwikbrew
-  labels: { app: menu-service }
+  labels:
+    app: menu-service
 spec:
   replicas: 1
   progressDeadlineSeconds: 600
@@ -154,50 +189,86 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
-  selector: { matchLabels: { app: menu-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: menu-service
   template:
     metadata:
-      labels: { app: menu-service }
-      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "8082", prometheus.io/path: "/actuator/prometheus" }
+      labels:
+        app: menu-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8082"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
         - name: menu-service
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/menu-service:latest
           imagePullPolicy: Always
-          ports: [{ containerPort: 8082 }]
+          ports:
+            - containerPort: 8082
           envFrom:
-            - configMapRef: { name: qwikbrew-config }
-            - secretRef:    { name: app-secrets }
+            - configMapRef:
+                name: qwikbrew-config
+            - secretRef:
+                name: app-secrets
           env:
-            - name:  SPRING_DATASOURCE_URL
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: MENUDB_JDBC_URL } }
-            - name:  SPRING_DATASOURCE_USERNAME
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: DB_USERNAME } }
-            - name:  SPRING_DATASOURCE_PASSWORD
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: DB_PASSWORD } }
-            # Redis removed — menu-service uses in-memory cache (free tier)
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: MENUDB_JDBC_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: DB_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: DB_PASSWORD
           resources:
-            requests: { cpu: 100m, memory: 256Mi }
-            limits:   { cpu: 300m, memory: 512Mi }
-          readinessProbe: { httpGet: { path: /actuator/health/liveness, port: 8082 }, initialDelaySeconds: 60 }
-          livenessProbe:  { httpGet: { path: /actuator/health/liveness,  port: 8082 }, initialDelaySeconds: 120 }
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 300m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            initialDelaySeconds: 60
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            initialDelaySeconds: 120
+
 ---
 apiVersion: v1
 kind: Service
-metadata: { name: menu-service, namespace: qwikbrew }
-spec: { type: ClusterIP, selector: { app: menu-service }, ports: [{ port: 8082, targetPort: 8082 }] }
+metadata:
+  name: menu-service
+  namespace: qwikbrew
+spec:
+  type: ClusterIP
+  selector:
+    app: menu-service
+  ports:
+    - port: 8082
+      targetPort: 8082
 
 ---
-# ── 4. Order Service ───────────────────────────────────────────────────────────
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: order-service
   namespace: qwikbrew
-  labels: { app: order-service }
+  labels:
+    app: order-service
 spec:
   replicas: 1
   progressDeadlineSeconds: 600
@@ -205,61 +276,113 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
-  selector: { matchLabels: { app: order-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: order-service
   template:
     metadata:
-      labels: { app: order-service }
-      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "8083", prometheus.io/path: "/actuator/prometheus" }
+      labels:
+        app: order-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8083"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
         - name: order-service
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/order-service:latest
           imagePullPolicy: Always
-          ports: [{ containerPort: 8083 }]
+          ports:
+            - containerPort: 8083
           envFrom:
-            - configMapRef: { name: qwikbrew-config }
-            - secretRef:    { name: app-secrets }
+            - configMapRef:
+                name: qwikbrew-config
+            - secretRef:
+                name: app-secrets
           env:
-            - name:  SPRING_DATASOURCE_URL
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: ORDERDB_JDBC_URL } }
-            - name:  SPRING_DATASOURCE_USERNAME
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: DB_USERNAME } }
-            - name:  SPRING_DATASOURCE_PASSWORD
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: DB_PASSWORD } }
-            - name:  SPRING_KAFKA_BOOTSTRAP_SERVERS
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: KAFKA_BOOTSTRAP_SERVERS } }
-            - name:  SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: KAFKA_SECURITY_PROTOCOL } }
-            - name:  SPRING_KAFKA_PROPERTIES_SASL_MECHANISM
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: KAFKA_SASL_MECHANISM } }
-            - name:  KAFKA_SASL_USERNAME
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: KAFKA_SASL_USERNAME } }
-            - name:  KAFKA_SASL_PASSWORD
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: KAFKA_SASL_PASSWORD } }
-            - name:  SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: ORDERDB_JDBC_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: DB_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: DB_PASSWORD
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: KAFKA_SECURITY_PROTOCOL
+            - name: SPRING_KAFKA_PROPERTIES_SASL_MECHANISM
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: KAFKA_SASL_MECHANISM
+            - name: KAFKA_SASL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: KAFKA_SASL_USERNAME
+            - name: KAFKA_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: KAFKA_SASL_PASSWORD
+            - name: SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG
               value: "org.apache.kafka.common.security.plain.PlainLoginModule required username='$(KAFKA_SASL_USERNAME)' password='$(KAFKA_SASL_PASSWORD)';"
           resources:
-            requests: { cpu: 100m, memory: 256Mi }
-            limits:   { cpu: 300m, memory: 512Mi }
-          readinessProbe: { httpGet: { path: /actuator/health/liveness, port: 8083 }, initialDelaySeconds: 60 }
-          livenessProbe:  { httpGet: { path: /actuator/health/liveness,  port: 8083 }, initialDelaySeconds: 120 }
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 300m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            initialDelaySeconds: 60
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8083
+            initialDelaySeconds: 120
+
 ---
 apiVersion: v1
 kind: Service
-metadata: { name: order-service, namespace: qwikbrew }
-spec: { type: ClusterIP, selector: { app: order-service }, ports: [{ port: 8083, targetPort: 8083 }] }
+metadata:
+  name: order-service
+  namespace: qwikbrew
+spec:
+  type: ClusterIP
+  selector:
+    app: order-service
+  ports:
+    - port: 8083
+      targetPort: 8083
 
 ---
-# ── 5. Payment Service ─────────────────────────────────────────────────────────
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: payment-service
   namespace: qwikbrew
-  labels: { app: payment-service }
+  labels:
+    app: payment-service
 spec:
   replicas: 1
   progressDeadlineSeconds: 600
@@ -267,49 +390,86 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
-  selector: { matchLabels: { app: payment-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: payment-service
   template:
     metadata:
-      labels: { app: payment-service }
-      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "8084", prometheus.io/path: "/actuator/prometheus" }
+      labels:
+        app: payment-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8084"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
         - name: payment-service
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/payment-service:latest
           imagePullPolicy: Always
-          ports: [{ containerPort: 8084 }]
+          ports:
+            - containerPort: 8084
           envFrom:
-            - configMapRef: { name: qwikbrew-config }
-            - secretRef:    { name: app-secrets }
+            - configMapRef:
+                name: qwikbrew-config
+            - secretRef:
+                name: app-secrets
           env:
-            - name:  SPRING_DATASOURCE_URL
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: PAYMENTDB_JDBC_URL } }
-            - name:  SPRING_DATASOURCE_USERNAME
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: DB_USERNAME } }
-            - name:  SPRING_DATASOURCE_PASSWORD
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: DB_PASSWORD } }
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: PAYMENTDB_JDBC_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: DB_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: DB_PASSWORD
           resources:
-            requests: { cpu: 100m, memory: 256Mi }
-            limits:   { cpu: 300m, memory: 512Mi }
-          readinessProbe: { httpGet: { path: /actuator/health/liveness, port: 8084 }, initialDelaySeconds: 60 }
-          livenessProbe:  { httpGet: { path: /actuator/health/liveness,  port: 8084 }, initialDelaySeconds: 120 }
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 300m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8084
+            initialDelaySeconds: 60
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8084
+            initialDelaySeconds: 120
+
 ---
 apiVersion: v1
 kind: Service
-metadata: { name: payment-service, namespace: qwikbrew }
-spec: { type: ClusterIP, selector: { app: payment-service }, ports: [{ port: 8084, targetPort: 8084 }] }
+metadata:
+  name: payment-service
+  namespace: qwikbrew
+spec:
+  type: ClusterIP
+  selector:
+    app: payment-service
+  ports:
+    - port: 8084
+      targetPort: 8084
 
 ---
-# ── 6. Notification Service ────────────────────────────────────────────────────
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: notification-service
   namespace: qwikbrew
-  labels: { app: notification-service }
+  labels:
+    app: notification-service
 spec:
   replicas: 1
   progressDeadlineSeconds: 600
@@ -317,100 +477,177 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
-  selector: { matchLabels: { app: notification-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: notification-service
   template:
     metadata:
-      labels: { app: notification-service }
-      annotations: { prometheus.io/scrape: "true", prometheus.io/port: "8085", prometheus.io/path: "/actuator/prometheus" }
+      labels:
+        app: notification-service
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8085"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
       containers:
         - name: notification-service
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/notification-service:latest
           imagePullPolicy: Always
-          ports: [{ containerPort: 8085 }]
+          ports:
+            - containerPort: 8085
           envFrom:
-            - configMapRef: { name: qwikbrew-config }
-            - secretRef:    { name: app-secrets }
+            - configMapRef:
+                name: qwikbrew-config
+            - secretRef:
+                name: app-secrets
           env:
-            - name:  SPRING_DATASOURCE_URL
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: NOTIFICATIONDB_JDBC_URL } }
-            - name:  SPRING_DATASOURCE_USERNAME
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: DB_USERNAME } }
-            - name:  SPRING_DATASOURCE_PASSWORD
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: DB_PASSWORD } }
-            - name:  SPRING_KAFKA_BOOTSTRAP_SERVERS
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: KAFKA_BOOTSTRAP_SERVERS } }
-            - name:  SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: KAFKA_SECURITY_PROTOCOL } }
-            - name:  SPRING_KAFKA_PROPERTIES_SASL_MECHANISM
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: KAFKA_SASL_MECHANISM } }
-            - name:  KAFKA_SASL_USERNAME
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: KAFKA_SASL_USERNAME } }
-            - name:  KAFKA_SASL_PASSWORD
-              valueFrom: { secretKeyRef: { name: aiven-credentials, key: KAFKA_SASL_PASSWORD } }
-            - name:  SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG
+            - name: SPRING_DATASOURCE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: NOTIFICATIONDB_JDBC_URL
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: DB_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: DB_PASSWORD
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: KAFKA_BOOTSTRAP_SERVERS
+            - name: SPRING_KAFKA_PROPERTIES_SECURITY_PROTOCOL
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: KAFKA_SECURITY_PROTOCOL
+            - name: SPRING_KAFKA_PROPERTIES_SASL_MECHANISM
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: KAFKA_SASL_MECHANISM
+            - name: KAFKA_SASL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: KAFKA_SASL_USERNAME
+            - name: KAFKA_SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-credentials
+                  key: KAFKA_SASL_PASSWORD
+            - name: SPRING_KAFKA_PROPERTIES_SASL_JAAS_CONFIG
               value: "org.apache.kafka.common.security.plain.PlainLoginModule required username='$(KAFKA_SASL_USERNAME)' password='$(KAFKA_SASL_PASSWORD)';"
-            - name:  SPRING_MAIL_HOST
+            - name: SPRING_MAIL_HOST
               value: "email-smtp.ap-south-1.amazonaws.com"
-            - name:  SPRING_MAIL_PORT
+            - name: SPRING_MAIL_PORT
               value: "587"
-            - name:  SPRING_MAIL_USERNAME
-              valueFrom: { secretKeyRef: { name: app-secrets, key: SMTP_USER } }
-            - name:  SPRING_MAIL_PASSWORD
-              valueFrom: { secretKeyRef: { name: app-secrets, key: SMTP_PASS } }
+            - name: SPRING_MAIL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: SMTP_USER
+            - name: SPRING_MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: SMTP_PASS
           resources:
-            requests: { cpu: 100m, memory: 256Mi }
-            limits:   { cpu: 300m, memory: 512Mi }
-          readinessProbe: { httpGet: { path: /actuator/health/liveness, port: 8085 }, initialDelaySeconds: 60 }
-          livenessProbe:  { httpGet: { path: /actuator/health/liveness,  port: 8085 }, initialDelaySeconds: 120 }
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 300m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8085
+            initialDelaySeconds: 60
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8085
+            initialDelaySeconds: 120
+
 ---
 apiVersion: v1
 kind: Service
-metadata: { name: notification-service, namespace: qwikbrew }
-spec: { type: ClusterIP, selector: { app: notification-service }, ports: [{ port: 8085, targetPort: 8085 }] }
+metadata:
+  name: notification-service
+  namespace: qwikbrew
+spec:
+  type: ClusterIP
+  selector:
+    app: notification-service
+  ports:
+    - port: 8085
+      targetPort: 8085
 
 ---
-# ── 7. Frontend (QwikCafe React UI) ───────────────────────────────────────────
-# Nginx serving the React SPA — accessible via the LoadBalancer at /
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
   namespace: qwikbrew
-  labels: { app: frontend }
+  labels:
+    app: frontend
 spec:
   replicas: 1
   progressDeadlineSeconds: 300
   strategy:
     type: RollingUpdate
-    rollingUpdate: { maxSurge: 1, maxUnavailable: 1 }
-  selector: { matchLabels: { app: frontend } }
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: frontend
   template:
     metadata:
-      labels: { app: frontend }
+      labels:
+        app: frontend
     spec:
       containers:
         - name: frontend
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/frontend:latest
           imagePullPolicy: Always
-          ports: [{ containerPort: 80 }]
+          ports:
+            - containerPort: 80
           resources:
-            requests: { cpu: 50m, memory: 64Mi }
-            limits:   { cpu: 200m, memory: 128Mi }
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
           readinessProbe:
-            httpGet: { path: /, port: 80 }
+            httpGet:
+              path: /
+              port: 80
             initialDelaySeconds: 5
           livenessProbe:
-            httpGet: { path: /, port: 80 }
+            httpGet:
+              path: /
+              port: 80
             initialDelaySeconds: 10
+
 ---
 apiVersion: v1
 kind: Service
-metadata: { name: frontend, namespace: qwikbrew }
+metadata:
+  name: frontend
+  namespace: qwikbrew
 spec:
   type: ClusterIP
-  selector: { app: frontend }
-  ports: [{ port: 80, targetPort: 80 }]
+  selector:
+    app: frontend
+  ports:
+    - port: 80
+      targetPort: 80
