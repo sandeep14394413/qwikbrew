@@ -431,7 +431,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ env.AWS_REGION }}
 
-      - name: ☸️ Update kubeconfig
+      - name: ☸️ Update kubeconfig for Staging EKS
         run: |
           CLUSTER="${{ needs.detect-changes.outputs.eks_cluster }}"
           aws eks update-kubeconfig --name "$CLUSTER" --region ${{ env.AWS_REGION }}
@@ -439,69 +439,58 @@ jobs:
 
       - name: 📦 Ensure External Secrets Operator is installed
         run: |
+          # Install ESO if CRDs are not present — idempotent, safe to run every deploy
           if ! kubectl get crd externalsecrets.external-secrets.io &>/dev/null; then
-            echo "📦 Installing External Secrets Operator..."
+            echo "📦 ESO CRDs not found — installing via Helm..."
             helm repo add external-secrets https://charts.external-secrets.io
             helm repo update
-            helm upgrade --install external-secrets \
-              external-secrets/external-secrets \
-              -n external-secrets --create-namespace \
-              --set installCRDs=true --wait --timeout=120s
-            echo "✅ ESO installed"
+            helm upgrade --install external-secrets               external-secrets/external-secrets               -n external-secrets --create-namespace               --set installCRDs=true               --wait --timeout=120s
+            echo "✅ External Secrets Operator installed"
           else
-            echo "✅ ESO already installed"
+            echo "✅ External Secrets Operator already installed"
           fi
 
       - name: 🔧 Substitute manifest placeholders
         env:
-          ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-          CERT_ARN:   ${{ secrets.STAGING_ACM_CERT_ARN }}
+          SHORT_SHA:      ${{ github.sha }}
+          ACCOUNT_ID:     ${{ secrets.AWS_ACCOUNT_ID }}
+          REDIS_ENDPOINT: ${{ secrets.STAGING_REDIS_ENDPOINT }}
+          CERT_ARN:       ${{ secrets.STAGING_ACM_CERT_ARN }}
         run: |
+          # Use :latest — build job pushes both a SHA tag AND :latest.
+          # Using :latest avoids branch-name/tag-prefix mismatches.
+          echo "📦 Deploying image tag: latest"
+
           find k8s/ -name "*.yaml" -exec sed -i \
             -e "s|ACCOUNT_ID|${ACCOUNT_ID}|g" \
+            -e "s|REDIS_ENDPOINT|${REDIS_ENDPOINT}|g" \
             -e "s|CERT_ARN|${CERT_ARN}|g" \
             -e "s|qwikbrew/ENV/|qwikbrew/staging/|g" \
             {} \;
-          echo "✅ Placeholders substituted"
 
-      - name: 🔑 Ensure K8s secrets exist
+      - name: 🔑 Ensure required K8s secrets exist
         run: |
+          # Deployments reference these secrets via envFrom/secretKeyRef.
+          # If ExternalSecrets hasn't synced them yet, pods crash with
+          # "secret not found". We create placeholder secrets so pods can
+          # start — real values arrive once ESO syncs from Secrets Manager.
           kubectl create namespace qwikbrew --dry-run=client -o yaml | kubectl apply -f -
 
           if ! kubectl get secret aiven-credentials -n qwikbrew &>/dev/null; then
-            kubectl create secret generic aiven-credentials -n qwikbrew \
-              --from-literal=USERDB_JDBC_URL="jdbc:postgresql://placeholder:5432/userdb" \
-              --from-literal=MENUDB_JDBC_URL="jdbc:postgresql://placeholder:5432/menudb" \
-              --from-literal=ORDERDB_JDBC_URL="jdbc:postgresql://placeholder:5432/orderdb" \
-              --from-literal=PAYMENTDB_JDBC_URL="jdbc:postgresql://placeholder:5432/paymentdb" \
-              --from-literal=NOTIFICATIONDB_JDBC_URL="jdbc:postgresql://placeholder:5432/notificationdb" \
-              --from-literal=DB_USERNAME="placeholder" \
-              --from-literal=DB_PASSWORD="placeholder" \
-              --from-literal=KAFKA_BOOTSTRAP_SERVERS="localhost:9092" \
-              --from-literal=KAFKA_SECURITY_PROTOCOL="PLAINTEXT" \
-              --from-literal=KAFKA_SASL_MECHANISM="PLAIN" \
-              --from-literal=KAFKA_SASL_USERNAME="placeholder" \
-              --from-literal=KAFKA_SASL_PASSWORD="placeholder"
-            echo "✅ aiven-credentials created"
+            echo "⚠️  aiven-credentials secret missing — creating placeholder"
+            kubectl create secret generic aiven-credentials               -n qwikbrew               --from-literal=USERDB_JDBC_URL="jdbc:postgresql://placeholder:5432/userdb"               --from-literal=MENUDB_JDBC_URL="jdbc:postgresql://placeholder:5432/menudb"               --from-literal=ORDERDB_JDBC_URL="jdbc:postgresql://placeholder:5432/orderdb"               --from-literal=PAYMENTDB_JDBC_URL="jdbc:postgresql://placeholder:5432/paymentdb"               --from-literal=NOTIFICATIONDB_JDBC_URL="jdbc:postgresql://placeholder:5432/notificationdb"               --from-literal=DB_USERNAME="placeholder"               --from-literal=DB_PASSWORD="placeholder"               --from-literal=KAFKA_BOOTSTRAP_SERVERS="localhost:9092"               --from-literal=KAFKA_SECURITY_PROTOCOL="PLAINTEXT"               --from-literal=KAFKA_SASL_MECHANISM="PLAIN"               --from-literal=KAFKA_SASL_USERNAME="placeholder"               --from-literal=KAFKA_SASL_PASSWORD="placeholder"
+            echo "✅ Placeholder aiven-credentials created"
+          else
+            echo "✅ aiven-credentials already exists"
           fi
 
           if ! kubectl get secret app-secrets -n qwikbrew &>/dev/null; then
-            kubectl create secret generic app-secrets -n qwikbrew \
-              --from-literal=JWT_SECRET="placeholder-jwt-secret-min-64-chars-long-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
-              --from-literal=PAYMENT_GATEWAY_KEY_ID="placeholder" \
-              --from-literal=PAYMENT_GATEWAY_SECRET="placeholder" \
-              --from-literal=FCM_SERVER_KEY="placeholder" \
-              --from-literal=SMTP_USER="placeholder" \
-              --from-literal=SMTP_PASS="placeholder"
-            echo "✅ app-secrets created"
+            echo "⚠️  app-secrets secret missing — creating placeholder"
+            kubectl create secret generic app-secrets               -n qwikbrew               --from-literal=JWT_SECRET="placeholder-jwt-secret-min-64-chars-long-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"               --from-literal=PAYMENT_GATEWAY_KEY_ID="placeholder"               --from-literal=PAYMENT_GATEWAY_SECRET="placeholder"               --from-literal=FCM_SERVER_KEY="placeholder"               --from-literal=SMTP_USER="placeholder"               --from-literal=SMTP_PASS="placeholder"
+            echo "✅ Placeholder app-secrets created"
+          else
+            echo "✅ app-secrets already exists"
           fi
-
-      - name: 🐳 Build + push Frontend image
-        run: |
-          echo "🏗️  Building QwikCafe React UI..."
-          docker build -t $ECR_REGISTRY/qwikbrew/frontend:latest ./frontend
-          docker push $ECR_REGISTRY/qwikbrew/frontend:latest
-          echo "✅ Frontend image pushed"
 
       - name: 🚀 Apply Kubernetes manifests
         run: |
@@ -512,17 +501,50 @@ jobs:
           kubectl apply -f k8s/03-ingress.yaml -n qwikbrew
           echo "✅ Manifests applied"
 
+      - name: 🌐 Get External URL
+        run: |
+          echo "⏳ Waiting for ALB ingress hostname (up to 5 min)..."
+          for i in $(seq 1 30); do
+            ALB=$(kubectl get ingress qwikbrew-api-ingress -n qwikbrew               -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+            if [ -n "$ALB" ]; then
+              echo ""
+              echo "==========================================="
+              echo "  QWIKBREW IS LIVE"
+              echo "  https://staging.qwikbrew.in"
+              echo "  https://staging-api.qwikbrew.in"
+              echo "==========================================="
+              echo "  ALB hostname: ${ALB}"
+              echo "==========================================="
+              echo "## QwikBrew Live URL" >> $GITHUB_STEP_SUMMARY
+              echo "https://staging.qwikbrew.in" >> $GITHUB_STEP_SUMMARY
+              echo "https://staging-api.qwikbrew.in" >> $GITHUB_STEP_SUMMARY
+              break
+            fi
+            echo "  [$i/30] waiting... current ingress hostname: $(kubectl get ingress qwikbrew-api-ingress -n qwikbrew -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo pending)"
+            sleep 10
+          done
+          if [ -z "$ALB" ]; then
+            echo "Ingress still pending — describe the ALB ingress resource"
+            kubectl describe ingress qwikbrew-api-ingress -n qwikbrew | tail -40
+          fi
+
       - name: ⏳ Wait for deployments + collect crash logs
         run: |
           SERVICES='${{ needs.detect-changes.outputs.services_json }}'
+
           echo "$SERVICES" | jq -r ".[]" | while read SVC; do
-            echo "⏳ $SVC..."
-            kubectl rollout status deployment/$SVC -n qwikbrew --timeout=600s               && echo "✅ $SVC is live"               || echo "⚠️  $SVC rollout timed out"
+            echo "⏳ Waiting for $SVC (timeout 600s)..."
+            kubectl rollout status deployment/$SVC -n qwikbrew --timeout=600s \
+              && echo "✅ $SVC is live" \
+              || echo "⚠️  $SVC rollout did not complete — check logs below"
           done
 
           echo ""
+          echo "── Final pod status ─────────────────────────────────────"
           kubectl get pods -n qwikbrew -o wide
 
+          echo ""
+          echo "── Crash logs (CrashLoopBackOff pods) ──────────────────"
           for POD in $(kubectl get pods -n qwikbrew -o jsonpath="{.items[*].metadata.name}" 2>/dev/null); do
             REASON=$(kubectl get pod/$POD -n qwikbrew \
               -o jsonpath="{.status.containerStatuses[0].state.waiting.reason}" 2>/dev/null)
@@ -531,54 +553,45 @@ jobs:
               echo "=== $POD ($REASON) ==="
               kubectl logs $POD -n qwikbrew --tail=40 --previous 2>/dev/null \
                 || kubectl logs $POD -n qwikbrew --tail=40 2>/dev/null \
-                || echo "(no logs)"
+                || echo "(no logs available)"
             fi
           done
 
-      - name: 🌐 Print external URL + full diagnostics
-        shell: bash
+      - name: 🌐 Print external URL
         run: |
-          set -u
+          ALB=$(kubectl get ingress qwikbrew-api-ingress -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
 
-          get_ingress_hostname() {
-            kubectl get ingress qwikbrew-api-ingress -n qwikbrew \
-              -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true
-          }
-
-          ALB="$(get_ingress_hostname)"
-          if [[ -z "$ALB" ]]; then
+          # ── Wait for ingress hostname if not yet assigned ──────────────────
+          if [ -z "$ALB" ]; then
             echo "⏳ Waiting for ALB ingress hostname (up to 5 min)..."
             for i in $(seq 1 30); do
-              ALB="$(get_ingress_hostname)"
-              if [[ -n "$ALB" ]]; then
-                break
-              fi
+              ALB=$(kubectl get ingress qwikbrew-api-ingress -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+              [ -n "$ALB" ] && break
               echo "  [$i/30] pending..."
               sleep 10
             done
           fi
 
-          if [[ -n "$ALB" ]]; then
-            echo
+          # ── Print live URLs ────────────────────────────────────────────────
+          if [ -n "$ALB" ]; then
+            echo ""
             echo "==========================================="
             echo "  QWIKBREW IS LIVE"
-            echo "  http://staging.qwikbrew.in"
-            echo "  http://staging-api.qwikbrew.in"
+            echo "  https://staging.qwikbrew.in"
+            echo "  https://staging-api.qwikbrew.in"
             echo "==========================================="
             echo "  ALB hostname: ${ALB}"
             echo "==========================================="
-            {
-              echo "## QwikBrew Live URL"
-              echo "**[http://staging.qwikbrew.in](http://staging.qwikbrew.in)**"
-              echo "**[http://staging-api.qwikbrew.in](http://staging-api.qwikbrew.in)**"
-              echo
-              echo "| Endpoint | URL |"
-              echo "|---|---|"
-              echo "| Health | [/actuator/health](http://staging-api.qwikbrew.in/actuator/health) |"
-              echo "| Menu | [/api/v1/menu](http://staging-api.qwikbrew.in/api/v1/menu) |"
-              echo "| Register | /api/v1/users/register |"
-              echo "| Login | /api/v1/users/login |"
-            } >> "$GITHUB_STEP_SUMMARY"
+            echo "## QwikBrew Live URL" >> $GITHUB_STEP_SUMMARY
+            echo "**[https://staging.qwikbrew.in](https://staging.qwikbrew.in)**" >> $GITHUB_STEP_SUMMARY
+            echo "**[https://staging-api.qwikbrew.in](https://staging-api.qwikbrew.in)**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "| Endpoint | URL |" >> $GITHUB_STEP_SUMMARY
+            echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+            echo "| Health     | [/actuator/health](https://staging-api.qwikbrew.in/actuator/health) |" >> $GITHUB_STEP_SUMMARY
+            echo "| Menu       | [/api/v1/menu](https://staging-api.qwikbrew.in/api/v1/menu) |" >> $GITHUB_STEP_SUMMARY
+            echo "| Register   | /api/v1/users/register |" >> $GITHUB_STEP_SUMMARY
+            echo "| Login      | /api/v1/users/login |" >> $GITHUB_STEP_SUMMARY
           else
             echo "WARNING: Ingress hostname not assigned after 5 min"
             echo "Check AWS Console -> EC2 -> Load Balancers"
@@ -593,41 +606,47 @@ jobs:
           kubectl get svc -n qwikbrew
           echo
           kubectl get endpoints -n qwikbrew
-          echo
+          echo ""
           kubectl get ingress -n qwikbrew
 
           echo
           echo "━━━━ HEALTH CHECK ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          if [[ -n "$ALB" ]]; then
+          if [ -n "$ALB" ]; then
             sleep 15
-            HTTP=$(curl -sS -o /tmp/health.json -w '%{http_code}' -H 'Host: staging-api.qwikbrew.in' "http://${ALB}/actuator/health" --max-time 15 || echo '000')
+            HTTP=$(curl -sk -o /tmp/health.json -w "%{http_code}" -H "Host: staging-api.qwikbrew.in" "https://${ALB}/actuator/health" --max-time 15 || echo "000")
             echo "HTTP $HTTP"
             cat /tmp/health.json 2>/dev/null || true
 
-            if [[ "$HTTP" != "200" ]]; then
-              echo
+            if [ "$HTTP" != "200" ]; then
+              echo ""
               echo "━━━━ INGRESS NOT HEALTHY — DIAGNOSING ━━━━━━━━━━━━━━━━━━━"
-              echo
+
+              echo ""
               echo ">> api-gateway pod readiness:"
               kubectl get pods -n qwikbrew -l app=api-gateway -o wide
               echo
               echo ">> api-gateway pod describe (events):"
-              kubectl describe pods -n qwikbrew -l app=api-gateway | grep -A20 'Events:' | head -25
-              echo
+              kubectl describe pods -n qwikbrew -l app=api-gateway | grep -A20 "Events:" | head -25
+
+              echo ""
               echo ">> api-gateway logs (last 60 lines):"
-              GW_POD=$(kubectl get pods -n qwikbrew -l app=api-gateway -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
-              if [[ -n "$GW_POD" ]]; then
-                kubectl logs "$GW_POD" -n qwikbrew --tail=60 2>/dev/null \
-                  || kubectl logs "$GW_POD" -n qwikbrew --tail=60 --previous 2>/dev/null \
-                  || echo '(no logs)'
+              GW_POD=$(kubectl get pods -n qwikbrew -l app=api-gateway -o jsonpath="{.items[0].metadata.name}" 2>/dev/null || echo "")
+              if [ -n "$GW_POD" ]; then
+                kubectl logs "$GW_POD" -n qwikbrew --tail=60 2>/dev/null || kubectl logs "$GW_POD" -n qwikbrew --tail=60 --previous 2>/dev/null || echo "(no logs)"
               fi
-              echo
+
+              echo ""
               echo ">> ingress describe:"
               kubectl describe ingress qwikbrew-api-ingress -n qwikbrew
             else
               echo 'Application is healthy and responding'
             fi
-          fi
+            echo "  attempt $i/18 — waiting 10s..."
+            sleep 10
+          done
+          echo "⚠️  LoadBalancer hostname not yet assigned — check AWS console"
+          echo "    Run: kubectl get svc api-gateway -n qwikbrew"
+          kubectl get svc -n qwikbrew
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # JOB 6 — DEPLOY TO PRODUCTION
