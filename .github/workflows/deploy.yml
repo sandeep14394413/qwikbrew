@@ -236,6 +236,9 @@ jobs:
       id-token: write   # required for OIDC
       contents: read
 
+    env:
+      CAN_PUSH_IMAGES: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -262,13 +265,18 @@ jobs:
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           BRANCH=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
           TAG="${BRANCH}-${SHORT_SHA}"
-          IMAGE="${{ env.ECR_REGISTRY }}/qwikbrew/${{ matrix.service }}"
+          if [[ "${CAN_PUSH_IMAGES}" == "true" && -n "${ECR_REGISTRY}" ]]; then
+            IMAGE="${ECR_REGISTRY}/qwikbrew/${{ matrix.service }}"
+          else
+            IMAGE="qwikbrew/${{ matrix.service }}"
+          fi
           echo "tag=$TAG"                     >> $GITHUB_OUTPUT
           echo "image_full=${IMAGE}:${TAG}"   >> $GITHUB_OUTPUT
           echo "image_latest=${IMAGE}:latest" >> $GITHUB_OUTPUT
           echo "🏷️ Image tag: $TAG"
 
       - name: 🔐 Configure AWS credentials
+        if: env.CAN_PUSH_IMAGES == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -276,6 +284,7 @@ jobs:
           aws-region:            ${{ env.AWS_REGION }}
 
       - name: 🔑 Login to Amazon ECR
+        if: env.CAN_PUSH_IMAGES == 'true'
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: 🐳 Set up Docker Buildx (layer cache support)
@@ -290,7 +299,8 @@ jobs:
             SERVICE=${{ matrix.service }}
             BUILD_DATE=${{ github.event.pull_request.updated_at || github.event.head_commit.timestamp || github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
-          push:       true
+          push:       ${{ env.CAN_PUSH_IMAGES == 'true' }}
+          load:       ${{ env.CAN_PUSH_IMAGES != 'true' }}
           tags: |
             ${{ steps.tag.outputs.image_full }}
             ${{ steps.tag.outputs.image_latest }}
@@ -301,9 +311,11 @@ jobs:
           sbom:       true    # Software Bill of Materials
 
       - name: 💾 Save image reference for Trivy scan
+        if: env.CAN_PUSH_IMAGES == 'true'
         run: echo "${{ steps.tag.outputs.image_full }}" > /tmp/image-ref.txt
 
       - name: 📤 Upload image reference artifact
+        if: env.CAN_PUSH_IMAGES == 'true'
         uses: actions/upload-artifact@v4
         with:
           name:           "image-ref-${{ matrix.service }}"
@@ -329,10 +341,14 @@ jobs:
       contents:        read
       security-events: write   # upload SARIF to GitHub Security tab
 
+    env:
+      CAN_SCAN_IMAGE: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
+
     steps:
       - uses: actions/checkout@v4
 
       - name: 🔐 Configure AWS credentials
+        if: env.CAN_SCAN_IMAGE == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -340,20 +356,27 @@ jobs:
           aws-region:            ${{ env.AWS_REGION }}
 
       - name: 🔑 Login to ECR
+        if: env.CAN_SCAN_IMAGE == 'true'
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: 📥 Download image reference
+        if: env.CAN_SCAN_IMAGE == 'true'
         uses: actions/download-artifact@v4
         with:
           name: "image-ref-${{ matrix.service }}"
           path: /tmp/
 
       - name: 📌 Read image name
+        if: env.CAN_SCAN_IMAGE == 'true'
         id: img
         run: |
           IMAGE=$(cat /tmp/image-ref.txt)
           echo "name=$IMAGE" >> $GITHUB_OUTPUT
           echo "🔍 Scanning: $IMAGE"
+
+      - name: ℹ️ Skip container-image scan for forked pull requests
+        if: env.CAN_SCAN_IMAGE != 'true'
+        run: echo "Skipping registry-backed image scan because this run cannot access repository secrets/ECR credentials."
 
       - name: 🔒 Trivy — filesystem scan (source code, informational)
         uses: aquasecurity/trivy-action@master
@@ -365,6 +388,7 @@ jobs:
           exit-code:  0      # does not block — just reports
 
       - name: 🔒 Trivy — container image scan ← BLOCKS pipeline on CVEs
+        if: env.CAN_SCAN_IMAGE == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           scan-type:       image
@@ -377,7 +401,7 @@ jobs:
           vuln-type:       os,library
 
       - name: 📤 Upload SARIF to GitHub Security tab
-        if: always()
+        if: always() && env.CAN_SCAN_IMAGE == 'true'
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: "trivy-${{ matrix.service }}.sarif"
@@ -385,7 +409,7 @@ jobs:
         continue-on-error: true
 
       - name: 📦 Save Trivy report as artifact
-        if: always()
+        if: always() && env.CAN_SCAN_IMAGE == 'true'
         uses: aquasecurity/trivy-action@master
         with:
           scan-type:  image
@@ -396,7 +420,7 @@ jobs:
           exit-code:  0
 
       - name: 📤 Upload Trivy JSON report
-        if: always()
+        if: always() && env.CAN_SCAN_IMAGE == 'true'
         uses: actions/upload-artifact@v4
         with:
           name:           "trivy-report-${{ matrix.service }}"
