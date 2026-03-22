@@ -10,14 +10,6 @@ spring:
         locator:
           enabled: false  # no auto-routing from service registry
       routes:
-        # Frontend UI — serve React SPA for all non-API requests
-        - id: frontend
-          uri: http://frontend:80
-          predicates:
-            - Path=/,/index.html,/static/**,/manifest.json,/favicon.ico
-          filters:
-            - StripPrefix=0
-
         # Auth routes — no JWT required
         - id: user-service-public
           uri: http://user-service:8081
@@ -73,6 +65,14 @@ spring:
             - Path=/api/v1/notifications/**
           filters:
             - JwtAuth
+
+        # Frontend UI — serve the SPA for all remaining non-API requests
+        - id: frontend
+          uri: http://frontend:80
+          predicates:
+            - Path=/**
+          filters:
+            - StripPrefix=0
 
       globalcors:
         cors-configurations:
