@@ -12,14 +12,13 @@
   <artifactId>api-gateway</artifactId>
 
   <dependencies>
-    <!-- Spring Cloud Gateway WebFlux (reactive) — new name in Spring Cloud 2025.0.x
-         Old: spring-cloud-starter-gateway (now deprecated but still works)
-         New: spring-cloud-starter-gateway-webflux -->
     <dependency>
       <groupId>org.springframework.cloud</groupId>
-      <artifactId>spring-cloud-starter-gateway-webflux</artifactId>
+      <artifactId>spring-cloud-starter-gateway</artifactId>
       <exclusions>
-        <!-- No lb:// routes — exclude load balancer to prevent WeightCalculatorWebFilter crash -->
+        <!-- Exclude load balancer — all routes use direct http://service:port K8s DNS.
+             Without this exclusion, WeightCalculatorWebFilter finds a ReactiveLoadBalancerClient
+             via ifAvailable() and crashes at finishRefresh() with a reactor blockLast error. -->
         <exclusion>
           <groupId>org.springframework.cloud</groupId>
           <artifactId>spring-cloud-loadbalancer</artifactId>
@@ -45,20 +44,21 @@
     <dependency>
       <groupId>io.jsonwebtoken</groupId>
       <artifactId>jjwt-api</artifactId>
-      <version>${jjwt.version}</version>
+      <version>0.12.3</version>
     </dependency>
     <dependency>
       <groupId>io.jsonwebtoken</groupId>
       <artifactId>jjwt-impl</artifactId>
-      <version>${jjwt.version}</version>
+      <version>0.12.3</version>
       <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>io.jsonwebtoken</groupId>
       <artifactId>jjwt-jackson</artifactId>
-      <version>${jjwt.version}</version>
+      <version>0.12.3</version>
       <scope>runtime</scope>
     </dependency>
+    <!-- Test support for reactive Spring Cloud Gateway context -->
     <dependency>
       <groupId>io.projectreactor</groupId>
       <artifactId>reactor-test</artifactId>
