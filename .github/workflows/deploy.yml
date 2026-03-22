@@ -431,7 +431,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ env.AWS_REGION }}
 
-      - name: ☸️ Update kubeconfig
+      - name: ☸️ Update kubeconfig for Staging EKS
         run: |
           CLUSTER="${{ needs.detect-changes.outputs.eks_cluster }}"
           aws eks update-kubeconfig --name "$CLUSTER" --region ${{ env.AWS_REGION }}
@@ -439,69 +439,58 @@ jobs:
 
       - name: 📦 Ensure External Secrets Operator is installed
         run: |
+          # Install ESO if CRDs are not present — idempotent, safe to run every deploy
           if ! kubectl get crd externalsecrets.external-secrets.io &>/dev/null; then
-            echo "📦 Installing External Secrets Operator..."
+            echo "📦 ESO CRDs not found — installing via Helm..."
             helm repo add external-secrets https://charts.external-secrets.io
             helm repo update
-            helm upgrade --install external-secrets \
-              external-secrets/external-secrets \
-              -n external-secrets --create-namespace \
-              --set installCRDs=true --wait --timeout=120s
-            echo "✅ ESO installed"
+            helm upgrade --install external-secrets               external-secrets/external-secrets               -n external-secrets --create-namespace               --set installCRDs=true               --wait --timeout=120s
+            echo "✅ External Secrets Operator installed"
           else
-            echo "✅ ESO already installed"
+            echo "✅ External Secrets Operator already installed"
           fi
 
       - name: 🔧 Substitute manifest placeholders
         env:
-          ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-          CERT_ARN:   ${{ secrets.STAGING_ACM_CERT_ARN }}
+          SHORT_SHA:      ${{ github.sha }}
+          ACCOUNT_ID:     ${{ secrets.AWS_ACCOUNT_ID }}
+          REDIS_ENDPOINT: ${{ secrets.STAGING_REDIS_ENDPOINT }}
+          CERT_ARN:       ${{ secrets.STAGING_ACM_CERT_ARN }}
         run: |
+          # Use :latest — build job pushes both a SHA tag AND :latest.
+          # Using :latest avoids branch-name/tag-prefix mismatches.
+          echo "📦 Deploying image tag: latest"
+
           find k8s/ -name "*.yaml" -exec sed -i \
             -e "s|ACCOUNT_ID|${ACCOUNT_ID}|g" \
+            -e "s|REDIS_ENDPOINT|${REDIS_ENDPOINT}|g" \
             -e "s|CERT_ARN|${CERT_ARN}|g" \
             -e "s|qwikbrew/ENV/|qwikbrew/staging/|g" \
             {} \;
-          echo "✅ Placeholders substituted"
 
-      - name: 🔑 Ensure K8s secrets exist
+      - name: 🔑 Ensure required K8s secrets exist
         run: |
+          # Deployments reference these secrets via envFrom/secretKeyRef.
+          # If ExternalSecrets hasn't synced them yet, pods crash with
+          # "secret not found". We create placeholder secrets so pods can
+          # start — real values arrive once ESO syncs from Secrets Manager.
           kubectl create namespace qwikbrew --dry-run=client -o yaml | kubectl apply -f -
 
           if ! kubectl get secret aiven-credentials -n qwikbrew &>/dev/null; then
-            kubectl create secret generic aiven-credentials -n qwikbrew \
-              --from-literal=USERDB_JDBC_URL="jdbc:postgresql://placeholder:5432/userdb" \
-              --from-literal=MENUDB_JDBC_URL="jdbc:postgresql://placeholder:5432/menudb" \
-              --from-literal=ORDERDB_JDBC_URL="jdbc:postgresql://placeholder:5432/orderdb" \
-              --from-literal=PAYMENTDB_JDBC_URL="jdbc:postgresql://placeholder:5432/paymentdb" \
-              --from-literal=NOTIFICATIONDB_JDBC_URL="jdbc:postgresql://placeholder:5432/notificationdb" \
-              --from-literal=DB_USERNAME="placeholder" \
-              --from-literal=DB_PASSWORD="placeholder" \
-              --from-literal=KAFKA_BOOTSTRAP_SERVERS="localhost:9092" \
-              --from-literal=KAFKA_SECURITY_PROTOCOL="PLAINTEXT" \
-              --from-literal=KAFKA_SASL_MECHANISM="PLAIN" \
-              --from-literal=KAFKA_SASL_USERNAME="placeholder" \
-              --from-literal=KAFKA_SASL_PASSWORD="placeholder"
-            echo "✅ aiven-credentials created"
+            echo "⚠️  aiven-credentials secret missing — creating placeholder"
+            kubectl create secret generic aiven-credentials               -n qwikbrew               --from-literal=USERDB_JDBC_URL="jdbc:postgresql://placeholder:5432/userdb"               --from-literal=MENUDB_JDBC_URL="jdbc:postgresql://placeholder:5432/menudb"               --from-literal=ORDERDB_JDBC_URL="jdbc:postgresql://placeholder:5432/orderdb"               --from-literal=PAYMENTDB_JDBC_URL="jdbc:postgresql://placeholder:5432/paymentdb"               --from-literal=NOTIFICATIONDB_JDBC_URL="jdbc:postgresql://placeholder:5432/notificationdb"               --from-literal=DB_USERNAME="placeholder"               --from-literal=DB_PASSWORD="placeholder"               --from-literal=KAFKA_BOOTSTRAP_SERVERS="localhost:9092"               --from-literal=KAFKA_SECURITY_PROTOCOL="PLAINTEXT"               --from-literal=KAFKA_SASL_MECHANISM="PLAIN"               --from-literal=KAFKA_SASL_USERNAME="placeholder"               --from-literal=KAFKA_SASL_PASSWORD="placeholder"
+            echo "✅ Placeholder aiven-credentials created"
+          else
+            echo "✅ aiven-credentials already exists"
           fi
 
           if ! kubectl get secret app-secrets -n qwikbrew &>/dev/null; then
-            kubectl create secret generic app-secrets -n qwikbrew \
-              --from-literal=JWT_SECRET="placeholder-jwt-secret-min-64-chars-long-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" \
-              --from-literal=PAYMENT_GATEWAY_KEY_ID="placeholder" \
-              --from-literal=PAYMENT_GATEWAY_SECRET="placeholder" \
-              --from-literal=FCM_SERVER_KEY="placeholder" \
-              --from-literal=SMTP_USER="placeholder" \
-              --from-literal=SMTP_PASS="placeholder"
-            echo "✅ app-secrets created"
+            echo "⚠️  app-secrets secret missing — creating placeholder"
+            kubectl create secret generic app-secrets               -n qwikbrew               --from-literal=JWT_SECRET="placeholder-jwt-secret-min-64-chars-long-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"               --from-literal=PAYMENT_GATEWAY_KEY_ID="placeholder"               --from-literal=PAYMENT_GATEWAY_SECRET="placeholder"               --from-literal=FCM_SERVER_KEY="placeholder"               --from-literal=SMTP_USER="placeholder"               --from-literal=SMTP_PASS="placeholder"
+            echo "✅ Placeholder app-secrets created"
+          else
+            echo "✅ app-secrets already exists"
           fi
-
-      - name: 🐳 Build + push Frontend image
-        run: |
-          echo "🏗️  Building QwikCafe React UI..."
-          docker build -t $ECR_REGISTRY/qwikbrew/frontend:latest ./frontend
-          docker push $ECR_REGISTRY/qwikbrew/frontend:latest
-          echo "✅ Frontend image pushed"
 
       - name: 🚀 Apply Kubernetes manifests
         run: |
@@ -511,7 +500,7 @@ jobs:
           kubectl apply -f k8s/03-ingress.yaml -n qwikbrew || true
           echo "✅ Manifests applied"
 
-      - name: 🌐 Print external URL
+      - name: 🌐 Get External URL
         run: |
           echo "⏳ Waiting for ALB ingress hostname (up to 5 min)..."
           for i in $(seq 1 30); do
@@ -541,14 +530,20 @@ jobs:
       - name: ⏳ Wait for deployments + collect crash logs
         run: |
           SERVICES='${{ needs.detect-changes.outputs.services_json }}'
+
           echo "$SERVICES" | jq -r ".[]" | while read SVC; do
-            echo "⏳ $SVC..."
-            kubectl rollout status deployment/$SVC -n qwikbrew --timeout=600s               && echo "✅ $SVC is live"               || echo "⚠️  $SVC rollout timed out"
+            echo "⏳ Waiting for $SVC (timeout 600s)..."
+            kubectl rollout status deployment/$SVC -n qwikbrew --timeout=600s \
+              && echo "✅ $SVC is live" \
+              || echo "⚠️  $SVC rollout did not complete — check logs below"
           done
 
           echo ""
+          echo "── Final pod status ─────────────────────────────────────"
           kubectl get pods -n qwikbrew -o wide
 
+          echo ""
+          echo "── Crash logs (CrashLoopBackOff pods) ──────────────────"
           for POD in $(kubectl get pods -n qwikbrew -o jsonpath="{.items[*].metadata.name}" 2>/dev/null); do
             REASON=$(kubectl get pod/$POD -n qwikbrew \
               -o jsonpath="{.status.containerStatuses[0].state.waiting.reason}" 2>/dev/null)
@@ -557,11 +552,11 @@ jobs:
               echo "=== $POD ($REASON) ==="
               kubectl logs $POD -n qwikbrew --tail=40 --previous 2>/dev/null \
                 || kubectl logs $POD -n qwikbrew --tail=40 2>/dev/null \
-                || echo "(no logs)"
+                || echo "(no logs available)"
             fi
           done
 
-      - name: 🌐 Print external URL + full diagnostics
+      - name: 🌐 Print external URL
         run: |
           ALB=$(kubectl get ingress qwikbrew-ingress -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
 
@@ -647,7 +642,12 @@ jobs:
             else
               echo "Application is healthy and responding"
             fi
-          fi
+            echo "  attempt $i/18 — waiting 10s..."
+            sleep 10
+          done
+          echo "⚠️  LoadBalancer hostname not yet assigned — check AWS console"
+          echo "    Run: kubectl get svc api-gateway -n qwikbrew"
+          kubectl get svc -n qwikbrew
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # JOB 6 — DEPLOY TO PRODUCTION
