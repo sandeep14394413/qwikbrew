@@ -447,6 +447,9 @@ jobs:
       id-token: write
       contents: read
 
+    env:
+      STAGING_PUBLIC_URL: ${{ secrets.STAGING_ACM_CERT_ARN != '' && 'https://staging-api.qwikbrew.in' || 'http://staging-api.qwikbrew.in' }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -490,6 +493,14 @@ jobs:
             -e "s|API_HOST|${API_HOST}|g" \
             -e "s|qwikbrew/ENV/|qwikbrew/staging/|g" \
             {} \;
+          if [ -z "$CERT_ARN" ]; then
+            sed -i \
+              -e '/alb\.ingress\.kubernetes\.io\/certificate-arn/d' \
+              -e '/alb\.ingress\.kubernetes\.io\/ssl-redirect/d' \
+              -e 's#\[\{"HTTP":80,"HTTPS":443\}\]#[{"HTTP":80}]#' \
+              k8s/03-ingress.yaml
+            echo "⚠️ No STAGING_ACM_CERT_ARN configured — deploying staging ingress over HTTP only"
+          fi
           echo "✅ Placeholders substituted"
 
       - name: 🔑 Ensure K8s secrets exist
@@ -552,15 +563,15 @@ jobs:
               echo ""
               echo "==========================================="
               echo "  QWIKBREW IS LIVE"
-              echo "  https://staging-api.qwikbrew.in"
+              echo "  ${STAGING_PUBLIC_URL}"
               echo "==========================================="
-              echo "  GET  https://staging-api.qwikbrew.in/actuator/health"
-              echo "  GET  https://staging-api.qwikbrew.in/api/v1/menu"
-              echo "  POST https://staging-api.qwikbrew.in/api/v1/users/register"
-              echo "  POST https://staging-api.qwikbrew.in/api/v1/users/login"
+              echo "  GET  ${STAGING_PUBLIC_URL}/actuator/health"
+              echo "  GET  ${STAGING_PUBLIC_URL}/api/v1/menu"
+              echo "  POST ${STAGING_PUBLIC_URL}/api/v1/users/register"
+              echo "  POST ${STAGING_PUBLIC_URL}/api/v1/users/login"
               echo "==========================================="
               echo "## QwikBrew Live URL" >> $GITHUB_STEP_SUMMARY
-              echo "https://staging-api.qwikbrew.in" >> $GITHUB_STEP_SUMMARY
+              echo "${STAGING_PUBLIC_URL}" >> $GITHUB_STEP_SUMMARY
               break
             fi
             echo "  [$i/30] waiting... current: $(kubectl get ingress qwikbrew-ingress -n qwikbrew --no-headers 2>/dev/null | awk '{print $4}')"
@@ -615,21 +626,21 @@ jobs:
             echo ""
             echo "==========================================="
             echo "  QWIKBREW IS LIVE"
-            echo "  https://staging-api.qwikbrew.in"
+            echo "  ${STAGING_PUBLIC_URL}"
             echo "==========================================="
-            echo "  GET  https://staging-api.qwikbrew.in/actuator/health"
-            echo "  GET  https://staging-api.qwikbrew.in/api/v1/menu"
-            echo "  POST https://staging-api.qwikbrew.in/api/v1/users/register"
-            echo "  POST https://staging-api.qwikbrew.in/api/v1/users/login"
-            echo "  POST https://staging-api.qwikbrew.in/api/v1/orders"
+            echo "  GET  ${STAGING_PUBLIC_URL}/actuator/health"
+            echo "  GET  ${STAGING_PUBLIC_URL}/api/v1/menu"
+            echo "  POST ${STAGING_PUBLIC_URL}/api/v1/users/register"
+            echo "  POST ${STAGING_PUBLIC_URL}/api/v1/users/login"
+            echo "  POST ${STAGING_PUBLIC_URL}/api/v1/orders"
             echo "==========================================="
             echo "## QwikBrew Live URL" >> $GITHUB_STEP_SUMMARY
-            echo "**[https://staging-api.qwikbrew.in](https://staging-api.qwikbrew.in)**" >> $GITHUB_STEP_SUMMARY
+            echo "**[${STAGING_PUBLIC_URL}](${STAGING_PUBLIC_URL})**" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "| Endpoint | URL |" >> $GITHUB_STEP_SUMMARY
             echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-            echo "| Health     | [/actuator/health](https://staging-api.qwikbrew.in/actuator/health) |" >> $GITHUB_STEP_SUMMARY
-            echo "| Menu       | [/api/v1/menu](https://staging-api.qwikbrew.in/api/v1/menu) |" >> $GITHUB_STEP_SUMMARY
+            echo "| Health     | [/actuator/health](${STAGING_PUBLIC_URL}/actuator/health) |" >> $GITHUB_STEP_SUMMARY
+            echo "| Menu       | [/api/v1/menu](${STAGING_PUBLIC_URL}/api/v1/menu) |" >> $GITHUB_STEP_SUMMARY
             echo "| Register   | /api/v1/users/register |" >> $GITHUB_STEP_SUMMARY
             echo "| Login      | /api/v1/users/login |" >> $GITHUB_STEP_SUMMARY
           else
@@ -652,7 +663,7 @@ jobs:
           echo "━━━━ HEALTH CHECK ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           if [ -n "$LB" ]; then
             sleep 15
-            HTTP=$(curl -s -o /tmp/health.json -w "%{http_code}"               "https://staging-api.qwikbrew.in/actuator/health" --max-time 15 || echo "000")
+            HTTP=$(curl -s -o /tmp/health.json -w "%{http_code}"               "${STAGING_PUBLIC_URL}/actuator/health" --max-time 15 || echo "000")
             echo "HTTP $HTTP"
             cat /tmp/health.json 2>/dev/null || true
 
