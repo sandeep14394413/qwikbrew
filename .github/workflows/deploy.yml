@@ -415,7 +415,7 @@ jobs:
     if: github.event_name == 'push'
     environment:
       name: staging
-      url:  https://staging.qwikbrew.in
+      url:  https://staging-api.qwikbrew.in
 
     permissions:
       id-token: write
@@ -668,7 +668,7 @@ jobs:
     if: false   # disabled — no dedicated prod cluster yet; re-enable when qwikbrew-prod is provisioned
     environment:
       name: production          # ← pauses here — requires your manual approval
-      url:  https://qwikbrew.in
+      url:  https://api.qwikbrew.in
 
     permissions:
       id-token: write

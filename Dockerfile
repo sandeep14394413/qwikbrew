@@ -11,7 +11,6 @@ WORKDIR /workspace
 # lists every module in <modules>. If any module pom is missing when Maven
 # resolves the reactor, the build fails with "Child module does not exist".
 # These layers only invalidate when a pom.xml changes, so caching still works.
-COPY .mvn                             .mvn
 COPY pom.xml                           pom.xml
 COPY service-discovery/pom.xml         service-discovery/pom.xml
 COPY api-gateway/pom.xml               api-gateway/pom.xml

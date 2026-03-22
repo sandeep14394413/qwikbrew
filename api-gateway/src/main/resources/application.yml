@@ -9,14 +9,6 @@ spring:
       discovery:
         locator:
           enabled: false  # no auto-routing from service registry
-      predicate:
-        weight:
-          enabled: false  # no Weight routes in this app; disable the WeightCalculatorWebFilter path
-      server:
-        webflux:
-          predicate:
-            weight:
-              enabled: false  # keep the same behavior for newer SCG property namespaces
       routes:
         # Frontend UI — serve React SPA for all non-API requests
         - id: frontend
@@ -132,14 +124,6 @@ spring:
       on-profile: test
   cloud:
     gateway:
-      predicate:
-        weight:
-          enabled: false
-      server:
-        webflux:
-          predicate:
-            weight:
-              enabled: false
       routes: []   # no routes needed for context load test
     discovery:
       enabled: false
