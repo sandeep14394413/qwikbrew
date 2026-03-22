@@ -23,27 +23,6 @@ spec:
             pathType: Prefix
             backend:
               service: { name: api-gateway, port: { number: 80 } }
-    - host: staging.qwikbrew.in
-      http:
-        paths:
-          - path:     /
-            pathType: Prefix
-            backend:
-              service: { name: api-gateway, port: { number: 80 } }
-    - host: qwikbrew.in
-      http:
-        paths:
-          - path:     /
-            pathType: Prefix
-            backend:
-              service: { name: api-gateway, port: { number: 80 } }
-    - host: www.qwikbrew.in
-      http:
-        paths:
-          - path:     /
-            pathType: Prefix
-            backend:
-              service: { name: api-gateway, port: { number: 80 } }
     - host: api.qwikbrew.in
       http:
         paths:
