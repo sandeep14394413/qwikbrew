@@ -7,6 +7,10 @@ FROM maven:3.9.6-eclipse-temurin-17 AS builder
 ARG SERVICE
 WORKDIR /workspace
 
+# Copy repo-local Maven settings so every containerized mvn invocation uses
+# the project-scoped configuration instead of any image/user-level defaults.
+COPY .mvn .mvn
+
 # Copy ALL module pom.xml files first — Maven reads the parent pom.xml which
 # lists every module in <modules>. If any module pom is missing when Maven
 # resolves the reactor, the build fails with "Child module does not exist".
