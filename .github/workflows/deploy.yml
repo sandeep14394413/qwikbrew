@@ -496,6 +496,13 @@ jobs:
             echo "✅ app-secrets created"
           fi
 
+      - name: 🐳 Build + push Frontend image
+        run: |
+          echo "🏗️  Building QwikCafe React UI..."
+          docker build -t $ECR_REGISTRY/qwikbrew/frontend:latest ./frontend
+          docker push $ECR_REGISTRY/qwikbrew/frontend:latest
+          echo "✅ Frontend image pushed"
+
       - name: 🚀 Apply Kubernetes manifests
         run: |
           kubectl apply -f k8s/00-namespace-config.yaml -n qwikbrew || true
