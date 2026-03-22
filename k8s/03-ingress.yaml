@@ -16,6 +16,13 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
+    - host: staging-api.qwikbrew.in
+      http:
+        paths:
+          - path:     /
+            pathType: Prefix
+            backend:
+              service: { name: api-gateway, port: { number: 80 } }
     - host: api.qwikbrew.in
       http:
         paths:
