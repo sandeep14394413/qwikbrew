@@ -74,6 +74,14 @@ spring:
           filters:
             - JwtAuth
 
+        # Frontend UI — serve the SPA for all remaining non-API requests
+        - id: frontend
+          uri: http://frontend:80
+          predicates:
+            - Path=/**
+          filters:
+            - StripPrefix=0
+
       globalcors:
         cors-configurations:
           "[/**]":
