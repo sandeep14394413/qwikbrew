@@ -415,7 +415,7 @@ jobs:
     if: github.event_name == 'push'
     environment:
       name: staging
-      url:  https://staging-api.qwikbrew.in
+      url:  http://staging-api.qwikbrew.in
 
     permissions:
       id-token: write
@@ -508,38 +508,9 @@ jobs:
           kubectl apply -f k8s/00-namespace-config.yaml -n qwikbrew || true
           kubectl apply -f k8s/01-deployments.yaml -n qwikbrew
           kubectl apply -f k8s/02-hpa-pdb.yaml -n qwikbrew
-          kubectl apply -f k8s/03-ingress.yaml -n qwikbrew || true
+          kubectl delete ingress qwikbrew-ingress qwikbrew-api-ingress qwikbrew-frontend-ingress -n qwikbrew --ignore-not-found=true
+          kubectl apply -f k8s/03-ingress.yaml -n qwikbrew
           echo "✅ Manifests applied"
-
-      - name: 🌐 Print external URL
-        run: |
-          echo "⏳ Waiting for LoadBalancer hostname (up to 5 min)..."
-          for i in $(seq 1 30); do
-            LB=$(kubectl get svc api-gateway -n qwikbrew \
-              -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
-            if [ -n "$LB" ]; then
-              echo ""
-              echo "==========================================="
-              echo "  QWIKBREW IS LIVE"
-              echo "  http://${LB}"
-              echo "==========================================="
-              echo "  GET  http://${LB}/actuator/health"
-              echo "  GET  http://${LB}/api/v1/menu"
-              echo "  POST http://${LB}/api/v1/users/register"
-              echo "  POST http://${LB}/api/v1/users/login"
-              echo "==========================================="
-              echo "## QwikBrew Live URL" >> $GITHUB_STEP_SUMMARY
-              echo "http://${LB}" >> $GITHUB_STEP_SUMMARY
-              break
-            fi
-            echo "  [$i/30] waiting... current: $(kubectl get svc api-gateway -n qwikbrew --no-headers 2>/dev/null | awk '{print $4}')"
-            sleep 10
-          done
-          if [ -z "$LB" ]; then
-            echo "LB still pending — run bootstrap to apply Terraform ELB permissions"
-            kubectl describe svc api-gateway -n qwikbrew | tail -20
-          fi
-
 
       - name: ⏳ Wait for deployments + collect crash logs
         run: |
@@ -565,95 +536,98 @@ jobs:
           done
 
       - name: 🌐 Print external URL + full diagnostics
+        shell: bash
         run: |
-          LB=$(kubectl get svc api-gateway -n qwikbrew             -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+          set -u
 
-          # ── Wait for LB hostname if not yet assigned ──────────────────────
-          if [ -z "$LB" ]; then
-            echo "⏳ Waiting for LoadBalancer hostname (up to 5 min)..."
+          get_ingress_hostname() {
+            kubectl get ingress qwikbrew-api-ingress -n qwikbrew \
+              -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true
+          }
+
+          ALB="$(get_ingress_hostname)"
+          if [[ -z "$ALB" ]]; then
+            echo "⏳ Waiting for ALB ingress hostname (up to 5 min)..."
             for i in $(seq 1 30); do
-              LB=$(kubectl get svc api-gateway -n qwikbrew                 -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
-              [ -n "$LB" ] && break
+              ALB="$(get_ingress_hostname)"
+              if [[ -n "$ALB" ]]; then
+                break
+              fi
               echo "  [$i/30] pending..."
               sleep 10
             done
           fi
 
-          # ── Print live URL ─────────────────────────────────────────────────
-          if [ -n "$LB" ]; then
-            echo ""
+          if [[ -n "$ALB" ]]; then
+            echo
             echo "==========================================="
             echo "  QWIKBREW IS LIVE"
-            echo "  http://${LB}"
+            echo "  http://staging.qwikbrew.in"
+            echo "  http://staging-api.qwikbrew.in"
+            echo "  http://${ALB}/"
             echo "==========================================="
-            echo "  GET  http://${LB}/actuator/health"
-            echo "  GET  http://${LB}/api/v1/menu"
-            echo "  POST http://${LB}/api/v1/users/register"
-            echo "  POST http://${LB}/api/v1/users/login"
-            echo "  POST http://${LB}/api/v1/orders"
+            echo "  ALB hostname: ${ALB}"
             echo "==========================================="
-            echo "## QwikBrew Live URL" >> $GITHUB_STEP_SUMMARY
-            echo "**[http://${LB}](http://${LB})**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "| Endpoint | URL |" >> $GITHUB_STEP_SUMMARY
-            echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-            echo "| Health     | [/actuator/health](http://${LB}/actuator/health) |" >> $GITHUB_STEP_SUMMARY
-            echo "| Menu       | [/api/v1/menu](http://${LB}/api/v1/menu) |" >> $GITHUB_STEP_SUMMARY
-            echo "| Register   | /api/v1/users/register |" >> $GITHUB_STEP_SUMMARY
-            echo "| Login      | /api/v1/users/login |" >> $GITHUB_STEP_SUMMARY
+            {
+              echo "## QwikBrew Live URL"
+              echo "**[http://staging.qwikbrew.in](http://staging.qwikbrew.in)**"
+              echo "**[http://staging-api.qwikbrew.in](http://staging-api.qwikbrew.in)**"
+              echo "**Fallback ALB URL:** http://${ALB}/"
+              echo
+              echo "| Endpoint | URL |"
+              echo "|---|---|"
+              echo "| Health | http://${ALB}/actuator/health |"
+              echo "| Menu | http://${ALB}/api/v1/menu |"
+              echo "| Register | http://${ALB}/api/v1/users/register |"
+              echo "| Login | http://${ALB}/api/v1/users/login |"
+            } >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "WARNING: LB hostname not assigned after 5 min"
+            echo "WARNING: Ingress hostname not assigned after 5 min"
             echo "Check AWS Console -> EC2 -> Load Balancers"
           fi
 
-          # ── Full diagnostics (always runs) ────────────────────────────────
-          echo ""
+          echo
           echo "━━━━ POD STATUS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           kubectl get pods -n qwikbrew -o wide
 
-          echo ""
+          echo
           echo "━━━━ SERVICE + ENDPOINTS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           kubectl get svc -n qwikbrew
-          echo ""
+          echo
           kubectl get endpoints -n qwikbrew
+          echo
+          kubectl get ingress -n qwikbrew
 
-          echo ""
+          echo
           echo "━━━━ HEALTH CHECK ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          if [ -n "$LB" ]; then
+          if [[ -n "$ALB" ]]; then
             sleep 15
-            HTTP=$(curl -s -o /tmp/health.json -w "%{http_code}"               "http://${LB}/actuator/health" --max-time 15 || echo "000")
+            HTTP=$(curl -sS -o /tmp/health.json -w '%{http_code}' "http://${ALB}/actuator/health" --max-time 15 || echo '000')
             echo "HTTP $HTTP"
             cat /tmp/health.json 2>/dev/null || true
 
-            if [ "$HTTP" != "200" ]; then
-              echo ""
-              echo "━━━━ LB NOT HEALTHY — DIAGNOSING ━━━━━━━━━━━━━━━━━━━━━━━"
-
-              echo ""
+            if [[ "$HTTP" != "200" ]]; then
+              echo
+              echo "━━━━ INGRESS NOT HEALTHY — DIAGNOSING ━━━━━━━━━━━━━━━━━━━"
+              echo
               echo ">> api-gateway pod readiness:"
               kubectl get pods -n qwikbrew -l app=api-gateway -o wide
-
-              echo ""
+              echo
               echo ">> api-gateway pod describe (events):"
-              kubectl describe pods -n qwikbrew -l app=api-gateway                 | grep -A20 "Events:" | head -25
-
-              echo ""
+              kubectl describe pods -n qwikbrew -l app=api-gateway | grep -A20 'Events:' | head -25
+              echo
               echo ">> api-gateway logs (last 60 lines):"
-              GW_POD=$(kubectl get pods -n qwikbrew -l app=api-gateway                 -o jsonpath="{.items[0].metadata.name}" 2>/dev/null || echo "")
-              if [ -n "$GW_POD" ]; then
-                kubectl logs "$GW_POD" -n qwikbrew --tail=60 2>/dev/null ||                 kubectl logs "$GW_POD" -n qwikbrew --tail=60 --previous 2>/dev/null ||                 echo "(no logs)"
+              GW_POD=$(kubectl get pods -n qwikbrew -l app=api-gateway -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true)
+              if [[ -n "$GW_POD" ]]; then
+                kubectl logs "$GW_POD" -n qwikbrew --tail=60 2>/dev/null \
+                  || kubectl logs "$GW_POD" -n qwikbrew --tail=60 --previous 2>/dev/null \
+                  || echo '(no logs)'
               fi
-
-              echo ""
-              echo ">> LB describe (check target health):"
-              LB_NAME=$(echo "$LB" | cut -d'-' -f1-8 | sed 's/\..*//')
-              aws elb describe-instance-health                 --load-balancer-name "$LB_NAME"                 --region ${{ env.AWS_REGION }} 2>/dev/null || true
-
-              echo ""
-              echo ">> Node security groups:"
-              kubectl get nodes -o jsonpath="{.items[0].spec.providerID}" |                 sed 's|.*/||' |                 xargs -I{} aws ec2 describe-instances                   --instance-ids {}                   --query "Reservations[0].Instances[0].SecurityGroups"                   --output table                   --region ${{ env.AWS_REGION }} 2>/dev/null || true
+              echo
+              echo ">> ingress describe:"
+              kubectl describe ingress qwikbrew-api-ingress -n qwikbrew
             else
-              echo "Application is healthy and responding"
+              echo 'Application is healthy and responding'
             fi
           fi
 

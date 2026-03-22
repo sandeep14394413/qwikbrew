@@ -68,20 +68,14 @@ spec:
           readinessProbe: { httpGet: { path: /actuator/health/liveness, port: 8080 }, initialDelaySeconds: 60 }
           livenessProbe:  { httpGet: { path: /actuator/health/liveness,  port: 8080 }, initialDelaySeconds: 120 }
 ---
-# api-gateway — internet-facing Classic Load Balancer.
-# NLB sits in PUBLIC subnets, routes to private node IPs — nodes do NOT need public IPs.
-# The subnet tags (kubernetes.io/role/elb=1) tell AWS which public subnets to use.
+# api-gateway — exposed publicly through the ALB Ingress in k8s/03-ingress.yaml.
 apiVersion: v1
 kind: Service
 metadata:
   name: api-gateway
   namespace: qwikbrew
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "classic"
-    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
-    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
 spec:
-  type: LoadBalancer
+  type: ClusterIP
   selector: { app: api-gateway }
   ports:
     - name: http
