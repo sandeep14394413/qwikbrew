@@ -3,7 +3,6 @@ package com.qwikbrew.orderservice.service;
 import com.qwikbrew.orderservice.dto.*;
 import com.qwikbrew.orderservice.event.OrderEventPublisher;
 import com.qwikbrew.orderservice.model.Order;
-import com.qwikbrew.orderservice.model.OrderItem;
 import com.qwikbrew.orderservice.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,21 +34,9 @@ public class OrderService {
     private final AtomicInteger sequence = new AtomicInteger(1);
 
     public OrderResponse placeOrder(PlaceOrderRequest req) {
-        List<OrderItem> orderItems = req.getItems().stream()
-            .map(i -> OrderItem.builder()
-                .menuItemId(i.getMenuItemId())
-                .itemName(i.getItemName())
-                .unitPrice(i.getUnitPrice())
-                .quantity(i.getQuantity())
-                .lineTotal(i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
-                .selectedAddOns(i.getSelectedAddOns())
-                .customization(i.getCustomization())
-                .build())
-            .toList();
-
         // Build order items and subtotal
-        BigDecimal subtotal = orderItems.stream()
-            .map(OrderItem::getLineTotal)
+        BigDecimal subtotal = req.getItems().stream()
+            .map(i -> i.getUnitPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal gst      = subtotal.multiply(GST_RATE).setScale(2, RoundingMode.HALF_UP);
@@ -69,9 +56,6 @@ public class OrderService {
             .specialInstructions(req.getSpecialInstructions())
             .brewPointsRedeemed(req.getBrewPointsToRedeem() != null ? req.getBrewPointsToRedeem() : 0)
             .build();
-
-        orderItems.forEach(item -> item.setOrder(order));
-        order.setItems(orderItems);
 
         order = orderRepository.save(order);
 
