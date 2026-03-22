@@ -227,7 +227,6 @@ jobs:
     name: 🐳 Build & Push — ${{ matrix.service }}
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -289,7 +288,7 @@ jobs:
           file:       Dockerfile
           build-args: |
             SERVICE=${{ matrix.service }}
-            BUILD_DATE=${{ github.event.head_commit.timestamp }}
+            BUILD_DATE=${{ github.event.pull_request.updated_at || github.event.head_commit.timestamp || github.event.repository.updated_at }}
             VCS_REF=${{ github.sha }}
           push:       true
           tags: |
