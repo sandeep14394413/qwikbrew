@@ -43,14 +43,16 @@ management:
     livenessstate:
       enabled: true
     db:
-      enabled: false      # DB health DOWN won't affect liveness probe
+      enabled: false
     kafka:
-      enabled: false      # Kafka health DOWN won't affect liveness probe
+      enabled: false
   endpoint:
     health:
       show-details: always
       probes:
         enabled: true
+    heapdump:
+      access: read-only  # Spring Boot 3.5 defaults heapdump to NONE — re-enable
 
 ---
 spring:
