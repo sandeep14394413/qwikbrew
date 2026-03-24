@@ -34,7 +34,6 @@ env:
   TF_VERSION: 1.7.5
   TF_DIR: ./terraform
   EKS_VERSION: "1.34"
-  EKS_VERSION: "1.33"
 
 jobs:
   setup-aws-prerequisites:
