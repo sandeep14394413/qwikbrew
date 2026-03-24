@@ -1,4 +1,4 @@
-name: 🚀 QwikBrew — CI/CD Pipeline (FAANG Level)
+name: 🚀 QwikBrew — CI/CD Pipeline
 
 on:
   push:
@@ -16,91 +16,239 @@ env:
   ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
   JAVA_VERSION: "17"
 
-# ─────────────────────────────────────────────
-# JOB 1 — DETECT CHANGES
-# ─────────────────────────────────────────────
 jobs:
+
+# ─────────────────────────────
+# DETECT CHANGES
+# ─────────────────────────────
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
       services: ${{ steps.matrix.outputs.services }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - id: filter
+      - name: Detect changed services
+        id: filter
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            api-gateway: ["api-gateway/**"]
-            user-service: ["user-service/**"]
-            menu-service: ["menu-service/**"]
-            order-service: ["order-service/**"]
-            payment-service: ["payment-service/**"]
-            notification-service: ["notification-service/**"]
+            api-gateway:
+              - "api-gateway/**"
+            user-service:
+              - "user-service/**"
+            menu-service:
+              - "menu-service/**"
+            order-service:
+              - "order-service/**"
+            payment-service:
+              - "payment-service/**"
+            notification-service:
+              - "notification-service/**"
 
-      - id: matrix
+      - name: Build service matrix
+        id: matrix
         run: |
           SERVICES=()
 
-          for S in api-gateway user-service menu-service order-service payment-service notification-service; do
-            if [[ "${{ steps.filter.outputs[S] }}" == "true" ]]; then
-              SERVICES+=("$S")
-            fi
-          done
+          if [[ "${{ steps.filter.outputs.api-gateway }}" == "true" ]]; then SERVICES+=("api-gateway"); fi
+          if [[ "${{ steps.filter.outputs.user-service }}" == "true" ]]; then SERVICES+=("user-service"); fi
+          if [[ "${{ steps.filter.outputs.menu-service }}" == "true" ]]; then SERVICES+=("menu-service"); fi
+          if [[ "${{ steps.filter.outputs.order-service }}" == "true" ]]; then SERVICES+=("order-service"); fi
+          if [[ "${{ steps.filter.outputs.payment-service }}" == "true" ]]; then SERVICES+=("payment-service"); fi
+          if [[ "${{ steps.filter.outputs.notification-service }}" == "true" ]]; then SERVICES+=("notification-service"); fi
 
           if [ ${#SERVICES[@]} -eq 0 ]; then
-            SERVICES=(api-gateway user-service menu-service order-service payment-service notification-service)
+            SERVICES=("api-gateway" "user-service" "menu-service" "order-service" "payment-service" "notification-service")
           fi
 
           JSON=$(printf '%s\n' "${SERVICES[@]}" | jq -R . | jq -cs .)
           echo "services=$JSON" >> $GITHUB_OUTPUT
 
-# ─────────────────────────────────────────────
-# JOB 2 — TEST
-# ─────────────────────────────────────────────
-  test:
+# ─────────────────────────────
+# BUILD & PUSH
+# ─────────────────────────────
+  build:
     runs-on: ubuntu-latest
     needs: detect-changes
+
     strategy:
+      fail-fast: false
       matrix:
         service: ${{ fromJson(needs.detect-changes.outputs.services) }}
 
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: test
-          POSTGRES_PASSWORD: test
-          POSTGRES_DB: testdb
-        ports: ["5432:5432"]
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
         with:
-          java-version: 17
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
           cache: maven
 
-      - run: mvn install -N -DskipTests
+      - name: Build JAR
+        run: |
+          mvn install -N -DskipTests
+          mvn package -pl ${{ matrix.service }} -DskipTests
 
-      - run: |
-          mvn test -pl ${{ matrix.service }} \
-          -Dspring.datasource.url=jdbc:postgresql://localhost:5432/testdb \
-          -Dspring.datasource.username=test \
-          -Dspring.datasource.password=test
+      - name: Generate tag
+        id: tag
+        run: |
+          TAG="${{ github.ref_name }}-$(echo ${{ github.sha }} | cut -c1-7)"
+          IMAGE="${{ env.ECR_REGISTRY }}/qwikbrew/${{ matrix.service }}"
+          echo "image=${IMAGE}:${TAG}" >> $GITHUB_OUTPUT
 
-# ─────────────────────────────────────────────
-# JOB 3 — BUILD & PUSH
-# ─────────────────────────────────────────────
-  build:
+      - name: Configure AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          build-args: |
+            SERVICE=${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ steps.tag.outputs.image }}
+            ${{ env.ECR_REGISTRY }}/qwikbrew/${{ matrix.service }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save image ref
+        run: echo "${{ steps.tag.outputs.image }}" > image.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-${{ matrix.service }}
+          path: image.txt
+
+# ─────────────────────────────
+# TRIVY SCAN
+# ─────────────────────────────
+  trivy:
     runs-on: ubuntu-latest
-    needs: [detect-changes, test]
+    needs: [detect-changes, build]
+
     strategy:
       matrix:
         service: ${{ fromJson(needs.detect-changes.outputs.services) }}
 
     permissions:
-      id-token
+      id-token: write
+      security-events: write
+
+    steps:
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: image-${{ matrix.service }}
+
+      - id: img
+        run: echo "image=$(cat image.txt)" >> $GITHUB_OUTPUT
+
+      - name: Trivy Scan (BLOCKING)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ steps.img.outputs.image }}
+          severity: HIGH,CRITICAL
+          exit-code: 1
+
+# ─────────────────────────────
+# DEPLOY
+# ─────────────────────────────
+  deploy:
+    runs-on: ubuntu-latest
+    needs: trivy
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name qwikbrew --region ${{ env.AWS_REGION }}
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f k8s/
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/api-gateway -n qwikbrew --timeout=300s
+
+# ─────────────────────────────
+# ROLLBACK
+# ─────────────────────────────
+  rollback:
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: failure()
+
+    steps:
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - run: aws eks update-kubeconfig --name qwikbrew --region ${{ env.AWS_REGION }}
+
+      - name: Rollback services
+        run: |
+          for svc in api-gateway user-service menu-service order-service payment-service notification-service; do
+            kubectl rollout undo deployment/$svc -n qwikbrew || true
+          done
+
+# ─────────────────────────────
+# NOTIFY
+# ─────────────────────────────
+  notify:
+    runs-on: ubuntu-latest
+    needs: [deploy, rollback]
+    if: always()
+
+    steps:
+      - name: Slack Success
+        if: needs.deploy.result == 'success'
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: '{"text":"✅ Deployment Successful"}'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Slack Failure
+        if: needs.deploy.result == 'failure'
+        uses: slackapi/slack-github-action@v1.26.0
+        with:
+          payload: '{"text":"🔴 Deployment Failed — Rollback Done"}'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
