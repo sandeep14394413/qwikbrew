@@ -78,7 +78,7 @@ module "eks" {
   version = "20.8.0"
 
   cluster_name    = "qwikbrew"
-  cluster_version = "1.29"
+  cluster_version = "1.34"
 
   vpc_id                                   = module.vpc.vpc_id
   subnet_ids                               = module.vpc.private_subnets
