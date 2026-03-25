@@ -1,4 +1,4 @@
-name: 🚀 QwikBrew Ultra-Fast CI/CD
+name: 🚀 QwikBrew CI/CD (FINAL FIXED)
 
 on:
   push:
@@ -11,38 +11,31 @@ concurrency:
 env:
   AWS_REGION: ap-south-1
   ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
-  JAVA_VERSION: "17"
 
 jobs:
 
-# ─────────────────────────────────────────────
+# ─────────────────────────────
 # 🔍 Detect Services
-# ─────────────────────────────────────────────
+# ─────────────────────────────
   detect:
-    name: 🔍 Detect Services
     runs-on: ubuntu-latest
-
     outputs:
       services: ${{ steps.set.outputs.services }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set Services
-        id: set
+      - id: set
         run: |
           echo 'services=["api-gateway","user-service","menu-service","order-service","payment-service","notification-service"]' >> $GITHUB_OUTPUT
 
 
-# ─────────────────────────────────────────────
-# 🐳 Build & Push (FAST + FIXED)
-# ─────────────────────────────────────────────
+# ─────────────────────────────
+# 🐳 Build & Push
+# ─────────────────────────────
   build:
-    name: 🐳 Build & Push — ${{ matrix.service }}
     needs: detect
     runs-on: ubuntu-latest
-    timeout-minutes: 30
 
     strategy:
       fail-fast: false
@@ -50,89 +43,86 @@ jobs:
       matrix:
         service: ${{ fromJson(needs.detect.outputs.services) }}
 
-    permissions:
-      id-token: write
-      contents: read
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # ✅ Java + Maven cache (NO go-offline)
+      # ✅ Java + cache
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          java-version: ${{ env.JAVA_VERSION }}
+          java-version: "17"
           distribution: temurin
           cache: maven
 
-      # ✅ Fast parallel Maven build
+      # ✅ Build service only
       - name: Build JAR
         run: |
           mvn -T 1C -pl ${{ matrix.service }} -am clean package -DskipTests
 
-      # ✅ AWS Auth
-      - name: Configure AWS Credentials
+      # ✅ AWS login
+      - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # ✅ Stable ECR Login
-      - name: Login to Amazon ECR
+      - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v1
 
-      # ✅ Fix Buildx cache issue
-      - name: Setup Docker Buildx
+      # ✅ Fix buildx
+      - name: Setup Buildx
         uses: docker/setup-buildx-action@v3
         with:
           driver: docker-container
 
-      # ✅ Generate tag
-      - name: Generate Image Tag
+      # ✅ Tag
+      - name: Generate Tag
         id: tag
         run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "tag=main-${SHORT_SHA}" >> $GITHUB_OUTPUT
+          SHORT=$(echo $GITHUB_SHA | cut -c1-7)
+          echo "tag=main-$SHORT" >> $GITHUB_OUTPUT
 
-      # 🚀 Build & Push (FIXED PATH)
-      - name: Build and Push Docker Image
+      # 🚀 FINAL FIXED BUILD
+      - name: Build & Push
         uses: docker/build-push-action@v5
         with:
-          context: ./${{ matrix.service }}
-          file: ./${{ matrix.service }}/Dockerfile
+          context: .                    # ✅ ROOT
+          file: Dockerfile              # ✅ ROOT Dockerfile
           push: true
+
           tags: |
             ${{ env.ECR_REGISTRY }}/qwikbrew/${{ matrix.service }}:${{ steps.tag.outputs.tag }}
+
+          build-args: |
+            SERVICE=${{ matrix.service }}
 
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
-# ─────────────────────────────────────────────
-# 🚢 Deploy (Staging)
-# ─────────────────────────────────────────────
+
+# ─────────────────────────────
+# 🚢 Deploy
+# ─────────────────────────────
   deploy:
-    name: 🚢 Deploy to EKS
     needs: build
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Update kubeconfig
+      - name: Connect to EKS
         run: |
           aws eks update-kubeconfig --name qwikbrew --region $AWS_REGION
 
-      - name: Deploy to Kubernetes
+      - name: Deploy
         run: |
           kubectl apply -f k8s/
 
