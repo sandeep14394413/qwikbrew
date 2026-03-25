@@ -1,4 +1,4 @@
-name: 🚀 QwikBrew — Ultimate CI/CD (Final)
+name: 🚀 QwikBrew — Final CI/CD
 
 on:
   push:
@@ -30,8 +30,9 @@ jobs:
         run: |
           echo 'services=["api-gateway","user-service","menu-service","order-service","payment-service","notification-service"]' >> $GITHUB_OUTPUT
 
+
 # ─────────────────────────────────────────────
-# BUILD & PUSH (FAST + STABLE)
+# BUILD & PUSH (FAST + FIXED)
 # ─────────────────────────────────────────────
   build:
     runs-on: ubuntu-latest
@@ -52,7 +53,7 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: ⚡ Preload Maven dependencies (non-blocking)
+      - name: ⚡ Cache Maven dependencies
         run: |
           mvn -B -ntp dependency:go-offline || true
 
@@ -63,7 +64,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: 🔑 Login to ECR (stable)
+      - name: 🔑 Login to ECR
         run: |
           aws ecr get-login-password --region $AWS_REGION \
           | docker login --username AWS --password-stdin $ECR_REGISTRY
@@ -71,13 +72,13 @@ jobs:
       - name: 🐳 Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: 🏷️ Generate tag
+      - name: 🏷️ Generate image tag
         id: tag
         run: |
           TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-      - name: 🐳 Build & Push Image
+      - name: 🐳 Build & Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -90,8 +91,9 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
+
 # ─────────────────────────────────────────────
-# DEPLOY (FULLY FIXED — NO CRD ERRORS)
+# DEPLOY (CRD FIXED VERSION)
 # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
@@ -111,8 +113,8 @@ jobs:
         run: |
           aws eks update-kubeconfig --name qwikbrew --region $AWS_REGION
 
-# ✅ STEP 1 — CORE RESOURCES (NO CRDs)
-      - name: Deploy core resources
+# ✅ STEP 1 — CORE RESOURCES (SAFE)
+      - name: Deploy core (namespace + configmap)
         run: |
           kubectl apply -f k8s/core.yaml
 
@@ -129,7 +131,7 @@ jobs:
             --set installCRDs=true \
             --wait --timeout=180s
 
-# ✅ STEP 3 — WAIT FOR CRDs (CRITICAL FIX)
+# ✅ STEP 3 — WAIT FOR CRDs (CRITICAL)
       - name: Wait for CRDs
         run: |
           echo "⏳ Waiting for CRDs..."
@@ -150,7 +152,7 @@ jobs:
           kubectl apply -f k8s/external-secrets.yaml
 
 # ✅ STEP 5 — DEPLOY APPLICATION
-      - name: Deploy applications
+      - name: Deploy workloads
         run: |
           kubectl apply -f k8s/01-deployments.yaml
           kubectl apply -f k8s/02-hpa-pdb.yaml
