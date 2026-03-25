@@ -1,4 +1,4 @@
-name: 🚀 QwikBrew — Ultimate CI/CD
+name: 🚀 QwikBrew — Ultimate CI/CD (Final)
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
           echo 'services=["api-gateway","user-service","menu-service","order-service","payment-service","notification-service"]' >> $GITHUB_OUTPUT
 
 # ─────────────────────────────────────────────
-# BUILD & PUSH (FAST + FIXED)
+# BUILD & PUSH (FAST + STABLE)
 # ─────────────────────────────────────────────
   build:
     runs-on: ubuntu-latest
@@ -45,45 +45,39 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-# ⚡ FAST JAVA SETUP
-      - name: Setup Java
+      - name: ☕ Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
           cache: maven
 
-# ⚡ CACHE MAVEN (SAFE + FAST)
-      - name: Preload dependencies (non-blocking)
+      - name: ⚡ Preload Maven dependencies (non-blocking)
         run: |
           mvn -B -ntp dependency:go-offline || true
 
-# 🔐 AWS LOGIN (FIXED - NO CANCEL ISSUE)
-      - name: Configure AWS credentials
+      - name: 🔐 Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to ECR (stable)
+      - name: 🔑 Login to ECR (stable)
         run: |
           aws ecr get-login-password --region $AWS_REGION \
           | docker login --username AWS --password-stdin $ECR_REGISTRY
 
-# 🐳 BUILDX FIX
-      - name: Setup Docker Buildx
+      - name: 🐳 Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-# 🏷️ TAG
-      - name: Generate tag
+      - name: 🏷️ Generate tag
         id: tag
         run: |
           TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-# 🐳 BUILD & PUSH (ROOT DOCKERFILE FIXED)
-      - name: Build & Push Image
+      - name: 🐳 Build & Push Image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -97,7 +91,7 @@ jobs:
           provenance: false
 
 # ─────────────────────────────────────────────
-# DEPLOY (FULLY FIXED)
+# DEPLOY (FULLY FIXED — NO CRD ERRORS)
 # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
@@ -106,20 +100,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-# 🔐 AWS LOGIN
-      - name: Configure AWS credentials
+      - name: 🔐 Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-# ☸️ CONNECT EKS
-      - name: Update kubeconfig
+      - name: ☸️ Connect to EKS
         run: |
           aws eks update-kubeconfig --name qwikbrew --region $AWS_REGION
 
-# 📦 INSTALL ESO (CRITICAL FIX)
+# ✅ STEP 1 — CORE RESOURCES (NO CRDs)
+      - name: Deploy core resources
+        run: |
+          kubectl apply -f k8s/core.yaml
+
+# ✅ STEP 2 — INSTALL ESO
       - name: Install External Secrets Operator
         run: |
           helm repo add external-secrets https://charts.external-secrets.io
@@ -132,14 +129,13 @@ jobs:
             --set installCRDs=true \
             --wait --timeout=180s
 
-# ⏳ HARD WAIT FOR CRDs (REAL FIX)
-      - name: Wait for CRDs to be ready
+# ✅ STEP 3 — WAIT FOR CRDs (CRITICAL FIX)
+      - name: Wait for CRDs
         run: |
-          echo "⏳ Waiting for External Secrets CRDs..."
+          echo "⏳ Waiting for CRDs..."
 
           for i in {1..30}; do
             kubectl get crd externalsecrets.external-secrets.io && break
-            echo "Waiting CRDs..."
             sleep 5
           done
 
@@ -148,40 +144,42 @@ jobs:
 
           echo "✅ CRDs Ready"
 
-# 🚨 APPLY BASE RESOURCES FIRST (NO ESO)
-      - name: Deploy core resources
+# ✅ STEP 4 — APPLY EXTERNAL SECRETS
+      - name: Deploy External Secrets
         run: |
-          kubectl apply -f k8s/00-namespace-config.yaml --validate=false
+          kubectl apply -f k8s/external-secrets.yaml
+
+# ✅ STEP 5 — DEPLOY APPLICATION
+      - name: Deploy applications
+        run: |
           kubectl apply -f k8s/01-deployments.yaml
           kubectl apply -f k8s/02-hpa-pdb.yaml
           kubectl apply -f k8s/03-ingress.yaml
 
-# 🚀 APPLY SECRETS AFTER CRDs
-      - name: Deploy External Secrets (SAFE)
-        run: |
-          kubectl apply -f k8s/00-namespace-config.yaml --validate=false || true
-
-# ⏳ VERIFY
+# ✅ STEP 6 — VERIFY
       - name: Wait for rollout
         run: |
           SERVICES=("api-gateway" "user-service" "menu-service" "order-service" "payment-service" "notification-service")
 
           for SVC in "${SERVICES[@]}"; do
-            echo "⏳ $SVC..."
+            echo "⏳ Waiting for $SVC..."
             kubectl rollout status deployment/$SVC -n qwikbrew --timeout=300s || true
           done
 
-# 🌐 URL
+# ✅ STEP 7 — PRINT URL
       - name: Show App URL
         run: |
           echo "⏳ Fetching LoadBalancer..."
 
           for i in {1..30}; do
-            LB=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+            LB=$(kubectl get svc api-gateway -n qwikbrew \
+              -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+
             if [ -n "$LB" ]; then
               echo "🚀 APP LIVE: http://$LB"
               exit 0
             fi
+
             sleep 10
           done
 
