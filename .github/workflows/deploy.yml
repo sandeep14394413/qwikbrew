@@ -1,4 +1,4 @@
-name: 🚀 QwikBrew — Final CI/CD
+name: 🚀 QwikBrew — Helm CI/CD Pipeline
 
 on:
   push:
@@ -12,6 +12,8 @@ env:
   AWS_REGION: ap-south-1
   ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
   JAVA_VERSION: "17"
+  CLUSTER_NAME: qwikbrew
+  NAMESPACE: qwikbrew
 
 jobs:
 
@@ -32,7 +34,7 @@ jobs:
 
 
 # ─────────────────────────────────────────────
-# BUILD & PUSH (FAST + FIXED)
+# BUILD & PUSH (FAST)
 # ─────────────────────────────────────────────
   build:
     runs-on: ubuntu-latest
@@ -53,11 +55,10 @@ jobs:
           distribution: temurin
           cache: maven
 
-      - name: ⚡ Cache Maven dependencies
-        run: |
-          mvn -B -ntp dependency:go-offline || true
+      - name: ⚡ Maven cache warmup (FAST BUILD)
+        run: mvn -B -ntp dependency:go-offline
 
-      - name: 🔐 Configure AWS credentials
+      - name: 🔐 Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -69,16 +70,18 @@ jobs:
           aws ecr get-login-password --region $AWS_REGION \
           | docker login --username AWS --password-stdin $ECR_REGISTRY
 
-      - name: 🐳 Setup Docker Buildx
+      - name: 🐳 Setup Buildx (FIXED)
         uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker-container
 
-      - name: 🏷️ Generate image tag
+      - name: 🏷️ Tag
         id: tag
         run: |
           TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-      - name: 🐳 Build & Push Docker Image
+      - name: 🐳 Build & Push
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -93,7 +96,7 @@ jobs:
 
 
 # ─────────────────────────────────────────────
-# DEPLOY (CRD FIXED VERSION)
+# DEPLOY USING HELM (PROPER FIX)
 # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
@@ -102,7 +105,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 🔐 Configure AWS credentials
+      - name: 🔐 Configure AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -111,14 +114,12 @@ jobs:
 
       - name: ☸️ Connect to EKS
         run: |
-          aws eks update-kubeconfig --name qwikbrew --region $AWS_REGION
+          aws eks update-kubeconfig --name $CLUSTER_NAME --region $AWS_REGION
 
-# ✅ STEP 1 — CORE RESOURCES (SAFE)
-      - name: Deploy core (namespace + configmap)
-        run: |
-          kubectl apply -f k8s/core.yaml
+      - name: 📦 Install Helm
+        uses: azure/setup-helm@v4
 
-# ✅ STEP 2 — INSTALL ESO
+# ✅ INSTALL ESO FIRST (FIX YOUR ERROR)
       - name: Install External Secrets Operator
         run: |
           helm repo add external-secrets https://charts.external-secrets.io
@@ -129,60 +130,42 @@ jobs:
             -n external-secrets \
             --create-namespace \
             --set installCRDs=true \
-            --wait --timeout=180s
+            --wait
 
-# ✅ STEP 3 — WAIT FOR CRDs (CRITICAL)
+# ✅ WAIT FOR CRDs (CRITICAL FIX)
       - name: Wait for CRDs
         run: |
-          echo "⏳ Waiting for CRDs..."
+          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=90s
+          kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=90s
 
+# 🚀 HELM DEPLOY (MAIN MAGIC)
+      - name: 🚀 Deploy via Helm
+        run: |
+          TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
+
+          helm upgrade --install qwikbrew ./helm/qwikbrew \
+            --namespace $NAMESPACE \
+            --create-namespace \
+            --set global.imageTag=$TAG \
+            --set global.registry=$ECR_REGISTRY \
+            --wait
+
+# ⏳ VERIFY
+      - name: Verify rollout
+        run: |
+          kubectl get pods -n $NAMESPACE -o wide
+
+# 🌐 GET URL
+      - name: Get LoadBalancer URL
+        run: |
+          echo "⏳ Fetching URL..."
           for i in {1..30}; do
-            kubectl get crd externalsecrets.external-secrets.io && break
-            sleep 5
-          done
-
-          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=120s || true
-          kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=120s || true
-
-          echo "✅ CRDs Ready"
-
-# ✅ STEP 4 — APPLY EXTERNAL SECRETS
-      - name: Deploy External Secrets
-        run: |
-          kubectl apply -f k8s/external-secrets.yaml
-
-# ✅ STEP 5 — DEPLOY APPLICATION
-      - name: Deploy workloads
-        run: |
-          kubectl apply -f k8s/01-deployments.yaml
-          kubectl apply -f k8s/02-hpa-pdb.yaml
-          kubectl apply -f k8s/03-ingress.yaml
-
-# ✅ STEP 6 — VERIFY
-      - name: Wait for rollout
-        run: |
-          SERVICES=("api-gateway" "user-service" "menu-service" "order-service" "payment-service" "notification-service")
-
-          for SVC in "${SERVICES[@]}"; do
-            echo "⏳ Waiting for $SVC..."
-            kubectl rollout status deployment/$SVC -n qwikbrew --timeout=300s || true
-          done
-
-# ✅ STEP 7 — PRINT URL
-      - name: Show App URL
-        run: |
-          echo "⏳ Fetching LoadBalancer..."
-
-          for i in {1..30}; do
-            LB=$(kubectl get svc api-gateway -n qwikbrew \
-              -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
-
+            LB=$(kubectl get svc api-gateway -n $NAMESPACE -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
             if [ -n "$LB" ]; then
-              echo "🚀 APP LIVE: http://$LB"
+              echo "🚀 LIVE: http://$LB"
               exit 0
             fi
-
             sleep 10
           done
 
-          echo "⚠️ LoadBalancer pending"
+          echo "⚠️ LB pending"
