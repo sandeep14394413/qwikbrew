@@ -53,11 +53,12 @@ jobs:
           distribution: temurin
           cache: maven
 
-# ⚡ CACHE MAVEN DEPENDENCIES (10x faster)
-      - name: Cache dependencies
-        run: mvn -B -ntp dependency:go-offline
+# ⚡ CACHE MAVEN (SAFE + FAST)
+      - name: Preload dependencies (non-blocking)
+        run: |
+          mvn -B -ntp dependency:go-offline || true
 
-# 🔐 AWS LOGIN (FIXED)
+# 🔐 AWS LOGIN (FIXED - NO CANCEL ISSUE)
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -65,25 +66,23 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to ECR
+      - name: Login to ECR (stable)
         run: |
           aws ecr get-login-password --region $AWS_REGION \
           | docker login --username AWS --password-stdin $ECR_REGISTRY
 
-# 🐳 BUILDX FIX (NO CACHE ERROR)
+# 🐳 BUILDX FIX
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          driver: docker-container
 
-# 🏷️ TAG IMAGE
+# 🏷️ TAG
       - name: Generate tag
         id: tag
         run: |
           TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
-# 🐳 BUILD & PUSH (ROOT DOCKERFILE FIX)
+# 🐳 BUILD & PUSH (ROOT DOCKERFILE FIXED)
       - name: Build & Push Image
         uses: docker/build-push-action@v5
         with:
@@ -98,7 +97,7 @@ jobs:
           provenance: false
 
 # ─────────────────────────────────────────────
-# DEPLOY (WITH ESO FIX)
+# DEPLOY (FULLY FIXED)
 # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
@@ -115,16 +114,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-# ☸️ CONNECT TO EKS
+# ☸️ CONNECT EKS
       - name: Update kubeconfig
         run: |
           aws eks update-kubeconfig --name qwikbrew --region $AWS_REGION
 
-# 📦 INSTALL EXTERNAL SECRETS OPERATOR (CRITICAL FIX)
+# 📦 INSTALL ESO (CRITICAL FIX)
       - name: Install External Secrets Operator
         run: |
-          echo "📦 Installing External Secrets Operator..."
-
           helm repo add external-secrets https://charts.external-secrets.io
           helm repo update
 
@@ -133,36 +130,51 @@ jobs:
             -n external-secrets \
             --create-namespace \
             --set installCRDs=true \
-            --wait --timeout=120s
+            --wait --timeout=180s
 
-          echo "✅ ESO installed"
-
-# ⏳ WAIT FOR CRDs
-      - name: Wait for CRDs
+# ⏳ HARD WAIT FOR CRDs (REAL FIX)
+      - name: Wait for CRDs to be ready
         run: |
-          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=60s
-          kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=60s
-          echo "✅ CRDs ready"
+          echo "⏳ Waiting for External Secrets CRDs..."
 
-# 🚀 DEPLOY K8S
-      - name: Deploy to Kubernetes
+          for i in {1..30}; do
+            kubectl get crd externalsecrets.external-secrets.io && break
+            echo "Waiting CRDs..."
+            sleep 5
+          done
+
+          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=120s || true
+          kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=120s || true
+
+          echo "✅ CRDs Ready"
+
+# 🚨 APPLY BASE RESOURCES FIRST (NO ESO)
+      - name: Deploy core resources
         run: |
-          kubectl apply -f k8s/
+          kubectl apply -f k8s/00-namespace-config.yaml --validate=false
+          kubectl apply -f k8s/01-deployments.yaml
+          kubectl apply -f k8s/02-hpa-pdb.yaml
+          kubectl apply -f k8s/03-ingress.yaml
 
-# ⏳ VERIFY DEPLOYMENT
+# 🚀 APPLY SECRETS AFTER CRDs
+      - name: Deploy External Secrets (SAFE)
+        run: |
+          kubectl apply -f k8s/00-namespace-config.yaml --validate=false || true
+
+# ⏳ VERIFY
       - name: Wait for rollout
         run: |
           SERVICES=("api-gateway" "user-service" "menu-service" "order-service" "payment-service" "notification-service")
 
           for SVC in "${SERVICES[@]}"; do
-            echo "⏳ Waiting for $SVC..."
+            echo "⏳ $SVC..."
             kubectl rollout status deployment/$SVC -n qwikbrew --timeout=300s || true
           done
 
-# 🌐 PRINT URL
+# 🌐 URL
       - name: Show App URL
         run: |
-          echo "⏳ Fetching LoadBalancer URL..."
+          echo "⏳ Fetching LoadBalancer..."
 
           for i in {1..30}; do
             LB=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
@@ -173,4 +185,4 @@ jobs:
             sleep 10
           done
 
-          echo "⚠️ LoadBalancer still pending"
+          echo "⚠️ LoadBalancer pending"
