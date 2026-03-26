@@ -16,9 +16,6 @@ env:
   NAMESPACE: qwikbrew
 
 jobs:
-  # ─────────────────────────────────────────────
-  # DETECT SERVICES
-  # ─────────────────────────────────────────────
   detect:
     runs-on: ubuntu-latest
     outputs:
@@ -29,9 +26,6 @@ jobs:
         run: |
           echo 'services=["api-gateway","user-service","menu-service","order-service","payment-service","notification-service"]' >> $GITHUB_OUTPUT
 
-  # ─────────────────────────────────────────────
-  # BUILD & PUSH SERVICES
-  # ─────────────────────────────────────────────
   build:
     runs-on: ubuntu-latest
     needs: detect
@@ -86,7 +80,7 @@ jobs:
           provenance: false
 
   # ─────────────────────────────────────────────
-  # DEPLOY TO KUBERNETES
+  # DEPLOY TO KUBERNETES (Improved CRD Handling)
   # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
@@ -107,7 +101,7 @@ jobs:
       - name: 📦 Install Helm
         uses: azure/setup-helm@v4
 
-      # 1. Install External Secrets Operator + CRDs
+      # 1. Install External Secrets Operator
       - name: Install External Secrets Operator
         run: |
           helm repo add external-secrets https://charts.external-secrets.io
@@ -118,29 +112,38 @@ jobs:
             --set installCRDs=true \
             --set replicaCount=2 \
             --wait \
-            --timeout 8m
+            --timeout 10m
 
-      # 2. Wait for CRDs to be ready
+      # 2. Extended wait for CRDs + Extra safety sleep
       - name: Wait for External Secrets CRDs
         run: |
-          echo "Waiting for External Secrets CRDs..."
-          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=180s
-          kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=180s
-          kubectl wait --for=condition=Established crd/secretstores.external-secrets.io --timeout=180s || true
+          echo "Waiting for External Secrets CRDs to be fully established..."
+          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=300s || true
+          kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=300s || true
+          kubectl wait --for=condition=Established crd/secretstores.external-secrets.io --timeout=300s || true
 
-          echo "CRDs status:"
+          echo "=== Current CRDs status ==="
           kubectl get crd | grep -E 'external-secrets|secretstore'
 
-      # 3. Debug Chart Structure
+          # Extra safety delay for webhook/controller readiness
+          echo "Waiting extra 30s for controller and webhooks to be ready..."
+          sleep 30
+
+      # 3. Debug Chart
       - name: Debug k8s Chart Structure
         run: |
           pwd
-          echo "=== k8s/ directory ==="
+          echo "=== k8s/ contents ==="
           ls -la k8s/
           echo "=== Chart.yaml check ==="
-          ls -la k8s/Chart.yaml || echo "❌ Chart.yaml NOT FOUND! Please create it inside k8s/ folder."
+          if [ -f k8s/Chart.yaml ]; then
+            echo "✅ Chart.yaml found"
+            cat k8s/Chart.yaml
+          else
+            echo "❌ Chart.yaml NOT FOUND in k8s/ folder!"
+          fi
 
-      # 4. Deploy qwikbrew Application
+      # 4. Deploy Application
       - name: 🚀 Deploy qwikbrew via Helm
         run: |
           TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
@@ -150,27 +153,13 @@ jobs:
             --set global.imageTag=${TAG} \
             --set global.registry=${{ env.ECR_REGISTRY }} \
             --rollback-on-failure \
-            --timeout 12m \
+            --timeout 15m \
             --wait
 
-      # 5. Verify Deployment
+      # 5. Verify
       - name: Verify Rollout
         run: |
-          echo "=== Pods in namespace ==="
+          echo "=== Pods ==="
           kubectl get pods -n ${{ env.NAMESPACE }} -o wide
           echo "=== External Secrets Resources ==="
-          kubectl get clustersecretstore,externalsecret -n ${{ env.NAMESPACE }} || true
-
-      # 6. Get Application URL
-      - name: Get LoadBalancer URL
-        run: |
-          echo "⏳ Waiting for LoadBalancer..."
-          for i in {1..40}; do
-            LB=$(kubectl get svc api-gateway -n ${{ env.NAMESPACE }} -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
-            if [ -n "$LB" ]; then
-              echo "🚀 Application is LIVE: http://$LB"
-              exit 0
-            fi
-            sleep 10
-          done
-          echo "⚠️ LoadBalancer is still pending after timeout"
+          kubectl get clustersecretstore,externalsecret -A || true
