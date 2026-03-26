@@ -35,35 +35,38 @@ jobs:
       - name: 📦 Install Helm
         uses: azure/setup-helm@v4
 
-      # ==================== 1. EXTERNAL SECRETS OPERATOR ====================
+      # ==================== 1. EXTERNAL SECRETS OPERATOR (CRITICAL) ====================
       - name: Install External Secrets Operator + CRDs
         run: |
           helm repo add external-secrets https://charts.external-secrets.io
           helm repo update
 
-          echo "Installing External Secrets Operator..."
+          echo "🛠️ Installing External Secrets Operator with CRDs..."
           helm upgrade --install external-secrets external-secrets/external-secrets \
             --namespace external-secrets \
             --create-namespace \
             --set installCRDs=true \
             --set replicaCount=2 \
+            --set webhook.create=true \
             --wait \
             --timeout=5m
 
-      # ==================== 2. WAIT FOR CRDs & WEBHOOK ====================
-      - name: Wait for External Secrets CRDs and Webhook
-        run: |
-          echo "Waiting for CRDs to be ready..."
-          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=180s || true
-          kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=180s || true
-          kubectl wait --for=condition=Established crd/secretstores.external-secrets.io --timeout=180s || true
+          echo "✅ External Secrets Operator installed."
 
-          echo "Waiting for operator and webhook..."
+      # ==================== 2. STRONG WAIT FOR CRDs ====================
+      - name: Wait for CRDs and Webhook Readiness
+        run: |
+          echo "Waiting for CRDs..."
+          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=180s || echo "CRD wait timed out - continuing"
+          kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=180s || echo "CRD wait timed out - continuing"
+          kubectl wait --for=condition=Established crd/secretstores.external-secrets.io --timeout=180s || echo "CRD wait timed out - continuing"
+
+          echo "Waiting for deployments..."
           kubectl rollout status deployment/external-secrets -n external-secrets --timeout=300s
           kubectl rollout status deployment/external-secrets-webhook -n external-secrets --timeout=180s || true
 
-          echo "Safety sleep for webhook readiness..."
-          sleep 45
+          echo "Safety delay for webhook..."
+          sleep 60
 
       # ==================== 3. DEPLOY QWIKBREW ====================
       - name: 🚀 Deploy qwikbrew
@@ -82,7 +85,7 @@ jobs:
 
       - name: Verify Deployment
         run: |
-          echo "=== Final Status ==="
+          echo "=== Pods ==="
           kubectl get pods -n ${{ env.NAMESPACE }} -o wide
           echo "=== External Secrets Resources ==="
           kubectl get clustersecretstore,externalsecret -n ${{ env.NAMESPACE }} || true
