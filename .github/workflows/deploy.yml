@@ -12,22 +12,55 @@ concurrency:
 env:
   AWS_REGION: ap-south-1
   ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
-  CLUSTER_NAME: qwikbrew
+  JAVA_VERSION: "17"
+  MAVEN_OPTS: "-Xmx1g -XX:+UseG1GC"
   NAMESPACE: qwikbrew
 
 jobs:
-  build:
+  detect-changes:
+    name: 🔍 Detect Changed Services
     runs-on: ubuntu-latest
+    outputs:
+      services_json: ${{ steps.matrix.outputs.services_json }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths per service
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            api-gateway: ["api-gateway/**", "pom.xml", "Dockerfile"]
+            user-service: ["user-service/**", "pom.xml", "Dockerfile"]
+            menu-service: ["menu-service/**", "pom.xml", "Dockerfile"]
+            order-service: ["order-service/**", "pom.xml", "Dockerfile"]
+            payment-service: ["payment-service/**", "pom.xml", "Dockerfile"]
+            notification-service: ["notification-service/**", "pom.xml", "Dockerfile"]
+
+      - name: Build service matrix
+        id: matrix
+        run: |
+          SERVICES=("api-gateway" "user-service" "menu-service" "order-service" "payment-service" "notification-service")
+          JSON=$(echo -n "${SERVICES[@]}" | tr " " "\n" | jq -R . | jq -sc .)
+          echo "services_json=$JSON" >> $GITHUB_OUTPUT
+
+  build:
+    name: 🐳 Build & Push — ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: detect-changes
     strategy:
+      fail-fast: false
       matrix:
-        service: [api-gateway, user-service, menu-service, order-service, payment-service, notification-service]
+        service: ${{ fromJson(needs.detect-changes.outputs.services_json) }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
-          java-version: 17
+          java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
           cache: maven
 
@@ -44,25 +77,20 @@ jobs:
       - name: Login to ECR
         run: aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
 
-      - name: Generate Short Tag
-        id: tag
-        run: |
-          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          echo "tag=$SHORT_SHA" >> $GITHUB_OUTPUT
-
       - name: Build & Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ env.ECR_REGISTRY }}/qwikbrew/${{ matrix.service }}:${{ steps.tag.outputs.tag }}
+          tags: ${{ env.ECR_REGISTRY }}/qwikbrew/${{ matrix.service }}:${{ github.sha | slice: 0:7 }}
           build-args: |
             SERVICE=${{ matrix.service }}
 
   deploy-staging:
+    name: 🚢 Deploy to Staging
     runs-on: ubuntu-latest
-    needs: build
+    needs: [detect-changes, build]
 
     steps:
       - uses: actions/checkout@v4
@@ -75,11 +103,12 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Connect to EKS
-        run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+        run: aws eks update-kubeconfig --name qwikbrew --region ${{ env.AWS_REGION }}
 
       - name: Install Helm
         uses: azure/setup-helm@v4
 
+      # Install External Secrets Operator + CRDs
       - name: Install External Secrets Operator
         run: |
           helm repo add external-secrets https://charts.external-secrets.io
@@ -91,17 +120,18 @@ jobs:
             --wait \
             --timeout=5m
 
+      # Wait for CRDs and Webhook
       - name: Wait for CRDs and Webhook
         run: |
-          echo "Waiting for CRDs..."
           kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=180s || true
           kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=180s || true
           sleep 45
 
+      # Deploy qwikbrew to Staging
       - name: Deploy qwikbrew to Staging
         run: |
-          TAG=$(echo ${{ github.sha }} | cut -c1-7)
-          echo "Deploying with tag: $TAG"
+          TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
+          echo "Deploying qwikbrew with tag: $TAG"
 
           helm upgrade --install qwikbrew ./k8s \
             --namespace ${{ env.NAMESPACE }} \
