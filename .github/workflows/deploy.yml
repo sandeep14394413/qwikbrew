@@ -79,9 +79,6 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
 
-  # ─────────────────────────────────────────────
-  # DEPLOY TO KUBERNETES (Improved CRD Handling)
-  # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
     needs: build
@@ -95,7 +92,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: ☸️ Connect to EKS Cluster
+      - name: ☸️ Connect to EKS
         run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
       - name: 📦 Install Helm
@@ -114,36 +111,38 @@ jobs:
             --wait \
             --timeout 10m
 
-      # 2. Extended wait for CRDs + Extra safety sleep
-      - name: Wait for External Secrets CRDs
+      # 2. Strong CRD + Controller Wait
+      - name: Wait for External Secrets CRDs and Controller
         run: |
-          echo "Waiting for External Secrets CRDs to be fully established..."
+          echo "Waiting for CRDs..."
           kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=300s || true
           kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=300s || true
           kubectl wait --for=condition=Established crd/secretstores.external-secrets.io --timeout=300s || true
 
-          echo "=== Current CRDs status ==="
+          echo "CRDs status:"
           kubectl get crd | grep -E 'external-secrets|secretstore'
 
-          # Extra safety delay for webhook/controller readiness
-          echo "Waiting extra 30s for controller and webhooks to be ready..."
-          sleep 30
+          echo "Waiting for External Secrets deployments to be ready..."
+          kubectl rollout status deployment/external-secrets -n external-secrets --timeout=300s
+          kubectl rollout status deployment/external-secrets-cert-controller -n external-secrets --timeout=180s || true
+          kubectl rollout status deployment/external-secrets-webhook -n external-secrets --timeout=180s || true
+
+          echo "Extra safety sleep for webhook readiness..."
+          sleep 45
 
       # 3. Debug Chart
-      - name: Debug k8s Chart Structure
+      - name: Debug k8s Chart
         run: |
           pwd
-          echo "=== k8s/ contents ==="
           ls -la k8s/
-          echo "=== Chart.yaml check ==="
           if [ -f k8s/Chart.yaml ]; then
             echo "✅ Chart.yaml found"
             cat k8s/Chart.yaml
           else
-            echo "❌ Chart.yaml NOT FOUND in k8s/ folder!"
+            echo "❌ Chart.yaml MISSING in ./k8s/ folder!"
           fi
 
-      # 4. Deploy Application
+      # 4. Deploy qwikbrew
       - name: 🚀 Deploy qwikbrew via Helm
         run: |
           TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
@@ -156,10 +155,8 @@ jobs:
             --timeout 15m \
             --wait
 
-      # 5. Verify
-      - name: Verify Rollout
+      - name: Verify Deployment
         run: |
-          echo "=== Pods ==="
           kubectl get pods -n ${{ env.NAMESPACE }} -o wide
           echo "=== External Secrets Resources ==="
-          kubectl get clustersecretstore,externalsecret -A || true
+          kubectl get clustersecretstore,externalsecret -n ${{ env.NAMESPACE }} || true
