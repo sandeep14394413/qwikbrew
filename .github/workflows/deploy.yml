@@ -1,5 +1,92 @@
+name: 🚀 QwikBrew — Helm CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, staging, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
+  JAVA_VERSION: "17"
+  CLUSTER_NAME: qwikbrew
+  NAMESPACE: qwikbrew
+
+jobs:
   # ─────────────────────────────────────────────
-  # DEPLOY USING HELM
+  # DETECT SERVICES
+  # ─────────────────────────────────────────────
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.set.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set
+        run: |
+          echo 'services=["api-gateway","user-service","menu-service","order-service","payment-service","notification-service"]' >> $GITHUB_OUTPUT
+
+  # ─────────────────────────────────────────────
+  # BUILD & PUSH SERVICES
+  # ─────────────────────────────────────────────
+  build:
+    runs-on: ubuntu-latest
+    needs: detect
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.detect.outputs.services) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ☕ Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: ⚡ Maven dependency cache
+        run: mvn -B -ntp dependency:go-offline
+
+      - name: 🔐 Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 🔑 Login to ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+      - name: 🐳 Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏷️ Generate Tag
+        id: tag
+        run: |
+          TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: 🐳 Build & Push Service
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ env.ECR_REGISTRY }}/qwikbrew/${{ matrix.service }}:${{ steps.tag.outputs.tag }}
+          build-args: |
+            SERVICE=${{ matrix.service }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+
+  # ─────────────────────────────────────────────
+  # DEPLOY TO KUBERNETES
   # ─────────────────────────────────────────────
   deploy:
     runs-on: ubuntu-latest
@@ -7,20 +94,20 @@
     steps:
       - uses: actions/checkout@v4
 
-      - name: 🔐 Configure AWS
+      - name: 🔐 Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: ☸️ Connect to EKS
+      - name: ☸️ Connect to EKS Cluster
         run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
 
       - name: 📦 Install Helm
         uses: azure/setup-helm@v4
 
-      # ✅ Install External Secrets Operator + CRDs
+      # 1. Install External Secrets Operator + CRDs
       - name: Install External Secrets Operator
         run: |
           helm repo add external-secrets https://charts.external-secrets.io
@@ -31,28 +118,30 @@
             --set installCRDs=true \
             --set replicaCount=2 \
             --wait \
-            --timeout 6m
+            --timeout 8m
 
-      # ✅ Stronger wait for CRDs (most important fix)
+      # 2. Wait for CRDs to be ready
       - name: Wait for External Secrets CRDs
         run: |
-          echo "Waiting for External Secrets CRDs to be established..."
+          echo "Waiting for External Secrets CRDs..."
           kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=180s
           kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=180s
           kubectl wait --for=condition=Established crd/secretstores.external-secrets.io --timeout=180s || true
-          
-          echo "CRDs status:"
-          kubectl get crd | grep external-secrets
 
-      # Debug Chart
+          echo "CRDs status:"
+          kubectl get crd | grep -E 'external-secrets|secretstore'
+
+      # 3. Debug Chart Structure
       - name: Debug k8s Chart Structure
         run: |
           pwd
+          echo "=== k8s/ directory ==="
           ls -la k8s/
-          ls -la k8s/Chart.yaml || echo "❌ Chart.yaml is missing in k8s/ folder!"
+          echo "=== Chart.yaml check ==="
+          ls -la k8s/Chart.yaml || echo "❌ Chart.yaml NOT FOUND! Please create it inside k8s/ folder."
 
-      # 🚀 Deploy qwikbrew
-      - name: 🚀 Deploy via Helm
+      # 4. Deploy qwikbrew Application
+      - name: 🚀 Deploy qwikbrew via Helm
         run: |
           TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
           helm upgrade --install qwikbrew ./k8s \
@@ -64,9 +153,24 @@
             --timeout 12m \
             --wait
 
-      # ⏳ Verify
-      - name: Verify rollout
+      # 5. Verify Deployment
+      - name: Verify Rollout
         run: |
+          echo "=== Pods in namespace ==="
           kubectl get pods -n ${{ env.NAMESPACE }} -o wide
           echo "=== External Secrets Resources ==="
           kubectl get clustersecretstore,externalsecret -n ${{ env.NAMESPACE }} || true
+
+      # 6. Get Application URL
+      - name: Get LoadBalancer URL
+        run: |
+          echo "⏳ Waiting for LoadBalancer..."
+          for i in {1..40}; do
+            LB=$(kubectl get svc api-gateway -n ${{ env.NAMESPACE }} -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+            if [ -n "$LB" ]; then
+              echo "🚀 Application is LIVE: http://$LB"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "⚠️ LoadBalancer is still pending after timeout"
