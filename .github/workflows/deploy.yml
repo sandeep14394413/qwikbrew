@@ -74,12 +74,13 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
 
-      # 1. Install External Secrets Operator (CRDs)
+      # 1. Install External Secrets Operator + CRDs
       - name: Install External Secrets Operator
         run: |
           helm repo add external-secrets https://charts.external-secrets.io
           helm repo update
 
+          echo "Installing External Secrets Operator with CRDs..."
           helm upgrade --install external-secrets external-secrets/external-secrets \
             --namespace external-secrets \
             --create-namespace \
@@ -87,18 +88,22 @@ jobs:
             --wait \
             --timeout=5m
 
-      # 2. Wait for CRDs & Webhook
+      # 2. Wait for CRDs and Webhook
       - name: Wait for CRDs and Webhook
         run: |
+          echo "Waiting for CRDs..."
           kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=180s || true
           kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=180s || true
+
+          echo "Waiting for webhook..."
+          kubectl rollout status deployment/external-secrets-webhook -n external-secrets --timeout=180s || true
           sleep 45
 
-      # 3. Deploy to Staging
-      - name: Deploy to Staging
+      # 3. Deploy qwikbrew to Staging
+      - name: Deploy qwikbrew to Staging
         run: |
-          TAG=$(echo ${{ github.sha }} | cut -c1-7)
-          echo "Deploying with tag: $TAG"
+          TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
+          echo "Deploying qwikbrew with tag: $TAG"
 
           helm upgrade --install qwikbrew ./k8s \
             --namespace ${{ env.NAMESPACE }} \
@@ -111,6 +116,7 @@ jobs:
 
       - name: Verify Deployment
         run: |
+          echo "=== Pods Status ==="
           kubectl get pods -n ${{ env.NAMESPACE }} -o wide
           echo "=== External Secrets Resources ==="
           kubectl get clustersecretstore,externalsecret -n ${{ env.NAMESPACE }} || true
