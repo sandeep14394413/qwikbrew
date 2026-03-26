@@ -1,120 +1,113 @@
-name: 🚀 QwikBrew — Staging Deployment
+name: CI/CD Pipeline - qwikbrew
 
 on:
   push:
-    branches: [ main, staging, develop ]
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
-  AWS_REGION: ap-south-1
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
-  CLUSTER_NAME: qwikbrew
   NAMESPACE: qwikbrew
+  IMAGE_NAME: qwikbrew
 
 jobs:
+
+  # ==================== BUILD STAGE ====================
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [api-gateway, user-service, menu-service, order-service, payment-service, notification-service]
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: 17
-          distribution: temurin
-          cache: maven
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Maven Build
-        run: mvn package -pl ${{ matrix.service }} -DskipTests --no-transfer-progress
-
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Login to ECR
-        run: aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
-
-      - name: Generate Short Tag
+      - name: Generate image tag
         id: tag
         run: |
-          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
-          echo "tag=$SHORT_SHA" >> $GITHUB_OUTPUT
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+          else
+            TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Building with tag: $TAG"
 
-      - name: Build & Push Docker Image
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
           push: true
-          tags: ${{ env.ECR_REGISTRY }}/qwikbrew/${{ matrix.service }}:${{ steps.tag.outputs.tag }}
-          build-args: |
-            SERVICE=${{ matrix.service }}
+          tags: |
+            your-docker-repo/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
+            your-docker-repo/${{ env.IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  deploy-staging:
-    runs-on: ubuntu-latest
+  # ==================== DEPLOY STAGE ====================
+  deploy:
     needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'   # Skip deploy on PRs
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Connect to EKS
-        run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
-
-      - name: Install Helm
+      - name: Set up Helm and kubectl
         uses: azure/setup-helm@v4
+        with:
+          version: latest
 
-      - name: Install External Secrets Operator
+      - name: Configure Kubernetes access
         run: |
+          # Replace this with your actual kubeconfig setup
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+          kubectl version --short
+          helm version
+
+      - name: Install External Secrets Operator (CRDs)
+        run: |
+          echo "Installing External Secrets Operator..."
           helm repo add external-secrets https://charts.external-secrets.io
           helm repo update
+
           helm upgrade --install external-secrets external-secrets/external-secrets \
             --namespace external-secrets \
             --create-namespace \
             --set installCRDs=true \
+            --set webhook.create=true \
             --wait \
-            --timeout=5m
+            --timeout=3m
 
-      - name: Wait for CRDs and Webhook
+          echo "Waiting for External Secrets Operator to be ready..."
+          kubectl wait --for=condition=available deployment/external-secrets-webhook \
+            -n external-secrets --timeout=120s
+
+      - name: Deploy qwikbrew Application
+        env:
+          IMAGE_TAG: ${{ needs.build.outputs.tag }}
         run: |
-          echo "Waiting for CRDs..."
-          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=180s || true
-          kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=180s || true
-          sleep 45
+          echo "Deploying qwikbrew with image tag: $IMAGE_TAG"
 
-      - name: Deploy qwikbrew to Staging
-        run: |
-          TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
-          echo "Deploying with tag: $TAG"
-
-          helm upgrade --install qwikbrew ./k8s \
+          helm upgrade --install qwikbrew ./chart/qwikbrew \
             --namespace ${{ env.NAMESPACE }} \
             --create-namespace \
-            --set global.imageTag=$TAG \
-            --set global.registry=${{ env.ECR_REGISTRY }} \
-            --rollback-on-failure \
-            --timeout 10m \
-            --wait
+            --set image.repository=your-docker-repo/qwikbrew \
+            --set image.tag=$IMAGE_TAG \
+            --wait \
+            --timeout=8m
 
       - name: Verify Deployment
         run: |
-          echo "=== Pods Status ==="
-          kubectl get pods -n ${{ env.NAMESPACE }} -o wide
-          echo "=== External Secrets Resources ==="
-          kubectl get clustersecretstore,externalsecret -n ${{ env.NAMESPACE }} || true
+          echo "=== Deployment Status ==="
+          kubectl get pods -n ${{ env.NAMESPACE }}
+          kubectl get externalsecret -n ${{ env.NAMESPACE }} || true
+          kubectl get clustersecretstore -A || true
+          echo "Deployment completed successfully!"
