@@ -143,7 +143,7 @@ jobs:
         run: |
           TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
 
-          helm upgrade --install qwikbrew ./helm/qwikbrew \
+          helm upgrade --install qwikbrew ./k8s\
             --namespace $NAMESPACE \
             --create-namespace \
             --set global.imageTag=$TAG \
