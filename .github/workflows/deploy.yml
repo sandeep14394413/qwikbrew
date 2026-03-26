@@ -1,15 +1,9 @@
-name: 🚀 QwikBrew — Helm CI/CD Pipeline
+name: QwikBrew Deployment
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
-
-env:
-  AWS_REGION: ap-south-1
-  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com
-  CLUSTER_NAME: qwikbrew
-  NAMESPACE: qwikbrew
 
 jobs:
   deploy:
@@ -23,21 +17,21 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ap-south-1
 
       - name: Connect to EKS
-        run: aws eks update-kubeconfig --name ${{ env.CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+        run: aws eks update-kubeconfig --name qwikbrew --region ap-south-1
 
       - name: Install Helm
         uses: azure/setup-helm@v4
 
-      # === 1. EXTERNAL SECRETS OPERATOR ===
+      # 1. Install External Secrets Operator FIRST
       - name: Install External Secrets Operator + CRDs
         run: |
           helm repo add external-secrets https://charts.external-secrets.io
           helm repo update
 
-          echo "Installing External Secrets Operator with CRDs..."
+          echo "Installing External Secrets Operator..."
           helm upgrade --install external-secrets external-secrets/external-secrets \
             --namespace external-secrets \
             --create-namespace \
@@ -45,28 +39,26 @@ jobs:
             --wait \
             --timeout=5m
 
-      # === 2. WAIT FOR CRDs ===
-      - name: Wait for CRDs and Webhook
+      # 2. Wait for CRDs
+      - name: Wait for CRDs
         run: |
           echo "Waiting for CRDs..."
-          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=120s || true
-          kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=120s || true
-
-          echo "Waiting for webhook..."
-          kubectl rollout status deployment/external-secrets-webhook -n external-secrets --timeout=180s || true
+          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=180s || true
+          kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=180s || true
           sleep 30
 
-      # === 3. DEPLOY QWIKBREW ===
+      # 3. Deploy qwikbrew
       - name: Deploy qwikbrew
         run: |
           TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
           echo "Deploying qwikbrew with tag: $TAG"
 
           helm upgrade --install qwikbrew ./k8s \
-            --namespace ${{ env.NAMESPACE }} \
+            --namespace qwikbrew \
             --create-namespace \
             --set global.imageTag=${TAG} \
-            --set global.registry=${{ env.ECR_REGISTRY }} \
+            --set global.registry=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.ap-south-1.amazonaws.com \
             --rollback-on-failure \
             --timeout 10m \
             --wait
+            
