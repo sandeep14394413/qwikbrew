@@ -74,7 +74,7 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
 
-      # 1. Install External Secrets Operator + CRDs
+      # 1. Install External Secrets Operator
       - name: Install External Secrets Operator
         run: |
           helm repo add external-secrets https://charts.external-secrets.io
