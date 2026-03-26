@@ -3,6 +3,7 @@ name: 🚀 QwikBrew — Helm CI/CD Pipeline
 on:
   push:
     branches: [main, staging, develop]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -98,65 +99,67 @@ jobs:
       - name: 📦 Install Helm
         uses: azure/setup-helm@v4
 
-      # 1. Install External Secrets Operator
-      - name: Install External Secrets Operator
+      # ==================== EXTERNAL SECRETS OPERATOR ====================
+      - name: Install External Secrets Operator (with CRDs)
         run: |
+          echo "Installing External Secrets Operator..."
           helm repo add external-secrets https://charts.external-secrets.io
           helm repo update
+
           helm upgrade --install external-secrets external-secrets/external-secrets \
             --namespace external-secrets \
             --create-namespace \
             --set installCRDs=true \
             --set replicaCount=2 \
+            --set webhook.create=true \
             --wait \
-            --timeout 10m
+            --timeout 5m
 
-      # 2. Strong CRD + Controller Wait
-      - name: Wait for External Secrets CRDs and Controller
+      - name: Wait for External Secrets CRDs and Webhook
         run: |
-          echo "Waiting for CRDs..."
-          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=300s || true
-          kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=300s || true
-          kubectl wait --for=condition=Established crd/secretstores.external-secrets.io --timeout=300s || true
+          echo "Waiting for CRDs to be established..."
+          kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=180s || true
+          kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=180s || true
+          kubectl wait --for=condition=Established crd/secretstores.external-secrets.io --timeout=180s || true
 
-          echo "CRDs status:"
-          kubectl get crd | grep -E 'external-secrets|secretstore'
-
-          echo "Waiting for External Secrets deployments to be ready..."
+          echo "Waiting for External Secrets deployments..."
           kubectl rollout status deployment/external-secrets -n external-secrets --timeout=300s
-          kubectl rollout status deployment/external-secrets-cert-controller -n external-secrets --timeout=180s || true
           kubectl rollout status deployment/external-secrets-webhook -n external-secrets --timeout=180s || true
+          kubectl rollout status deployment/external-secrets-cert-controller -n external-secrets --timeout=180s || true
 
-          echo "Extra safety sleep for webhook readiness..."
-          sleep 45
+          echo "Extra safety delay for webhook readiness..."
+          sleep 30
 
-      # 3. Debug Chart
-      - name: Debug k8s Chart
+      # ==================== DEBUG & DEPLOY QWIKBREW ====================
+      - name: Debug Chart Structure
         run: |
           pwd
-          ls -la k8s/
+          ls -la k8s/ || echo "k8s/ folder not found"
           if [ -f k8s/Chart.yaml ]; then
             echo "✅ Chart.yaml found"
             cat k8s/Chart.yaml
           else
-            echo "❌ Chart.yaml MISSING in ./k8s/ folder!"
+            echo "❌ Chart.yaml not found in ./k8s/"
           fi
 
-      # 4. Deploy qwikbrew
       - name: 🚀 Deploy qwikbrew via Helm
         run: |
           TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
+          echo "Deploying qwikbrew with tag: $TAG"
+
           helm upgrade --install qwikbrew ./k8s \
             --namespace ${{ env.NAMESPACE }} \
             --create-namespace \
             --set global.imageTag=${TAG} \
             --set global.registry=${{ env.ECR_REGISTRY }} \
-            --rollback-on-failure \
-            --timeout 15m \
+            --atomic \
+            --timeout 12m \
             --wait
 
       - name: Verify Deployment
         run: |
+          echo "=== Pods Status ==="
           kubectl get pods -n ${{ env.NAMESPACE }} -o wide
           echo "=== External Secrets Resources ==="
-          kubectl get clustersecretstore,externalsecret -n ${{ env.NAMESPACE }} || true
+          kubectl get clustersecretstore,externalsecret,secretstore -n ${{ env.NAMESPACE }} || true
+          echo "Deployment completed!"
