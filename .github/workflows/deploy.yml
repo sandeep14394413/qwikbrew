@@ -74,7 +74,6 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
 
-      # Install External Secrets Operator
       - name: Install External Secrets Operator
         run: |
           helm repo add external-secrets https://charts.external-secrets.io
@@ -86,15 +85,12 @@ jobs:
             --wait \
             --timeout=5m
 
-      # Wait for CRDs and Webhook
       - name: Wait for CRDs and Webhook
         run: |
-          echo "Waiting for CRDs..."
           kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=180s || true
           kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=180s || true
           sleep 45
 
-      # Deploy qwikbrew to Staging
       - name: Deploy qwikbrew to Staging
         run: |
           TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
