@@ -1,83 +1,41 @@
-name: CI/CD Pipeline - qwikbrew
+name: Deploy qwikbrew to Kubernetes
 
 on:
   push:
     branches: [ main, master ]
     tags:
       - 'v*'
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 env:
   NAMESPACE: qwikbrew
-  IMAGE_NAME: qwikbrew
 
 jobs:
-
-  # ==================== BUILD STAGE ====================
-  build:
-    runs-on: ubuntu-latest
-    outputs:
-      tag: ${{ steps.tag.outputs.tag }}
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Generate image tag
-        id: tag
-        run: |
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
-            TAG=${GITHUB_REF#refs/tags/}
-          else
-            TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
-          fi
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-          echo "Building with tag: $TAG"
-
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            your-docker-repo/${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.tag }}
-            your-docker-repo/${{ env.IMAGE_NAME }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ==================== DEPLOY STAGE ====================
   deploy:
-    needs: build
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'   # Skip deploy on PRs
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Helm and kubectl
+      - name: Set up kubectl and Helm
         uses: azure/setup-helm@v4
         with:
           version: latest
 
-      - name: Configure Kubernetes access
+      - name: Configure Kubernetes (add your kubeconfig setup here)
         run: |
-          # Replace this with your actual kubeconfig setup
+          # Example: If using kubeconfig secret
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
           kubectl version --short
           helm version
 
-      - name: Install External Secrets Operator (CRDs)
+      - name: Install External Secrets Operator (with CRDs)
         run: |
           echo "Installing External Secrets Operator..."
           helm repo add external-secrets https://charts.external-secrets.io
           helm repo update
-
+          
           helm upgrade --install external-secrets external-secrets/external-secrets \
             --namespace external-secrets \
             --create-namespace \
@@ -87,27 +45,24 @@ jobs:
             --timeout=3m
 
           echo "Waiting for External Secrets Operator to be ready..."
-          kubectl wait --for=condition=available deployment/external-secrets-webhook \
-            -n external-secrets --timeout=120s
+          kubectl wait --for=condition=available deployment/external-secrets-webhook -n external-secrets --timeout=120s
+          kubectl get crd | grep external-secrets
 
       - name: Deploy qwikbrew Application
-        env:
-          IMAGE_TAG: ${{ needs.build.outputs.tag }}
         run: |
-          echo "Deploying qwikbrew with image tag: $IMAGE_TAG"
+          TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
+          echo "Deploying qwikbrew with tag: $TAG"
 
           helm upgrade --install qwikbrew ./chart/qwikbrew \
             --namespace ${{ env.NAMESPACE }} \
             --create-namespace \
-            --set image.repository=your-docker-repo/qwikbrew \
-            --set image.tag=$IMAGE_TAG \
+            --set image.tag=$TAG \
             --wait \
-            --timeout=8m
+            --timeout=5m
 
       - name: Verify Deployment
         run: |
-          echo "=== Deployment Status ==="
+          echo "Checking deployment status..."
           kubectl get pods -n ${{ env.NAMESPACE }}
-          kubectl get externalsecret -n ${{ env.NAMESPACE }} || true
+          kubectl get externalsecret -n ${{ env.NAMESPACE }}
           kubectl get clustersecretstore -A || true
-          echo "Deployment completed successfully!"
