@@ -44,13 +44,19 @@ jobs:
       - name: Login to ECR
         run: aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
 
+      - name: Generate Short Tag
+        id: tag
+        run: |
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          echo "tag=$SHORT_SHA" >> $GITHUB_OUTPUT
+
       - name: Build & Push Docker Image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ env.ECR_REGISTRY }}/qwikbrew/${{ matrix.service }}:${{ github.sha | slice: 0:7 }}
+          tags: ${{ env.ECR_REGISTRY }}/qwikbrew/${{ matrix.service }}:${{ steps.tag.outputs.tag }}
           build-args: |
             SERVICE=${{ matrix.service }}
 
@@ -87,13 +93,14 @@ jobs:
 
       - name: Wait for CRDs and Webhook
         run: |
+          echo "Waiting for CRDs..."
           kubectl wait --for=condition=Established crd/externalsecrets.external-secrets.io --timeout=180s || true
           kubectl wait --for=condition=Established crd/clustersecretstores.external-secrets.io --timeout=180s || true
           sleep 45
 
       - name: Deploy qwikbrew to Staging
         run: |
-          TAG=${GITHUB_REF_NAME}-$(echo $GITHUB_SHA | cut -c1-7)
+          TAG=$(echo ${{ github.sha }} | cut -c1-7)
           echo "Deploying with tag: $TAG"
 
           helm upgrade --install qwikbrew ./k8s \
