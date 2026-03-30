@@ -13,6 +13,8 @@ data:
     spring.cloud.discovery.enabled=false
     spring.cloud.discovery.reactive.enabled=false
     spring.cloud.gateway.discovery.locator.enabled=false
+    spring.cloud.gateway.server.webflux.route-refresh-listener.enabled=false
+    spring.cloud.gateway.server.webflux.predicate.weight.enabled=false
 
 ---
 # ═══════════════════════════════════════════════════════════════════════════════

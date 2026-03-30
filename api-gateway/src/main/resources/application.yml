@@ -6,6 +6,13 @@ spring:
     name: api-gateway
   cloud:
     gateway:
+      server:
+        webflux:
+          route-refresh-listener:
+            enabled: false
+          predicate:
+            weight:
+              enabled: false
       discovery:
         locator:
           enabled: false  # no auto-routing from service registry
