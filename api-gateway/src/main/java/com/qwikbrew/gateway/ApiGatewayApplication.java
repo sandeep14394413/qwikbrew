@@ -1,13 +1,10 @@
 package com.qwikbrew.gateway;
 
-import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 
-// WeightCalculatorWebFilter crash fix: allow-bean-definition-overriding MUST be set
-// programmatically via SpringApplicationBuilder — setting it in application.yml is
-// too late because Spring Cloud Gateway registers the filter before yml is loaded.
-// Our GatewayConfig provides a no-op replacement bean named "weightCalculatorWebFilter".
+// Keep critical gateway bootstrap flags in code so they are applied before
+// Spring Cloud Gateway listener registration during context startup.
 @SpringBootApplication
 public class ApiGatewayApplication {
     public static void main(String[] args) {
@@ -15,7 +12,9 @@ public class ApiGatewayApplication {
             .properties(
                 "spring.main.allow-bean-definition-overriding=true",
                 "spring.cloud.discovery.enabled=false",
-                "spring.cloud.discovery.reactive.enabled=false"
+                "spring.cloud.discovery.reactive.enabled=false",
+                "spring.cloud.gateway.server.webflux.route-refresh-listener.enabled=false",
+                "spring.cloud.gateway.server.webflux.predicate.weight.enabled=false"
             )
             .run(args);
     }
