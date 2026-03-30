@@ -13,6 +13,8 @@ data:
     spring.cloud.discovery.enabled=false
     spring.cloud.discovery.reactive.enabled=false
     spring.cloud.gateway.discovery.locator.enabled=false
+    spring.cloud.gateway.server.webflux.route-refresh-listener.enabled=false
+    spring.cloud.gateway.server.webflux.predicate.weight.enabled=false
 
 ---
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -50,10 +52,8 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
+      maxUnavailable: 0
   selector: { matchLabels: { app: api-gateway } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
   template:
     metadata:
       labels: { app: api-gateway }
@@ -95,19 +95,20 @@ spec:
           configMap:
             name: api-gateway-override
 ---
-# api-gateway — internet-facing Classic Load Balancer.
-# NLB sits in PUBLIC subnets, routes to private node IPs — nodes do NOT need public IPs.
-# The subnet tags (kubernetes.io/role/elb=1) tell AWS which public subnets to use.
+# api-gateway — internet-facing NLB managed by AWS Load Balancer Controller.
+# This avoids the legacy "classic" mode that often stays in <pending> on modern EKS setups.
 apiVersion: v1
 kind: Service
 metadata:
   name: api-gateway
   namespace: qwikbrew
   annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "classic"
+    service.beta.kubernetes.io/aws-load-balancer-type: "external"
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
     service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
     service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
 spec:
+  loadBalancerClass: service.k8s.aws/nlb
   type: LoadBalancer
   selector: { app: api-gateway }
   ports:
@@ -131,10 +132,8 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
+      maxUnavailable: 0
   selector: { matchLabels: { app: user-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
   template:
     metadata:
       labels: { app: user-service }
@@ -181,10 +180,8 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
+      maxUnavailable: 0
   selector: { matchLabels: { app: menu-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
   template:
     metadata:
       labels: { app: menu-service }
@@ -232,10 +229,8 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
+      maxUnavailable: 0
   selector: { matchLabels: { app: order-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
   template:
     metadata:
       labels: { app: order-service }
@@ -294,10 +289,8 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
+      maxUnavailable: 0
   selector: { matchLabels: { app: payment-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
   template:
     metadata:
       labels: { app: payment-service }
@@ -344,10 +337,8 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
+      maxUnavailable: 0
   selector: { matchLabels: { app: notification-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
   template:
     metadata:
       labels: { app: notification-service }
