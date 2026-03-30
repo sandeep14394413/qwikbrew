@@ -589,32 +589,35 @@ jobs:
 
       - name: 🚀 Apply Kubernetes manifests
         run: |
+          ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
+          REGION="${{ env.AWS_REGION }}"
+          GW_IMAGE="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/qwikbrew/api-gateway:latest"
+
           kubectl apply -f k8s/00-namespace-config.yaml || true
 
-          # Force-replace api-gateway service if type changed (NodePort → LoadBalancer)
-          # kubectl apply cannot change service type — must delete + recreate
-          CURRENT_TYPE=$(kubectl get svc api-gateway -n qwikbrew \
-            -o jsonpath="{.spec.type}" 2>/dev/null || echo "")
-          if [ "$CURRENT_TYPE" = "NodePort" ]; then
-            echo "⚠️  Deleting old NodePort service to replace with LoadBalancer..."
-            kubectl delete svc api-gateway -n qwikbrew --ignore-not-found
-            sleep 2
-          fi
+          # Always delete + recreate api-gateway service
+          # kubectl apply CANNOT change spec.type — it silently ignores the change
+          # so the service stays NodePort forever unless we force delete+recreate
+          echo "Recreating api-gateway service as LoadBalancer..."
+          kubectl delete svc api-gateway -n qwikbrew --ignore-not-found
+          sleep 3
 
+          # Apply deployments + services
           kubectl apply -f k8s/01-deployments.yaml -n qwikbrew
           kubectl apply -f k8s/02-hpa-pdb.yaml -n qwikbrew || true
           kubectl apply -f k8s/03-ingress.yaml -n qwikbrew || true
-          echo "✅ Manifests applied"
 
-          # Force rollout of api-gateway to clear InvalidImageName pods
-          echo "🔄 Forcing api-gateway rollout to clear stale pods..."
-          ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
-          GW_IMAGE="${ACCOUNT_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/qwikbrew/api-gateway:latest"
-          kubectl set image deployment/api-gateway \
-            api-gateway="${GW_IMAGE}" \
-            -n qwikbrew 2>/dev/null || true
+          # Set correct image explicitly (in case ACCOUNT_ID substitution missed anything)
+          kubectl set image deployment/api-gateway             api-gateway="${GW_IMAGE}" -n qwikbrew 2>/dev/null || true
+
+          # Restart api-gateway to pick up latest image + config
           kubectl rollout restart deployment/api-gateway -n qwikbrew
-          echo "✅ api-gateway rollout restarted"
+          echo "Manifests applied and api-gateway rollout started"
+
+          # Show what service type was created
+          sleep 3
+          echo "api-gateway service:"
+          kubectl get svc api-gateway -n qwikbrew
 
       - name: ⏳ Wait for deployments + collect crash logs
         run: |
