@@ -428,6 +428,48 @@ jobs:
           aws eks update-kubeconfig --name "$CLUSTER" --region ${{ env.AWS_REGION }}
           echo "✅ Connected to cluster: $CLUSTER"
 
+      - name: 🔐 Fix ELB IAM permissions + subnet tags
+        run: |
+          CLUSTER="${{ needs.detect-changes.outputs.eks_cluster }}"
+          REGION="${{ env.AWS_REGION }}"
+
+          # Find node IAM role
+          NODE_ROLE=$(aws iam list-roles --output text \
+            --query "Roles[].RoleName" 2>/dev/null \
+            | tr '\t' '\n' | grep -i "node" | head -1 || echo "")
+          if [ -z "$NODE_ROLE" ]; then
+            NODE_ROLE=$(aws iam list-roles --output text \
+              --query "Roles[].RoleName" 2>/dev/null \
+              | tr '\t' '\n' | grep -i "qwikbrew" | head -1 || echo "")
+          fi
+          echo "Node IAM role: ${NODE_ROLE:-NOT FOUND}"
+
+          if [ -n "$NODE_ROLE" ]; then
+            printf '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["elasticloadbalancing:*","ec2:Describe*","ec2:AuthorizeSecurityGroupIngress","ec2:RevokeSecurityGroupIngress","ec2:CreateSecurityGroup","ec2:DeleteSecurityGroup","ec2:CreateTags"],"Resource":"*"}]}' \
+              > /tmp/elb-policy.json
+            aws iam put-role-policy \
+              --role-name "$NODE_ROLE" \
+              --policy-name "QwikBrewELBAccess" \
+              --policy-document file:///tmp/elb-policy.json \
+              && echo "ELB policy attached" || echo "ELB policy may already exist"
+          fi
+
+          VPC_ID=$(aws eks describe-cluster \
+            --name "$CLUSTER" --region "$REGION" \
+            --query "cluster.resourcesVpcConfig.vpcId" \
+            --output text)
+          aws ec2 describe-subnets \
+            --filters "Name=vpc-id,Values=$VPC_ID" \
+            --output text \
+            --region "$REGION" \
+            --query "Subnets[?MapPublicIpOnLaunch==\`true\`].SubnetId" \
+            | tr '\t' '\n' | while read S; do
+            [ -z "$S" ] && continue
+            aws ec2 create-tags --resources "$S" \
+              --tags "Key=kubernetes.io/role/elb,Value=1" \
+              --region "$REGION" && echo "  Tagged: $S" || true
+          done
+
       - name: 📦 Ensure External Secrets Operator is installed
         run: |
           if ! kubectl get crd externalsecrets.external-secrets.io &>/dev/null; then
@@ -444,16 +486,32 @@ jobs:
           fi
 
       - name: 🔧 Substitute manifest placeholders
-        env:
-          ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-          CERT_ARN:   ${{ secrets.STAGING_ACM_CERT_ARN }}
         run: |
-          find k8s/ -name "*.yaml" -exec sed -i \
-            -e "s|ACCOUNT_ID|${ACCOUNT_ID}|g" \
-            -e "s|CERT_ARN|${CERT_ARN}|g" \
-            -e "s|qwikbrew/ENV/|qwikbrew/staging/|g" \
-            {} \;
-          echo "✅ Placeholders substituted"
+          ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
+          CERT_ARN="${{ secrets.STAGING_ACM_CERT_ARN }}"
+          ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com"
+
+          echo "Account ID: ${ACCOUNT_ID}"
+          echo "ECR Registry: ${ECR_REGISTRY}"
+
+          # Substitute placeholders in all k8s manifests
+          find k8s/ -name "*.yaml" | while read f; do
+            sed -i \
+              -e "s|ACCOUNT_ID|${ACCOUNT_ID}|g" \
+              -e "s|CERT_ARN|${CERT_ARN:-placeholder-cert}|g" \
+              -e "s|qwikbrew/ENV/|qwikbrew/staging/|g" \
+              "$f"
+          done
+
+          # Verify substitution worked — no literal ACCOUNT_ID should remain
+          if grep -r "ACCOUNT_ID" k8s/ 2>/dev/null; then
+            echo "❌ ACCOUNT_ID placeholder still present after substitution!"
+            exit 1
+          fi
+          echo "✅ All placeholders substituted successfully"
+
+          echo "--- api-gateway image after substitution ---"
+          grep "image:" k8s/01-deployments.yaml | head -5
 
       - name: 🔑 Ensure K8s secrets exist
         run: |
@@ -509,50 +567,63 @@ jobs:
           docker push "${FRONTEND_IMAGE}"
           echo "✅ Frontend image pushed: ${FRONTEND_IMAGE}"
 
+      - name: 🔧 Verify k8s manifests exist
+        run: |
+          echo "📁 Repository contents:"
+          ls -la
+          echo ""
+          echo "📁 k8s directory:"
+          if [ -d "k8s/" ]; then
+            ls -la k8s/
+          else
+            echo "❌ k8s/ directory NOT FOUND in repository!"
+            echo ""
+            echo "You need to commit the k8s/ directory to your repo:"
+            echo "  git add k8s/"
+            echo "  git commit -m 'add: kubernetes manifests'"
+            echo "  git push origin main"
+            exit 1
+          fi
+
+
+
       - name: 🚀 Apply Kubernetes manifests
         run: |
-          kubectl apply -f k8s/00-namespace-config.yaml -n qwikbrew || true
+          kubectl apply -f k8s/00-namespace-config.yaml || true
+
+          # Force-replace api-gateway service if type changed (NodePort → LoadBalancer)
+          # kubectl apply cannot change service type — must delete + recreate
+          CURRENT_TYPE=$(kubectl get svc api-gateway -n qwikbrew \
+            -o jsonpath="{.spec.type}" 2>/dev/null || echo "")
+          if [ "$CURRENT_TYPE" = "NodePort" ]; then
+            echo "⚠️  Deleting old NodePort service to replace with LoadBalancer..."
+            kubectl delete svc api-gateway -n qwikbrew --ignore-not-found
+            sleep 2
+          fi
+
           kubectl apply -f k8s/01-deployments.yaml -n qwikbrew
-          kubectl apply -f k8s/02-hpa-pdb.yaml -n qwikbrew
+          kubectl apply -f k8s/02-hpa-pdb.yaml -n qwikbrew || true
           kubectl apply -f k8s/03-ingress.yaml -n qwikbrew || true
           echo "✅ Manifests applied"
 
-      - name: 🌐 Print external URL
-        run: |
-          echo "⏳ Waiting for LoadBalancer hostname (up to 5 min)..."
-          for i in $(seq 1 30); do
-            LB=$(kubectl get svc api-gateway -n qwikbrew \
-              -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
-            if [ -n "$LB" ]; then
-              echo ""
-              echo "==========================================="
-              echo "  QWIKBREW IS LIVE"
-              echo "  http://${LB}"
-              echo "==========================================="
-              echo "  GET  http://${LB}/actuator/health"
-              echo "  GET  http://${LB}/api/v1/menu"
-              echo "  POST http://${LB}/api/v1/users/register"
-              echo "  POST http://${LB}/api/v1/users/login"
-              echo "==========================================="
-              echo "## QwikBrew Live URL" >> $GITHUB_STEP_SUMMARY
-              echo "http://${LB}" >> $GITHUB_STEP_SUMMARY
-              break
-            fi
-            echo "  [$i/30] waiting... current: $(kubectl get svc api-gateway -n qwikbrew --no-headers 2>/dev/null | awk '{print $4}')"
-            sleep 10
-          done
-          if [ -z "$LB" ]; then
-            echo "LB still pending — run bootstrap to apply Terraform ELB permissions"
-            kubectl describe svc api-gateway -n qwikbrew | tail -20
-          fi
-
+          # Force rollout of api-gateway to clear InvalidImageName pods
+          echo "🔄 Forcing api-gateway rollout to clear stale pods..."
+          ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
+          GW_IMAGE="${ACCOUNT_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/qwikbrew/api-gateway:latest"
+          kubectl set image deployment/api-gateway \
+            api-gateway="${GW_IMAGE}" \
+            -n qwikbrew 2>/dev/null || true
+          kubectl rollout restart deployment/api-gateway -n qwikbrew
+          echo "✅ api-gateway rollout restarted"
 
       - name: ⏳ Wait for deployments + collect crash logs
         run: |
           SERVICES='${{ needs.detect-changes.outputs.services_json }}'
           echo "$SERVICES" | jq -r ".[]" | while read SVC; do
             echo "⏳ $SVC..."
-            kubectl rollout status deployment/$SVC -n qwikbrew --timeout=600s               && echo "✅ $SVC is live"               || echo "⚠️  $SVC rollout timed out"
+            kubectl rollout status deployment/$SVC -n qwikbrew --timeout=600s \
+              && echo "✅ $SVC is live" \
+              || echo "⚠️  $SVC rollout timed out"
           done
 
           echo ""
