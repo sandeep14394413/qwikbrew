@@ -50,10 +50,8 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
+      maxUnavailable: 0
   selector: { matchLabels: { app: api-gateway } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
   template:
     metadata:
       labels: { app: api-gateway }
@@ -131,10 +129,8 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
+      maxUnavailable: 0
   selector: { matchLabels: { app: user-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
   template:
     metadata:
       labels: { app: user-service }
@@ -181,10 +177,8 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
+      maxUnavailable: 0
   selector: { matchLabels: { app: menu-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
   template:
     metadata:
       labels: { app: menu-service }
@@ -232,10 +226,8 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
+      maxUnavailable: 0
   selector: { matchLabels: { app: order-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
   template:
     metadata:
       labels: { app: order-service }
@@ -294,10 +286,8 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
+      maxUnavailable: 0
   selector: { matchLabels: { app: payment-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
   template:
     metadata:
       labels: { app: payment-service }
@@ -344,10 +334,8 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 1    # kill old pod immediately — don't wait for new pod to be ready first
+      maxUnavailable: 0
   selector: { matchLabels: { app: notification-service } }
-  progressDeadlineSeconds: 600
-  strategy: { type: RollingUpdate, rollingUpdate: { maxSurge: 1, maxUnavailable: 0 } }
   template:
     metadata:
       labels: { app: notification-service }
