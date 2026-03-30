@@ -36,12 +36,17 @@ WORKDIR /app
 COPY --from=builder /workspace/app.jar app.jar
 
 # JVM flags optimised for containerised workloads
-ENV JAVA_OPTS="\
-  -XX:+UseContainerSupport \
-  -XX:MaxRAMPercentage=75.0 \
-  -XX:+UseG1GC \
-  -XX:+OptimizeStringConcat \
-  -Djava.security.egd=file:/dev/./urandom"
-
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Pass JAVA_OPTS and critical Spring Boot properties as JVM args.
+# allow-bean-definition-overriding MUST be set here (not in application.yml)
+# because Spring Cloud Gateway registers WeightCalculatorWebFilter during
+# bean post-processing — before the yml is loaded.
+ENTRYPOINT ["java", \
+  "-Dspring.main.allow-bean-definition-overriding=true", \
+  "-Dspring.cloud.discovery.enabled=false", \
+  "-Dspring.cloud.discovery.reactive.enabled=false", \
+  "-XX:+UseContainerSupport", \
+  "-XX:MaxRAMPercentage=75.0", \
+  "-XX:+UseG1GC", \
+  "-Djava.security.egd=file:/dev/./urandom", \
+  "-jar", "app.jar"]
