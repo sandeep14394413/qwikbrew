@@ -6,16 +6,17 @@ spring:
     name: api-gateway
   cloud:
     gateway:
+      server:
+        webflux:
+          route-refresh-listener:
+            enabled: false
+          predicate:
+            weight:
+              enabled: false
       discovery:
         locator:
           enabled: false  # no auto-routing from service registry
       routes:
-        # Frontend UI — serve React SPA for all non-API requests
-        - id: frontend
-          uri: http://frontend:80
-          predicates:
-            - Path=/,/index.html,/static/**,/manifest.json,/favicon.ico
-
         # Auth routes — no JWT required
         - id: user-service-public
           uri: http://user-service:8081
@@ -71,6 +72,12 @@ spring:
             - Path=/api/v1/notifications/**
           filters:
             - JwtAuth
+
+        # Frontend UI fallback — catches root and SPA client-side routes
+        - id: frontend
+          uri: http://frontend:80
+          predicates:
+            - Path=/**
 
       globalcors:
         cors-configurations:
