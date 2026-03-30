@@ -12,14 +12,13 @@
   <artifactId>api-gateway</artifactId>
 
   <dependencies>
-    <!-- Spring Cloud Gateway WebFlux (reactive) — new name in Spring Cloud 2025.0.x
-         Old: spring-cloud-starter-gateway (now deprecated but still works)
-         New: spring-cloud-starter-gateway-webflux -->
     <dependency>
       <groupId>org.springframework.cloud</groupId>
-      <artifactId>spring-cloud-starter-gateway-webflux</artifactId>
+      <!-- spring-cloud-starter-gateway-webflux is only available in Spring Cloud 2025.0.x+.
+           Using spring-cloud-starter-gateway which exists in all 2023.0.x versions. -->
+      <artifactId>spring-cloud-starter-gateway</artifactId>
       <exclusions>
-        <!-- No lb:// routes — exclude load balancer to prevent WeightCalculatorWebFilter crash -->
+        <!-- Exclude load balancer — no lb:// routes, all routes use direct K8s DNS -->
         <exclusion>
           <groupId>org.springframework.cloud</groupId>
           <artifactId>spring-cloud-loadbalancer</artifactId>
