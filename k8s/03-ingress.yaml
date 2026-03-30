@@ -16,6 +16,13 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
+    # Allow direct ALB DNS access (no Host header match required)
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: { name: api-gateway, port: { number: 80 } }
     - host: api.qwikbrew.in
       http:
         paths:
