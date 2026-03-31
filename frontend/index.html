@@ -152,7 +152,8 @@
 <script type="text/babel">
 
 const { useState, useEffect, useCallback } = React;
-const BUILD_VERSION = '2026-03-31-ui-r12';
+const BUILD_VERSION = '2026-03-31-ui-r13';
+const MERCHANT_UPI_ID = 'sandeep.sandy1594@okaxis';
 
 // ── API client ────────────────────────────────────────────────────────────────
 const API = window.location.hostname === 'localhost' ? 'http://localhost:8080' : '';
@@ -609,6 +610,10 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
     localStorage.setItem('qb_wallet_balance', String(walletBalance));
   }, [walletBalance]);
 
+  useEffect(() => {
+    if (paymentMethod === 'UPI') setGatewayValue(MERCHANT_UPI_ID);
+  }, [paymentMethod]);
+
   const add = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty+1} : x));
   const rem = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty-1} : x).filter(x => x.qty>0));
 
@@ -644,9 +649,6 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
 
   const confirmGatewayPayment = async () => {
     if (!gatewayValue.trim()) { showToast('Please complete payment details', 'error'); return; }
-    if (paymentMethod === 'UPI' && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(gatewayValue.trim())) {
-      showToast('Invalid UPI ID format (example: name@bank)', 'error'); return;
-    }
     if (paymentMethod === 'CARD' && !/^\d{4}$/.test(gatewayValue.trim())) {
       showToast('Enter card last 4 digits', 'error'); return;
     }
@@ -657,18 +659,19 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
           body: JSON.stringify({
             userId: user?.id || user?.email || 'demo-user',
             amount: total,
-            upiId: gatewayValue.trim(),
+            upiId: MERCHANT_UPI_ID,
             reference: `UPI-${Date.now()}`
           })
         });
-        setUpiCollectReference(res.reference || gatewayValue.trim());
+        setUpiCollectReference(res.reference || MERCHANT_UPI_ID);
       } catch {
-        setUpiCollectReference(gatewayValue.trim());
+        setUpiCollectReference(MERCHANT_UPI_ID);
       }
-      const intent = `upi://pay?pa=${encodeURIComponent(gatewayValue.trim())}&pn=${encodeURIComponent('QwikBrew')}&am=${encodeURIComponent(total)}&cu=INR&tn=${encodeURIComponent('QwikBrew order payment')}`;
+      const intent = `upi://pay?pa=${encodeURIComponent(MERCHANT_UPI_ID)}&pn=${encodeURIComponent('QwikBrew')}&am=${encodeURIComponent(total)}&cu=INR&tn=${encodeURIComponent('QwikBrew order payment')}`;
       setUpiIntentLink(intent);
       setUpiCollectSent(true);
-      showToast(`UPI collect request sent to ${gatewayValue.trim()}. Approve in your UPI app, then click confirm again.`, 'success');
+      window.location.href = intent;
+      showToast(`Opening UPI app to pay ${MERCHANT_UPI_ID}. Complete payment, then click confirm.`, 'success');
       return;
     }
     submitOrder(paymentMethod, upiCollectReference || gatewayValue.trim());
@@ -737,12 +740,13 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
             </div>
             <div className="gateway-body">
               <p style={{fontSize:13,color:'var(--muted)',marginBottom:10}}>
-                {paymentMethod === 'UPI' ? 'Enter UPI ID' : paymentMethod === 'CARD' ? 'Enter card last 4 digits' : 'Enter bank reference'}
+                {paymentMethod === 'UPI' ? `Pay to merchant UPI ID: ${MERCHANT_UPI_ID}` : paymentMethod === 'CARD' ? 'Enter card last 4 digits' : 'Enter bank reference'}
               </p>
               <input
-                placeholder={paymentMethod === 'UPI' ? 'name@bank' : paymentMethod === 'CARD' ? '1234' : 'Transaction reference'}
+                placeholder={paymentMethod === 'UPI' ? MERCHANT_UPI_ID : paymentMethod === 'CARD' ? '1234' : 'Transaction reference'}
                 value={gatewayValue}
                 onChange={e => setGatewayValue(e.target.value)}
+                readOnly={paymentMethod === 'UPI'}
                 style={{marginBottom:12}}
               />
               {paymentMethod === 'UPI' && upiCollectSent && (
