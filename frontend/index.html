@@ -152,7 +152,7 @@
 <script type="text/babel">
 
 const { useState, useEffect, useCallback } = React;
-const BUILD_VERSION = '2026-03-31-ui-r5';
+const BUILD_VERSION = '2026-03-31-ui-r6';
 
 // ── API client ────────────────────────────────────────────────────────────────
 const API = window.location.hostname === 'localhost' ? 'http://localhost:8080' : '';
@@ -183,9 +183,12 @@ const SAMPLE_MENU = [
   { id:10, name:'Veg Sandwich', category:'Snacks', price:50, description:'Grilled sandwich with seasonal veggies and cheese', emoji:'🥪', isVeg:true, rating:4.3, preparationTime:7, image:'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=900&q=80' },
   { id:11, name:'Samosa (2 pcs)', category:'Snacks', price:30, description:'Crispy pastry filled with spiced potatoes', emoji:'🥟', isVeg:true, rating:4.5, preparationTime:5, image:'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=80' },
   { id:12, name:'Gulab Jamun', category:'Desserts', price:40, description:'Soft milk-solid dumplings in sugar syrup', emoji:'🍮', isVeg:true, rating:4.7, preparationTime:5, image:'https://images.unsplash.com/photo-1611293388250-580b08c4a145?auto=format&fit=crop&w=900&q=80' },
+  { id:13, name:'Margherita Pizza', category:'Pizza', price:149, description:'Classic thin crust pizza with basil, mozzarella and tomato', emoji:'🍕', isVeg:true, rating:4.6, preparationTime:14, image:'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?auto=format&fit=crop&w=900&q=80' },
+  { id:14, name:'Farmhouse Pizza', category:'Pizza', price:189, description:'Loaded pizza with capsicum, onion, tomato and sweet corn', emoji:'🍕', isVeg:true, rating:4.7, preparationTime:16, image:'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80' },
+  { id:15, name:'Test Item (Verification)', category:'Snacks', price:1, description:'₹1 test item for payment verification transactions', emoji:'🧪', isVeg:true, rating:4.9, preparationTime:1, image:'https://images.unsplash.com/photo-1546549032-9571cd6b27df?auto=format&fit=crop&w=900&q=80' },
 ];
 
-const CATEGORIES = ['All', 'Breakfast', 'South Indian', 'Rice', 'Curry', 'Dal', 'Snacks', 'Beverages', 'Desserts'];
+const CATEGORIES = ['All', 'Breakfast', 'South Indian', 'Rice', 'Curry', 'Dal', 'Snacks', 'Beverages', 'Desserts', 'Pizza'];
 const SPECIALS = [
   { title:'Breakfast Combo', subtitle:'Idli + Filter Coffee', price:'₹59' },
   { title:'Executive Lunch', subtitle:'Biryani + Dessert', price:'₹149' },
@@ -203,6 +206,9 @@ const FOOD_IMAGE_MAP = {
   'filter coffee':'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80',
   'masala chai':'https://images.unsplash.com/photo-1597318181409-cf64d0b5d8a2?auto=format&fit=crop&w=900&q=80',
   'veg sandwich':'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=900&q=80',
+  'margherita pizza':'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?auto=format&fit=crop&w=900&q=80',
+  'farmhouse pizza':'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80',
+  pizza:'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80',
   samosa:'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=80',
   'gulab jamun':'https://images.unsplash.com/photo-1611293388250-580b08c4a145?auto=format&fit=crop&w=900&q=80'
 };
@@ -225,6 +231,15 @@ function decorateMenuItems(list) {
     preparationTime: item.preparationTime ?? (8 + (index % 5) * 3),
     image: resolveFoodImage(item)
   }));
+}
+
+function mergeWithFeaturedDishes(list) {
+  const byName = new Map(list.map(item => [(item.name || '').toLowerCase(), item]));
+  SAMPLE_MENU.forEach(item => {
+    const key = (item.name || '').toLowerCase();
+    if (!byName.has(key)) byName.set(key, item);
+  });
+  return Array.from(byName.values());
 }
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -340,8 +355,8 @@ function MenuScreen({ cart, setCart, showToast }) {
   useEffect(() => {
     api('/api/v1/menu').then(data => {
       const list = Array.isArray(data) ? data : (data.content || data.items || SAMPLE_MENU);
-      setItems(decorateMenuItems(list.length ? list : SAMPLE_MENU));
-    }).catch(() => setItems(decorateMenuItems(SAMPLE_MENU))).finally(() => setLoading(false));
+      setItems(decorateMenuItems(mergeWithFeaturedDishes(list.length ? list : SAMPLE_MENU)));
+    }).catch(() => setItems(decorateMenuItems(mergeWithFeaturedDishes(SAMPLE_MENU)))).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -391,6 +406,9 @@ function MenuScreen({ cart, setCart, showToast }) {
         <div style={{fontSize:11,fontWeight:800,color:'#c2410c',background:'#fff',border:'1px solid #fdba74',borderRadius:999,padding:'4px 8px'}}>
           {BUILD_VERSION}
         </div>
+      </div>
+      <div style={{margin:'0 20px 14px',background:'#ecfeff',border:'1px solid #a5f3fc',padding:'10px 12px',borderRadius:12,color:'#155e75',fontSize:12,fontWeight:600}}>
+        🧪 Payment test ready: add <strong>Test Item (Verification)</strong> (₹1) and pay via Wallet / UPI / Card.
       </div>
       <div style={{padding:'0 20px 8px',color:'var(--muted)',fontSize:13,display:'flex',justifyContent:'space-between'}}>
         <span>{filtered.length} curated items</span>
@@ -569,33 +587,53 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
   const [paymentMethod, setPaymentMethod] = useState('WALLET');
   const [gatewayOpen, setGatewayOpen] = useState(false);
   const [gatewayValue, setGatewayValue] = useState('');
+  const [walletBalance, setWalletBalance] = useState(() => {
+    const stored = Number(localStorage.getItem('qb_wallet_balance'));
+    if (!Number.isNaN(stored) && stored >= 0) return stored;
+    return Number(user?.walletBalance || 500);
+  });
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+  useEffect(() => {
+    localStorage.setItem('qb_wallet_balance', String(walletBalance));
+  }, [walletBalance]);
 
   const add = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty+1} : x));
   const rem = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty-1} : x).filter(x => x.qty>0));
 
   const submitOrder = async (method = paymentMethod, reference = `QB-${Date.now()}`) => {
     setPlacing(true);
+    const txnId = `TXN-${Date.now()}`;
     const payload = { items: cart.map(i => ({ menuItemId: i.id, menuItemName: i.name, quantity: i.qty, unitPrice: i.price })), totalAmount: total, paymentMethod: method };
     try {
       await api('/api/v1/payments/charge', {
         method:'POST',
-        body: JSON.stringify({ userId: user?.id || user?.email || 'demo-user', amount: total, paymentMethod: method, reference })
+        body: JSON.stringify({ userId: user?.id || user?.email || 'demo-user', amount: total, paymentMethod: method, reference, transactionId: txnId })
       });
       await api('/api/v1/orders', { method:'POST', body: JSON.stringify(payload) });
     } catch(e) { /* demo fallback */ }
-    showToast(`Order placed via ${method.replace('_',' ')}! Total ₹${total} 🎉`);
+    if (method === 'WALLET') setWalletBalance(b => Math.max(0, b - total));
+    showToast(`Paid via ${method.replace('_',' ')} • Txn ${txnId} • ₹${total}`, 'success');
     setCart([]); onClose(); setPlacing(false);
     setGatewayOpen(false); setGatewayValue('');
   };
 
   const placeOrder = async () => {
-    if (paymentMethod === 'WALLET') return submitOrder('WALLET');
+    if (paymentMethod === 'WALLET') {
+      if (walletBalance < total) { showToast(`Insufficient wallet balance. Available ₹${walletBalance}`, 'error'); return; }
+      return submitOrder('WALLET');
+    }
     setGatewayOpen(true);
   };
 
   const confirmGatewayPayment = async () => {
     if (!gatewayValue.trim()) { showToast('Please complete payment details', 'error'); return; }
+    if (paymentMethod === 'UPI' && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(gatewayValue.trim())) {
+      showToast('Invalid UPI ID format (example: name@bank)', 'error'); return;
+    }
+    if (paymentMethod === 'CARD' && !/^\d{4}$/.test(gatewayValue.trim())) {
+      showToast('Enter card last 4 digits', 'error'); return;
+    }
     submitOrder(paymentMethod, gatewayValue.trim());
   };
 
@@ -632,6 +670,9 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
         {cart.length > 0 && (
           <div className="cart-footer">
             <div className="cart-total"><span>Total</span><span style={{color:'var(--primary)'}}>₹{total}</span></div>
+            <div style={{fontSize:12,background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'8px 10px',borderRadius:10,marginBottom:10,fontWeight:600}}>
+              Wallet Balance: ₹{walletBalance}
+            </div>
             <div className="payment-methods">
               {[{id:'WALLET',label:'Wallet',icon:'fa-wallet'},{id:'UPI',label:'UPI',icon:'fa-mobile-screen'},{id:'CARD',label:'Card',icon:'fa-credit-card'},{id:'NET_BANKING',label:'NetBanking',icon:'fa-building-columns'}].map(m => (
                 <button key={m.id} className={`payment-method ${paymentMethod===m.id?'active':''}`} onClick={() => setPaymentMethod(m.id)}>
