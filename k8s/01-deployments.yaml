@@ -409,11 +409,16 @@ spec:
   template:
     metadata:
       labels: { app: frontend }
+      annotations:
+        qwikbrew/ui-build-version: "2026-03-31-ui-r9"
     spec:
       containers:
         - name: frontend
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/frontend:latest
           imagePullPolicy: Always
+          env:
+            - name: UI_BUILD_VERSION
+              value: "2026-03-31-ui-r9"
           ports: [{ containerPort: 80 }]
           resources:
             requests: { cpu: 50m, memory: 64Mi }

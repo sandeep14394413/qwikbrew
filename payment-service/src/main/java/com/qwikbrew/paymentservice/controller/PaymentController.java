@@ -24,6 +24,11 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.charge(req));
     }
 
+    @PostMapping("/upi/collect")
+    public ResponseEntity<UpiCollectResponse> upiCollect(@RequestBody UpiCollectRequest req) {
+        return ResponseEntity.ok(paymentService.initiateUpiCollect(req));
+    }
+
     @PostMapping("/refund")
     public ResponseEntity<RefundResponse> refund(@RequestBody RefundRequest req) {
         return ResponseEntity.ok(paymentService.refund(req));
