@@ -41,7 +41,7 @@
     .spinner{border:3px solid #f3f3f3;border-top:3px solid var(--primary);border-radius:50%;width:32px;height:32px;animation:spin .8s linear infinite;margin:40px auto;}
     @keyframes spin{to{transform:rotate(360deg);}}
     /* Nav */
-    nav{background:rgba(17,24,39,.92);backdrop-filter:blur(12px);padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;height:66px;border-bottom:1px solid rgba(255,255,255,.08);}
+    nav{background:linear-gradient(90deg,#0f172a,#1e293b);backdrop-filter:blur(12px);padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;height:66px;border-bottom:1px solid rgba(255,255,255,.08);}
     .nav-brand{color:#fff;font-size:22px;font-weight:800;display:flex;align-items:center;gap:8px;}
     .nav-brand span{color:var(--primary);}
     .nav-right{display:flex;align-items:center;gap:16px;}
@@ -49,8 +49,8 @@
     .nav-badge{position:absolute;top:-6px;right:-6px;background:var(--primary);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;display:flex;align-items:center;justify-content:center;}
     /* Hero */
     .hero{background:
-      linear-gradient(125deg,rgba(17,24,39,.88),rgba(30,41,59,.9)),
-      url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1800&q=80') center/cover;
+      linear-gradient(125deg,rgba(15,23,42,.90),rgba(30,41,59,.90)),
+      url('https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1800&q=80') center/cover;
       padding:50px 20px 38px;color:#fff;text-align:center;position:relative;overflow:hidden;}
     .hero::after{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.12);right:-70px;top:-70px;}
     .hero::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.28));pointer-events:none;}
@@ -159,7 +159,7 @@
 <script type="text/babel">
 
 const { useState, useEffect, useCallback } = React;
-const BUILD_VERSION = '2026-03-31-ui-r14';
+const BUILD_VERSION = '2026-03-31-ui-r15';
 const MERCHANT_UPI_ID = 'sandeep.sandy1594@okaxis';
 
 // ── API client ────────────────────────────────────────────────────────────────
@@ -182,8 +182,8 @@ const SAMPLE_MENU = [
   { id:1, name:'Masala Dosa', category:'South Indian', price:55, description:'Crispy rice crepe with spiced potato filling', emoji:'🫓', isVeg:true, rating:4.5, preparationTime:10, image:'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=900&q=80' },
   { id:2, name:'Poha', category:'Breakfast', price:35, description:'Flattened rice with veggies and spices', emoji:'🍚', isVeg:true, rating:4.2, preparationTime:8, image:'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=80' },
   { id:3, name:'Idli Sambar', category:'South Indian', price:45, description:'Soft steamed rice cakes with sambar and chutney', emoji:'⚪', isVeg:true, rating:4.7, preparationTime:5, image:'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=900&q=80' },
-  { id:4, name:'Veg Biryani', category:'Rice', price:95, description:'Fragrant basmati rice cooked with mixed vegetables', emoji:'🍛', isVeg:true, rating:4.4, preparationTime:20, image:'https://images.unsplash.com/photo-1701579231378-372ea3c7ca87?auto=format&fit=crop&w=900&q=80' },
-  { id:5, name:'Chicken Biryani', category:'Rice', price:130, description:'Aromatic basmati with tender chicken pieces', emoji:'🍗', isVeg:false, rating:4.8, preparationTime:25, image:'https://images.unsplash.com/photo-1633945274309-2c16c9682a8b?auto=format&fit=crop&w=900&q=80' },
+  { id:4, name:'Veg Biryani', category:'Rice', price:95, description:'Fragrant basmati rice cooked with mixed vegetables', emoji:'🍛', isVeg:true, rating:4.4, preparationTime:20, image:'https://images.unsplash.com/photo-1642821373181-696a54913e93?auto=format&fit=crop&w=900&q=80' },
+  { id:5, name:'Chicken Biryani', category:'Rice', price:130, description:'Aromatic basmati with tender chicken pieces', emoji:'🍗', isVeg:false, rating:4.8, preparationTime:25, image:'https://images.unsplash.com/photo-1563379091339-03246963d29c?auto=format&fit=crop&w=900&q=80' },
   { id:6, name:'Dal Tadka', category:'Dal', price:65, description:'Yellow lentils tempered with ghee and spices', emoji:'🍲', isVeg:true, preparationTime:12, image:'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80' },
   { id:7, name:'Paneer Butter Masala', category:'Curry', price:110, description:'Soft paneer in rich tomato-butter gravy', emoji:'🧀', isVeg:true, rating:4.6, preparationTime:15, image:'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=900&q=80' },
   { id:8, name:'Filter Coffee', category:'Beverages', price:25, description:'Freshly brewed South Indian filter coffee', emoji:'☕', isVeg:true, rating:4.9, preparationTime:3, image:'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80' },
@@ -207,8 +207,8 @@ const FOOD_IMAGE_MAP = {
   'masala dosa':'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=900&q=80',
   poha:'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=80',
   'idli sambar':'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=900&q=80',
-  'veg biryani':'https://images.unsplash.com/photo-1701579231378-372ea3c7ca87?auto=format&fit=crop&w=900&q=80',
-  'chicken biryani':'https://images.unsplash.com/photo-1633945274309-2c16c9682a8b?auto=format&fit=crop&w=900&q=80',
+  'veg biryani':'https://images.unsplash.com/photo-1642821373181-696a54913e93?auto=format&fit=crop&w=900&q=80',
+  'chicken biryani':'https://images.unsplash.com/photo-1563379091339-03246963d29c?auto=format&fit=crop&w=900&q=80',
   'dal tadka':'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80',
   'paneer butter masala':'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=900&q=80',
   'filter coffee':'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80',
