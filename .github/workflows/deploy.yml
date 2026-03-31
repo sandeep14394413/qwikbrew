@@ -711,7 +711,31 @@ jobs:
             echo "| Login      | /api/v1/users/login |" >> $GITHUB_STEP_SUMMARY
           else
             echo "WARNING: LB hostname not assigned after 5 min"
-            echo "Check AWS Console -> EC2 -> Load Balancers"
+            echo "Collecting service/controller diagnostics..."
+            echo ""
+            echo ">> api-gateway service details:"
+            kubectl describe svc api-gateway -n qwikbrew || true
+            echo ""
+            echo ">> aws-load-balancer-controller logs (last 120 lines):"
+            kubectl logs -n kube-system deployment/aws-load-balancer-controller --tail=120 2>/dev/null || true
+            echo ""
+            echo ">> events in qwikbrew namespace (latest 50):"
+            kubectl get events -n qwikbrew --sort-by=.lastTimestamp | tail -50 || true
+            echo ""
+            echo "Falling back to NodePort for smoke testing..."
+            kubectl patch svc api-gateway -n qwikbrew -p '{"spec":{"type":"NodePort"}}' || true
+            NODE_PORT=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.spec.ports[0].nodePort}" 2>/dev/null || echo "")
+            NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[?(@.type=='ExternalIP')].address}" 2>/dev/null || echo "")
+            if [ -z "$NODE_IP" ]; then
+              NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[?(@.type=='InternalIP')].address}" 2>/dev/null || echo "")
+            fi
+            if [ -n "$NODE_IP" ] && [ -n "$NODE_PORT" ]; then
+              echo "Temporary NodePort URL: http://${NODE_IP}:${NODE_PORT}"
+              echo "## QwikBrew Temporary URL (NodePort fallback)" >> $GITHUB_STEP_SUMMARY
+              echo "**http://${NODE_IP}:${NODE_PORT}**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "NodePort fallback unavailable (missing node IP or nodePort)."
+            fi
           fi
 
           # ── Full diagnostics (always runs) ────────────────────────────────
