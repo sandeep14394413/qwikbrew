@@ -451,19 +451,35 @@ jobs:
           CLUSTER="${{ needs.detect-changes.outputs.eks_cluster }}"
           REGION="${{ env.AWS_REGION }}"
 
-          # Find node IAM role
-          NODE_ROLE=$(aws iam list-roles --output text \
-            --query "Roles[].RoleName" 2>/dev/null \
-            | tr '\t' '\n' | grep -i "node" | head -1 || echo "")
+          # Find the actual IAM role attached to an EKS worker node instance.
+          # This is more reliable than fuzzy role-name matching.
+          NODE_INSTANCE_ID=$(kubectl get nodes -o jsonpath="{.items[0].spec.providerID}" 2>/dev/null | sed 's|.*/||' || echo "")
+          NODE_ROLE=""
+          if [ -n "$NODE_INSTANCE_ID" ]; then
+            INSTANCE_PROFILE_ARN=$(aws ec2 describe-instances \
+              --instance-ids "$NODE_INSTANCE_ID" \
+              --region "$REGION" \
+              --query "Reservations[0].Instances[0].IamInstanceProfile.Arn" \
+              --output text 2>/dev/null || echo "")
+            INSTANCE_PROFILE_NAME=$(basename "$INSTANCE_PROFILE_ARN" 2>/dev/null || echo "")
+            if [ -n "$INSTANCE_PROFILE_NAME" ] && [ "$INSTANCE_PROFILE_NAME" != "None" ]; then
+              NODE_ROLE=$(aws iam get-instance-profile \
+                --instance-profile-name "$INSTANCE_PROFILE_NAME" \
+                --query "InstanceProfile.Roles[0].RoleName" \
+                --output text 2>/dev/null || echo "")
+            fi
+          fi
+
+          # Fallback if node-instance lookup failed for any reason.
           if [ -z "$NODE_ROLE" ]; then
             NODE_ROLE=$(aws iam list-roles --output text \
               --query "Roles[].RoleName" 2>/dev/null \
-              | tr '\t' '\n' | grep -i "qwikbrew" | head -1 || echo "")
+              | tr '\t' '\n' | grep -Ei "node|qwikbrew" | head -1 || echo "")
           fi
           echo "Node IAM role: ${NODE_ROLE:-NOT FOUND}"
 
           if [ -n "$NODE_ROLE" ]; then
-            printf '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["elasticloadbalancing:*","ec2:Describe*","ec2:AuthorizeSecurityGroupIngress","ec2:RevokeSecurityGroupIngress","ec2:CreateSecurityGroup","ec2:DeleteSecurityGroup","ec2:CreateTags"],"Resource":"*"}]}' \
+            printf '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["elasticloadbalancing:*","ec2:Describe*","ec2:CreateSecurityGroup","ec2:DeleteSecurityGroup","ec2:CreateTags","ec2:DeleteTags","ec2:AuthorizeSecurityGroupIngress","ec2:RevokeSecurityGroupIngress","iam:CreateServiceLinkedRole","shield:GetSubscriptionState","wafv2:GetWebACLForResource","wafv2:GetWebACL","wafv2:AssociateWebACL","wafv2:DisassociateWebACL","tag:GetResources","tag:TagResources"],"Resource":"*"}]}' \
               > /tmp/elb-policy.json
             aws iam put-role-policy \
               --role-name "$NODE_ROLE" \
@@ -623,7 +639,11 @@ jobs:
           # Apply deployments + services
           kubectl apply -f k8s/01-deployments.yaml -n qwikbrew
           kubectl apply -f k8s/02-hpa-pdb.yaml -n qwikbrew || true
-          kubectl apply -f k8s/03-ingress.yaml -n qwikbrew || true
+          if [ -n "${{ secrets.STAGING_ACM_CERT_ARN }}" ]; then
+            kubectl apply -f k8s/03-ingress.yaml -n qwikbrew || true
+          else
+            echo "Skipping ingress apply: STAGING_ACM_CERT_ARN is not set."
+          fi
 
           # Set correct image explicitly (in case ACCOUNT_ID substitution missed anything)
           kubectl set image deployment/api-gateway             api-gateway="${GW_IMAGE}" -n qwikbrew 2>/dev/null || true
@@ -674,15 +694,32 @@ jobs:
 
       - name: 🌐 Print external URL + full diagnostics
         run: |
-          LB=$(kubectl get svc api-gateway -n qwikbrew             -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+          LB_HOST=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+          LB_IP=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].ip}" 2>/dev/null || echo "")
+          LB="${LB_HOST:-$LB_IP}"
+          LB_FAILED="false"
 
           # ── Wait for LB hostname if not yet assigned ──────────────────────
           if [ -z "$LB" ]; then
             echo "⏳ Waiting for LoadBalancer hostname (up to 5 min)..."
             for i in $(seq 1 30); do
-              LB=$(kubectl get svc api-gateway -n qwikbrew                 -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+              LB_HOST=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+              LB_IP=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].ip}" 2>/dev/null || echo "")
+              LB="${LB_HOST:-$LB_IP}"
               [ -n "$LB" ] && break
               echo "  [$i/30] pending..."
+              # If service already reports a hard AWS error, stop waiting and surface it now.
+              LAST_WARN=$(kubectl get events -n qwikbrew \
+                --field-selector involvedObject.kind=Service,involvedObject.name=api-gateway,type=Warning \
+                --sort-by=.lastTimestamp \
+                -o jsonpath="{.items[-1:].message}" 2>/dev/null || echo "")
+              if [ -n "$LAST_WARN" ]; then
+                echo "  ↳ service warning: $LAST_WARN"
+                if echo "$LAST_WARN" | grep -Eiq "failed|error|denied|subnet|permission|quota|unsupported"; then
+                  LB_FAILED="true"
+                  break
+                fi
+              fi
               sleep 10
             done
           fi
@@ -711,6 +748,9 @@ jobs:
             echo "| Login      | /api/v1/users/login |" >> $GITHUB_STEP_SUMMARY
           else
             echo "WARNING: LB hostname not assigned after 5 min"
+            if [ "$LB_FAILED" = "true" ]; then
+              echo "LoadBalancer provisioning reported an explicit warning; stopped waiting early."
+            fi
             echo "Collecting service/controller diagnostics..."
             echo ""
             echo ">> api-gateway service details:"
