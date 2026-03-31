@@ -428,24 +428,58 @@ jobs:
           aws eks update-kubeconfig --name "$CLUSTER" --region ${{ env.AWS_REGION }}
           echo "✅ Connected to cluster: $CLUSTER"
 
+      - name: 🌐 Ensure AWS Load Balancer Controller is installed
+        run: |
+          if kubectl get deployment aws-load-balancer-controller -n kube-system >/dev/null 2>&1; then
+            echo "✅ AWS Load Balancer Controller already installed"
+            kubectl get deployment aws-load-balancer-controller -n kube-system
+          else
+            echo "📦 Installing AWS Load Balancer Controller..."
+            helm repo add eks https://aws.github.io/eks-charts
+            helm repo update
+            helm upgrade --install aws-load-balancer-controller \
+              eks/aws-load-balancer-controller \
+              -n kube-system \
+              --set clusterName="${{ needs.detect-changes.outputs.eks_cluster }}" \
+              --set serviceAccount.create=true \
+              --wait --timeout=180s
+            kubectl get deployment aws-load-balancer-controller -n kube-system
+          fi
+
       - name: 🔐 Fix ELB IAM permissions + subnet tags
         run: |
           CLUSTER="${{ needs.detect-changes.outputs.eks_cluster }}"
           REGION="${{ env.AWS_REGION }}"
 
-          # Find node IAM role
-          NODE_ROLE=$(aws iam list-roles --output text \
-            --query "Roles[].RoleName" 2>/dev/null \
-            | tr '\t' '\n' | grep -i "node" | head -1 || echo "")
+          # Find the actual IAM role attached to an EKS worker node instance.
+          # This is more reliable than fuzzy role-name matching.
+          NODE_INSTANCE_ID=$(kubectl get nodes -o jsonpath="{.items[0].spec.providerID}" 2>/dev/null | sed 's|.*/||' || echo "")
+          NODE_ROLE=""
+          if [ -n "$NODE_INSTANCE_ID" ]; then
+            INSTANCE_PROFILE_ARN=$(aws ec2 describe-instances \
+              --instance-ids "$NODE_INSTANCE_ID" \
+              --region "$REGION" \
+              --query "Reservations[0].Instances[0].IamInstanceProfile.Arn" \
+              --output text 2>/dev/null || echo "")
+            INSTANCE_PROFILE_NAME=$(basename "$INSTANCE_PROFILE_ARN" 2>/dev/null || echo "")
+            if [ -n "$INSTANCE_PROFILE_NAME" ] && [ "$INSTANCE_PROFILE_NAME" != "None" ]; then
+              NODE_ROLE=$(aws iam get-instance-profile \
+                --instance-profile-name "$INSTANCE_PROFILE_NAME" \
+                --query "InstanceProfile.Roles[0].RoleName" \
+                --output text 2>/dev/null || echo "")
+            fi
+          fi
+
+          # Fallback if node-instance lookup failed for any reason.
           if [ -z "$NODE_ROLE" ]; then
             NODE_ROLE=$(aws iam list-roles --output text \
               --query "Roles[].RoleName" 2>/dev/null \
-              | tr '\t' '\n' | grep -i "qwikbrew" | head -1 || echo "")
+              | tr '\t' '\n' | grep -Ei "node|qwikbrew" | head -1 || echo "")
           fi
           echo "Node IAM role: ${NODE_ROLE:-NOT FOUND}"
 
           if [ -n "$NODE_ROLE" ]; then
-            printf '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["elasticloadbalancing:*","ec2:Describe*","ec2:AuthorizeSecurityGroupIngress","ec2:RevokeSecurityGroupIngress","ec2:CreateSecurityGroup","ec2:DeleteSecurityGroup","ec2:CreateTags"],"Resource":"*"}]}' \
+            printf '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["elasticloadbalancing:*","ec2:Describe*","ec2:CreateSecurityGroup","ec2:DeleteSecurityGroup","ec2:CreateTags","ec2:DeleteTags","ec2:AuthorizeSecurityGroupIngress","ec2:RevokeSecurityGroupIngress","iam:CreateServiceLinkedRole","shield:GetSubscriptionState","wafv2:GetWebACLForResource","wafv2:GetWebACL","wafv2:AssociateWebACL","wafv2:DisassociateWebACL","tag:GetResources","tag:TagResources"],"Resource":"*"}]}' \
               > /tmp/elb-policy.json
             aws iam put-role-policy \
               --role-name "$NODE_ROLE" \
@@ -605,7 +639,11 @@ jobs:
           # Apply deployments + services
           kubectl apply -f k8s/01-deployments.yaml -n qwikbrew
           kubectl apply -f k8s/02-hpa-pdb.yaml -n qwikbrew || true
-          kubectl apply -f k8s/03-ingress.yaml -n qwikbrew || true
+          if [ -n "${{ secrets.STAGING_ACM_CERT_ARN }}" ]; then
+            kubectl apply -f k8s/03-ingress.yaml -n qwikbrew || true
+          else
+            echo "Skipping ingress apply: STAGING_ACM_CERT_ARN is not set."
+          fi
 
           # Set correct image explicitly (in case ACCOUNT_ID substitution missed anything)
           kubectl set image deployment/api-gateway             api-gateway="${GW_IMAGE}" -n qwikbrew 2>/dev/null || true
@@ -641,20 +679,47 @@ jobs:
               kubectl logs $POD -n qwikbrew --tail=40 --previous 2>/dev/null \
                 || kubectl logs $POD -n qwikbrew --tail=40 2>/dev/null \
                 || echo "(no logs)"
-            fi
+              fi
           done
+
+      - name: 🔎 External Secrets diagnostics
+        if: always()
+        run: |
+          echo "━━━━ EXTERNAL SECRETS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          kubectl get externalsecrets -n qwikbrew || true
+          kubectl describe externalsecret aiven-credentials -n qwikbrew 2>/dev/null | grep -A8 "Status:" || true
+          echo ""
+          echo "━━━━ K8S SECRETS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          kubectl get secrets -n qwikbrew | grep -E "aiven-credentials|app-secrets" || true
 
       - name: 🌐 Print external URL + full diagnostics
         run: |
-          LB=$(kubectl get svc api-gateway -n qwikbrew             -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+          LB_HOST=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+          LB_IP=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].ip}" 2>/dev/null || echo "")
+          LB="${LB_HOST:-$LB_IP}"
+          LB_FAILED="false"
 
           # ── Wait for LB hostname if not yet assigned ──────────────────────
           if [ -z "$LB" ]; then
             echo "⏳ Waiting for LoadBalancer hostname (up to 5 min)..."
             for i in $(seq 1 30); do
-              LB=$(kubectl get svc api-gateway -n qwikbrew                 -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+              LB_HOST=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+              LB_IP=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].ip}" 2>/dev/null || echo "")
+              LB="${LB_HOST:-$LB_IP}"
               [ -n "$LB" ] && break
               echo "  [$i/30] pending..."
+              # If service already reports a hard AWS error, stop waiting and surface it now.
+              LAST_WARN=$(kubectl get events -n qwikbrew \
+                --field-selector involvedObject.kind=Service,involvedObject.name=api-gateway,type=Warning \
+                --sort-by=.lastTimestamp \
+                -o jsonpath="{.items[-1:].message}" 2>/dev/null || echo "")
+              if [ -n "$LAST_WARN" ]; then
+                echo "  ↳ service warning: $LAST_WARN"
+                if echo "$LAST_WARN" | grep -Eiq "failed|error|denied|subnet|permission|quota|unsupported"; then
+                  LB_FAILED="true"
+                  break
+                fi
+              fi
               sleep 10
             done
           fi
@@ -683,7 +748,34 @@ jobs:
             echo "| Login      | /api/v1/users/login |" >> $GITHUB_STEP_SUMMARY
           else
             echo "WARNING: LB hostname not assigned after 5 min"
-            echo "Check AWS Console -> EC2 -> Load Balancers"
+            if [ "$LB_FAILED" = "true" ]; then
+              echo "LoadBalancer provisioning reported an explicit warning; stopped waiting early."
+            fi
+            echo "Collecting service/controller diagnostics..."
+            echo ""
+            echo ">> api-gateway service details:"
+            kubectl describe svc api-gateway -n qwikbrew || true
+            echo ""
+            echo ">> aws-load-balancer-controller logs (last 120 lines):"
+            kubectl logs -n kube-system deployment/aws-load-balancer-controller --tail=120 2>/dev/null || true
+            echo ""
+            echo ">> events in qwikbrew namespace (latest 50):"
+            kubectl get events -n qwikbrew --sort-by=.lastTimestamp | tail -50 || true
+            echo ""
+            echo "Falling back to NodePort for smoke testing..."
+            kubectl patch svc api-gateway -n qwikbrew -p '{"spec":{"type":"NodePort"}}' || true
+            NODE_PORT=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.spec.ports[0].nodePort}" 2>/dev/null || echo "")
+            NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[?(@.type=='ExternalIP')].address}" 2>/dev/null || echo "")
+            if [ -z "$NODE_IP" ]; then
+              NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[?(@.type=='InternalIP')].address}" 2>/dev/null || echo "")
+            fi
+            if [ -n "$NODE_IP" ] && [ -n "$NODE_PORT" ]; then
+              echo "Temporary NodePort URL: http://${NODE_IP}:${NODE_PORT}"
+              echo "## QwikBrew Temporary URL (NodePort fallback)" >> $GITHUB_STEP_SUMMARY
+              echo "**http://${NODE_IP}:${NODE_PORT}**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "NodePort fallback unavailable (missing node IP or nodePort)."
+            fi
           fi
 
           # ── Full diagnostics (always runs) ────────────────────────────────
