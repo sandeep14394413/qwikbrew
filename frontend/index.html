@@ -152,7 +152,7 @@
 <script type="text/babel">
 
 const { useState, useEffect, useCallback } = React;
-const BUILD_VERSION = '2026-03-31-ui-r3';
+const BUILD_VERSION = '2026-03-31-ui-r4';
 
 // ── API client ────────────────────────────────────────────────────────────────
 const API = window.location.hostname === 'localhost' ? 'http://localhost:8080' : '';
@@ -359,9 +359,13 @@ function MenuScreen({ cart, setCart, showToast }) {
 
   return (
     <div>
+      <div style={{margin:'14px 20px 0',padding:'10px 14px',borderRadius:12,background:'linear-gradient(90deg,#111827,#374151)',color:'#fff',display:'flex',justifyContent:'space-between',alignItems:'center',boxShadow:'0 10px 26px rgba(17,24,39,.22)'}}>
+        <strong style={{fontSize:12,letterSpacing:'.3px'}}>🎉 UI REFRESH IS LIVE</strong>
+        <span style={{fontSize:11,opacity:.9}}>Released: 31 Mar 2026 • {BUILD_VERSION}</span>
+      </div>
       <div className="hero">
-        <h1>Good food, faster checkout ☕</h1>
-        <p>Inspired by modern enterprise café experiences for busy teams.</p>
+        <h1>Fresh Look, Real Food Photos 🍽️</h1>
+        <p>Redesigned QwikBrew experience with richer visuals and photo-first menu cards.</p>
         <div className="search-box">
           <i className="fa fa-search"/>
           <input placeholder="Search dosa, biryani, coffee..." value={search} onChange={e => setSearch(e.target.value)}/>
@@ -710,7 +714,7 @@ function App() {
     <div id="root">
       {toast && <Toast msg={toast.msg} type={toast.type}/>}
       <nav>
-        <div className="nav-brand">☕ <span>Qwik</span>Brew</div>
+        <div className="nav-brand">☕ <span>Qwik</span>Brew <span style={{fontSize:11,fontWeight:700,background:'rgba(249,115,22,.22)',padding:'2px 8px',borderRadius:999}}>NEW UI</span></div>
         <div className="nav-right">
           <div style={{background:'rgba(249,115,22,.2)',color:'#fdba74',fontSize:10,padding:'4px 8px',borderRadius:999,fontWeight:700}}>
             UI {BUILD_VERSION}
