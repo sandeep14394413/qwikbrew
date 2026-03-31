@@ -634,6 +634,8 @@ jobs:
           # so the service stays NodePort forever unless we force delete+recreate
           echo "Recreating api-gateway service as LoadBalancer..."
           kubectl delete svc api-gateway -n qwikbrew --ignore-not-found
+          echo "Recreating frontend service as LoadBalancer..."
+          kubectl delete svc frontend -n qwikbrew --ignore-not-found
           sleep 3
 
           # Apply deployments + services
@@ -776,6 +778,21 @@ jobs:
             else
               echo "NodePort fallback unavailable (missing node IP or nodePort)."
             fi
+          fi
+
+          # Print frontend URL when frontend Service is public.
+          FRONTEND_LB=$(kubectl get svc frontend -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+          if [ -z "$FRONTEND_LB" ]; then
+            FRONTEND_LB=$(kubectl get svc frontend -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].ip}" 2>/dev/null || echo "")
+          fi
+          if [ -n "$FRONTEND_LB" ]; then
+            echo ""
+            echo "Frontend UI: http://${FRONTEND_LB}"
+            echo "## QwikBrew Frontend URL" >> $GITHUB_STEP_SUMMARY
+            echo "**[http://${FRONTEND_LB}](http://${FRONTEND_LB})**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo ""
+            echo "Frontend service has no external endpoint yet (type may still be ClusterIP)."
           fi
 
           # ── Full diagnostics (always runs) ────────────────────────────────
