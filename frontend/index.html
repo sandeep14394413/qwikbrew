@@ -152,7 +152,7 @@
 <script type="text/babel">
 
 const { useState, useEffect, useCallback } = React;
-const BUILD_VERSION = '2026-03-31-ui-r7';
+const BUILD_VERSION = '2026-03-31-ui-r8';
 
 // ── API client ────────────────────────────────────────────────────────────────
 const API = window.location.hostname === 'localhost' ? 'http://localhost:8080' : '';
@@ -587,6 +587,7 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
   const [paymentMethod, setPaymentMethod] = useState('WALLET');
   const [gatewayOpen, setGatewayOpen] = useState(false);
   const [gatewayValue, setGatewayValue] = useState('');
+  const [upiCollectSent, setUpiCollectSent] = useState(false);
   const [walletBalance, setWalletBalance] = useState(() => {
     const stored = Number(localStorage.getItem('qb_wallet_balance'));
     if (!Number.isNaN(stored) && stored >= 0) return stored;
@@ -615,7 +616,7 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
     if (method === 'WALLET') setWalletBalance(b => Math.max(0, b - total));
     showToast(`Paid via ${method.replace('_',' ')} • Txn ${txnId} • ₹${total}`, 'success');
     setCart([]); onClose(); setPlacing(false);
-    setGatewayOpen(false); setGatewayValue('');
+    setGatewayOpen(false); setGatewayValue(''); setUpiCollectSent(false);
   };
 
   const placeOrder = async () => {
@@ -633,6 +634,11 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
     }
     if (paymentMethod === 'CARD' && !/^\d{4}$/.test(gatewayValue.trim())) {
       showToast('Enter card last 4 digits', 'error'); return;
+    }
+    if (paymentMethod === 'UPI' && !upiCollectSent) {
+      setUpiCollectSent(true);
+      showToast(`UPI collect request sent to ${gatewayValue.trim()}. Approve in your UPI app, then click confirm again.`, 'success');
+      return;
     }
     submitOrder(paymentMethod, gatewayValue.trim());
   };
@@ -689,14 +695,14 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
       </div>
       {gatewayOpen && (
         <>
-          <div className="overlay" onClick={() => setGatewayOpen(false)}/>
+          <div className="overlay" onClick={() => { setGatewayOpen(false); setUpiCollectSent(false); }}/>
           <div className="gateway-modal">
             <div className="gateway-header">
               <div>
                 <h3 style={{fontSize:16}}>QwikPay Gateway</h3>
                 <p style={{fontSize:11,opacity:.85}}>Method: {paymentMethod.replace('_',' ')}</p>
               </div>
-              <button className="btn btn-sm btn-outline" onClick={() => setGatewayOpen(false)} style={{color:'#fff',borderColor:'rgba(255,255,255,.5)'}}>✕</button>
+              <button className="btn btn-sm btn-outline" onClick={() => { setGatewayOpen(false); setUpiCollectSent(false); }} style={{color:'#fff',borderColor:'rgba(255,255,255,.5)'}}>✕</button>
             </div>
             <div className="gateway-body">
               <p style={{fontSize:13,color:'var(--muted)',marginBottom:10}}>
@@ -708,8 +714,13 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
                 onChange={e => setGatewayValue(e.target.value)}
                 style={{marginBottom:12}}
               />
+              {paymentMethod === 'UPI' && upiCollectSent && (
+                <div style={{fontSize:12,marginBottom:10,padding:'8px 10px',borderRadius:8,background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe'}}>
+                  Collect request sent. Open your UPI app and approve, then click confirm.
+                </div>
+              )}
               <button className="btn btn-primary" style={{width:'100%'}} onClick={confirmGatewayPayment} disabled={placing}>
-                {placing ? 'Processing...' : `Confirm payment ₹${total}`}
+                {placing ? 'Processing...' : paymentMethod === 'UPI' && !upiCollectSent ? `Send collect request ₹${total}` : `Confirm payment ₹${total}`}
               </button>
             </div>
           </div>

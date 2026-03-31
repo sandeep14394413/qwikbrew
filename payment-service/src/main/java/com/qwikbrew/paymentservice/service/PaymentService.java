@@ -1,6 +1,7 @@
 package com.qwikbrew.paymentservice.service;
 
 import com.qwikbrew.paymentservice.dto.*;
+import com.qwikbrew.paymentservice.event.PaymentEventPublisher;
 import com.qwikbrew.paymentservice.model.*;
 import com.qwikbrew.paymentservice.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class PaymentService {
 
     private final WalletBalanceRepository     balanceRepo;
     private final WalletTransactionRepository txRepo;
+    private final PaymentEventPublisher       paymentEventPublisher;
 
     // ── Charge ────────────────────────────────────────────────────────────────
     public ChargeResponse charge(ChargeRequest req) {
@@ -47,6 +49,7 @@ public class PaymentService {
             .reference(req.getReference())
             .build();
         txRepo.save(tx);
+        paymentEventPublisher.publishCharged(tx, wb.getBalance());
 
         log.info("Wallet charge ₹{} for user {} — balance now ₹{}",
             req.getAmount(), req.getUserId(), wb.getBalance());
@@ -66,6 +69,7 @@ public class PaymentService {
             .gatewayTxnId(mockGwId)
             .build();
         txRepo.save(tx);
+        paymentEventPublisher.publishCharged(tx, null);
         return new ChargeResponse(tx.getId(), "SUCCESS", null);
     }
 
@@ -84,6 +88,7 @@ public class PaymentService {
             .reference(req.getOrderId())
             .build();
         txRepo.save(tx);
+        paymentEventPublisher.publishRefunded(tx, wb.getBalance());
 
         log.info("Refund ₹{} to user {} for order {}", req.getAmount(), req.getUserId(), req.getOrderId());
         return new RefundResponse(tx.getId(), wb.getBalance());
@@ -104,6 +109,7 @@ public class PaymentService {
             .payMethod(req.getPaymentMethod())
             .build();
         txRepo.save(tx);
+        paymentEventPublisher.publishWalletTopup(tx, wb.getBalance());
 
         log.info("Top-up ₹{} for user {} — balance now ₹{}", req.getAmount(), req.getUserId(), wb.getBalance());
         return new WalletResponse(wb.getUserId(), wb.getBalance());
