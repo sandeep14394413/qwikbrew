@@ -152,7 +152,7 @@
 <script type="text/babel">
 
 const { useState, useEffect, useCallback } = React;
-const BUILD_VERSION = '2026-03-31-ui-r4';
+const BUILD_VERSION = '2026-03-31-ui-r5';
 
 // ── API client ────────────────────────────────────────────────────────────────
 const API = window.location.hostname === 'localhost' ? 'http://localhost:8080' : '';
@@ -274,10 +274,13 @@ function AuthScreen({ onLogin }) {
   };
 
   return (
-    <div className="auth-container" style={{background:'linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%)'}}>
+    <div className="auth-container" style={{background:'linear-gradient(135deg,#fff7ed 0%,#fde68a 45%,#c4b5fd 100%)'}}>
       {toast && <Toast msg={toast.msg} type={toast.type}/>}
       <div className="card auth-card">
         <div className="auth-logo">
+          <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'#111827',color:'#fff',padding:'4px 10px',borderRadius:999,fontSize:11,fontWeight:700,marginBottom:12}}>
+            UI Refresh Active • {BUILD_VERSION}
+          </div>
           <div style={{fontSize:48,marginBottom:8}}>☕</div>
           <h1><span style={{color:'var(--primary)'}}>Qwik</span>Brew</h1>
           <p>Corporate Café — Order smart, eat well</p>
@@ -692,6 +695,10 @@ function App() {
         window.location.reload();
       }
     }
+  }, []);
+
+  useEffect(() => {
+    document.title = `QwikBrew — Corporate Café (${BUILD_VERSION})`;
   }, []);
 
   const showToast = useCallback((msg, type='success') => {
