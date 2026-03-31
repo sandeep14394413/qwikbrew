@@ -428,6 +428,24 @@ jobs:
           aws eks update-kubeconfig --name "$CLUSTER" --region ${{ env.AWS_REGION }}
           echo "✅ Connected to cluster: $CLUSTER"
 
+      - name: 🌐 Ensure AWS Load Balancer Controller is installed
+        run: |
+          if kubectl get deployment aws-load-balancer-controller -n kube-system >/dev/null 2>&1; then
+            echo "✅ AWS Load Balancer Controller already installed"
+            kubectl get deployment aws-load-balancer-controller -n kube-system
+          else
+            echo "📦 Installing AWS Load Balancer Controller..."
+            helm repo add eks https://aws.github.io/eks-charts
+            helm repo update
+            helm upgrade --install aws-load-balancer-controller \
+              eks/aws-load-balancer-controller \
+              -n kube-system \
+              --set clusterName="${{ needs.detect-changes.outputs.eks_cluster }}" \
+              --set serviceAccount.create=true \
+              --wait --timeout=180s
+            kubectl get deployment aws-load-balancer-controller -n kube-system
+          fi
+
       - name: 🔐 Fix ELB IAM permissions + subnet tags
         run: |
           CLUSTER="${{ needs.detect-changes.outputs.eks_cluster }}"
@@ -641,8 +659,18 @@ jobs:
               kubectl logs $POD -n qwikbrew --tail=40 --previous 2>/dev/null \
                 || kubectl logs $POD -n qwikbrew --tail=40 2>/dev/null \
                 || echo "(no logs)"
-            fi
+              fi
           done
+
+      - name: 🔎 External Secrets diagnostics
+        if: always()
+        run: |
+          echo "━━━━ EXTERNAL SECRETS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          kubectl get externalsecrets -n qwikbrew || true
+          kubectl describe externalsecret aiven-credentials -n qwikbrew 2>/dev/null | grep -A8 "Status:" || true
+          echo ""
+          echo "━━━━ K8S SECRETS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          kubectl get secrets -n qwikbrew | grep -E "aiven-credentials|app-secrets" || true
 
       - name: 🌐 Print external URL + full diagnostics
         run: |
@@ -683,7 +711,31 @@ jobs:
             echo "| Login      | /api/v1/users/login |" >> $GITHUB_STEP_SUMMARY
           else
             echo "WARNING: LB hostname not assigned after 5 min"
-            echo "Check AWS Console -> EC2 -> Load Balancers"
+            echo "Collecting service/controller diagnostics..."
+            echo ""
+            echo ">> api-gateway service details:"
+            kubectl describe svc api-gateway -n qwikbrew || true
+            echo ""
+            echo ">> aws-load-balancer-controller logs (last 120 lines):"
+            kubectl logs -n kube-system deployment/aws-load-balancer-controller --tail=120 2>/dev/null || true
+            echo ""
+            echo ">> events in qwikbrew namespace (latest 50):"
+            kubectl get events -n qwikbrew --sort-by=.lastTimestamp | tail -50 || true
+            echo ""
+            echo "Falling back to NodePort for smoke testing..."
+            kubectl patch svc api-gateway -n qwikbrew -p '{"spec":{"type":"NodePort"}}' || true
+            NODE_PORT=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.spec.ports[0].nodePort}" 2>/dev/null || echo "")
+            NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[?(@.type=='ExternalIP')].address}" 2>/dev/null || echo "")
+            if [ -z "$NODE_IP" ]; then
+              NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[?(@.type=='InternalIP')].address}" 2>/dev/null || echo "")
+            fi
+            if [ -n "$NODE_IP" ] && [ -n "$NODE_PORT" ]; then
+              echo "Temporary NodePort URL: http://${NODE_IP}:${NODE_PORT}"
+              echo "## QwikBrew Temporary URL (NodePort fallback)" >> $GITHUB_STEP_SUMMARY
+              echo "**http://${NODE_IP}:${NODE_PORT}**" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "NodePort fallback unavailable (missing node IP or nodePort)."
+            fi
           fi
 
           # ── Full diagnostics (always runs) ────────────────────────────────
