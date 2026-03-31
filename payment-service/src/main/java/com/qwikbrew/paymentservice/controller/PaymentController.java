@@ -24,6 +24,11 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.charge(req));
     }
 
+    @PostMapping("/upi/collect")
+    public ResponseEntity<UpiCollectResponse> upiCollect(@RequestBody UpiCollectRequest req) {
+        return ResponseEntity.ok(paymentService.initiateUpiCollect(req));
+    }
+
     @PostMapping("/refund")
     public ResponseEntity<RefundResponse> refund(@RequestBody RefundRequest req) {
         return ResponseEntity.ok(paymentService.refund(req));
@@ -42,5 +47,13 @@ public class PaymentController {
     @GetMapping("/wallet/{userId}/transactions")
     public ResponseEntity<List<WalletTransaction>> transactions(@PathVariable String userId) {
         return ResponseEntity.ok(paymentService.getTransactions(userId));
+    }
+
+    @GetMapping("/transactions/status")
+    public ResponseEntity<TransactionStatusResponse> transactionStatus(
+        @RequestParam(required = false) String transactionId,
+        @RequestParam(required = false) String reference
+    ) {
+        return ResponseEntity.ok(paymentService.getTransactionStatus(transactionId, reference));
     }
 }
