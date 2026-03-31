@@ -38,6 +38,12 @@ public class PaymentEventPublisher {
         publish("wallet-topup", tx.getId(), payload);
     }
 
+    public void publishUpiCollectRequested(WalletTransaction tx, String upiId) {
+        Map<String, Object> payload = basePayload(tx, "UPI_COLLECT_REQUESTED");
+        payload.put("upiId", upiId);
+        publish("upi-collect-requested", tx.getId(), payload);
+    }
+
     private Map<String, Object> basePayload(WalletTransaction tx, String eventType) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("eventType", eventType);

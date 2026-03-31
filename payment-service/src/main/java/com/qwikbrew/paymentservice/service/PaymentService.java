@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.Locale;
 import java.util.List;
 import java.util.UUID;
 
@@ -28,6 +29,34 @@ public class PaymentService {
         return req.getPaymentMethod() == WalletTransaction.PayMethod.WALLET
             ? chargeWallet(req)
             : chargeGateway(req);
+    }
+
+    public UpiCollectResponse initiateUpiCollect(UpiCollectRequest req) {
+        String maskedUpi = maskUpi(req.getUpiId());
+        String collectRef = req.getReference() != null && !req.getReference().isBlank()
+            ? req.getReference()
+            : "UPI-COLLECT-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(Locale.ROOT);
+
+        WalletTransaction tx = WalletTransaction.builder()
+            .userId(req.getUserId())
+            .amount(req.getAmount())
+            .type(WalletTransaction.TxnType.DEBIT)
+            .status(WalletTransaction.TxnStatus.PENDING)
+            .payMethod(WalletTransaction.PayMethod.UPI)
+            .reference(collectRef)
+            .gatewayTxnId("UPI-REQ-" + UUID.randomUUID().toString().substring(0, 10).toUpperCase(Locale.ROOT))
+            .build();
+        txRepo.save(tx);
+        paymentEventPublisher.publishUpiCollectRequested(tx, maskedUpi);
+
+        log.info("UPI collect initiated for user {} amount {} upi={} reference={}",
+            req.getUserId(), req.getAmount(), maskedUpi, collectRef);
+        return new UpiCollectResponse(
+            tx.getId(),
+            "COLLECT_REQUESTED",
+            "Collect request sent to UPI app. Please approve to continue.",
+            collectRef
+        );
     }
 
     private ChargeResponse chargeWallet(ChargeRequest req) {
@@ -127,5 +156,14 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public List<WalletTransaction> getTransactions(String userId) {
         return txRepo.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    private static String maskUpi(String upiId) {
+        if (upiId == null || !upiId.contains("@")) return "invalid";
+        String[] parts = upiId.split("@", 2);
+        String user = parts[0];
+        if (user.isBlank()) return "***@" + parts[1];
+        String maskedUser = user.length() <= 2 ? user.substring(0, 1) + "*" : user.substring(0, 2) + "***";
+        return maskedUser + "@" + parts[1];
     }
 }
