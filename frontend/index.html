@@ -106,6 +106,11 @@
   /* Auth */
     .auth-container{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
     .auth-card{width:100%;max-width:420px;padding:40px;}
+    .auth-shell{width:min(980px,100%);display:grid;grid-template-columns:1.1fr .9fr;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 24px 60px rgba(15,23,42,.16);}
+    .auth-panel{background:linear-gradient(145deg,rgba(15,23,42,.88),rgba(30,41,59,.78)),url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1400&q=80') center/cover;color:#fff;padding:36px 30px;display:flex;flex-direction:column;justify-content:space-between;}
+    .auth-pill{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.16);font-size:11px;font-weight:700;letter-spacing:.3px;}
+    .auth-points{display:grid;gap:12px;margin-top:20px;}
+    .auth-point{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);padding:10px 12px;border-radius:12px;font-size:12px;}
     .auth-logo{text-align:center;margin-bottom:32px;}
     .auth-logo h1{font-size:28px;color:var(--secondary);}
     .auth-logo p{color:var(--muted);font-size:14px;}
@@ -137,6 +142,8 @@
     .bottom-nav-item.active{color:var(--primary);}
     .bottom-nav-item i{font-size:20px;}
     @media(max-width:600px){
+      .auth-shell{grid-template-columns:1fr;}
+      .auth-panel{display:none;}
       .bottom-nav{display:block;}
       body{padding-bottom:70px;}
       .menu-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
@@ -152,7 +159,7 @@
 <script type="text/babel">
 
 const { useState, useEffect, useCallback } = React;
-const BUILD_VERSION = '2026-03-31-ui-r13';
+const BUILD_VERSION = '2026-03-31-ui-r14';
 const MERCHANT_UPI_ID = 'sandeep.sandy1594@okaxis';
 
 // ── API client ────────────────────────────────────────────────────────────────
@@ -292,23 +299,37 @@ function AuthScreen({ onLogin }) {
   return (
     <div className="auth-container" style={{background:'linear-gradient(135deg,#fff7ed 0%,#fde68a 45%,#c4b5fd 100%)'}}>
       {toast && <Toast msg={toast.msg} type={toast.type}/>}
-      <div className="card auth-card">
-        <div className="auth-logo">
-          <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'#111827',color:'#fff',padding:'4px 10px',borderRadius:999,fontSize:11,fontWeight:700,marginBottom:12}}>
-            UI Refresh Active • {BUILD_VERSION}
+      <div className="auth-shell">
+        <div className="auth-panel">
+          <div>
+            <span className="auth-pill">QwikBrew Workspace Edition</span>
+            <h2 style={{fontSize:36,lineHeight:1.15,marginTop:14}}>A smarter café experience for busy teams.</h2>
+            <p style={{opacity:.92,marginTop:12,fontSize:14}}>Order in seconds, pay securely, and track every transaction in real time.</p>
+            <div className="auth-points">
+              <div className="auth-point">🍽️ Real-food visual menu with curated favorites</div>
+              <div className="auth-point">⚡ UPI / Card / Wallet checkout with transaction status</div>
+              <div className="auth-point">🏢 Built for office cafeterias and enterprise campuses</div>
+            </div>
           </div>
-          <div style={{fontSize:48,marginBottom:8}}>☕</div>
-          <h1><span style={{color:'var(--primary)'}}>Qwik</span>Brew</h1>
-          <p>Corporate Café — Order smart, eat well</p>
+          <div style={{fontSize:12,opacity:.85}}>UI Build • {BUILD_VERSION}</div>
         </div>
-        <div style={{display:'flex',gap:4,marginBottom:24,background:'#f5f5f5',borderRadius:8,padding:4}}>
-          {['login','register'].map(m => (
-            <button key={m} className="btn" onClick={() => setMode(m)} style={{flex:1,background:mode===m?'#fff':'transparent',color:mode===m?'var(--secondary)':'var(--muted)',boxShadow:mode===m?'var(--shadow)':'none',textTransform:'capitalize'}}>
-              {m === 'login' ? 'Sign In' : 'Register'}
-            </button>
-          ))}
-        </div>
-        <form onSubmit={handle}>
+        <div className="card auth-card" style={{borderRadius:0,boxShadow:'none',border:'none'}}>
+          <div className="auth-logo">
+            <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'#111827',color:'#fff',padding:'4px 10px',borderRadius:999,fontSize:11,fontWeight:700,marginBottom:12}}>
+              UI Refresh Active • {BUILD_VERSION}
+            </div>
+            <div style={{fontSize:48,marginBottom:8}}>☕</div>
+            <h1><span style={{color:'var(--primary)'}}>Qwik</span>Brew</h1>
+            <p>Corporate Café — Order smart, eat well</p>
+          </div>
+          <div style={{display:'flex',gap:4,marginBottom:24,background:'#f5f5f5',borderRadius:8,padding:4}}>
+            {['login','register'].map(m => (
+              <button key={m} className="btn" onClick={() => setMode(m)} style={{flex:1,background:mode===m?'#fff':'transparent',color:mode===m?'var(--secondary)':'var(--muted)',boxShadow:mode===m?'var(--shadow)':'none',textTransform:'capitalize'}}>
+                {m === 'login' ? 'Sign In' : 'Register'}
+              </button>
+            ))}
+          </div>
+          <form onSubmit={handle}>
           {mode === 'register' && (
             <>
               <div className="form-group">
@@ -333,13 +354,14 @@ function AuthScreen({ onLogin }) {
           <button type="submit" className="btn btn-primary" style={{width:'100%',padding:'14px',fontSize:'15px'}} disabled={loading}>
             {loading ? <><i className="fa fa-spinner fa-spin"/> Processing...</> : mode === 'login' ? 'Sign In' : 'Create Account'}
           </button>
-        </form>
-        <p style={{textAlign:'center',marginTop:16,color:'var(--muted)',fontSize:13}}>
-          {mode==='login' ? "New here? " : "Already registered? "}
-          <span style={{color:'var(--primary)',cursor:'pointer',fontWeight:700}} onClick={() => setMode(mode==='login'?'register':'login')}>
-            {mode==='login' ? 'Create account' : 'Sign in'}
-          </span>
-        </p>
+          </form>
+          <p style={{textAlign:'center',marginTop:16,color:'var(--muted)',fontSize:13}}>
+            {mode==='login' ? "New here? " : "Already registered? "}
+            <span style={{color:'var(--primary)',cursor:'pointer',fontWeight:700}} onClick={() => setMode(mode==='login'?'register':'login')}>
+              {mode==='login' ? 'Create account' : 'Sign in'}
+            </span>
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -752,6 +774,15 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
               {paymentMethod === 'UPI' && upiCollectSent && (
                 <div style={{fontSize:12,marginBottom:10,padding:'8px 10px',borderRadius:8,background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe'}}>
                   Collect request sent. Open your UPI app and approve, then click confirm.
+                </div>
+              )}
+              {paymentMethod === 'UPI' && upiCollectSent && (
+                <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiIntentLink || `upi://pay?pa=${MERCHANT_UPI_ID}&am=${total}&cu=INR`)}`}
+                    alt="Scan to pay using UPI"
+                    style={{width:150,height:150,borderRadius:10,border:'1px solid #e5e7eb'}}
+                  />
                 </div>
               )}
               {paymentMethod === 'UPI' && upiCollectSent && upiIntentLink && (
