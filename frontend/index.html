@@ -17,7 +17,7 @@
       --success:#28a745;--warning:#ffc107;--danger:#dc3545;
       --radius:16px;--shadow:0 12px 30px rgba(17,24,39,.08);
     }
-    body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;background:linear-gradient(180deg,#f9fafb 0%,#eef2ff 60%,#f9fafb 100%);color:var(--text);}
+    body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;background:radial-gradient(circle at 10% 10%,#fff7ed 0%,#f8fafc 35%,#eef2ff 100%);color:var(--text);}
     #root{min-height:100vh;display:flex;flex-direction:column;}
     .btn{padding:10px 20px;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;}
     .btn-primary{background:var(--primary);color:#fff;}
@@ -45,16 +45,20 @@
     .nav-icon{color:#fff;font-size:20px;cursor:pointer;position:relative;}
     .nav-badge{position:absolute;top:-6px;right:-6px;background:var(--primary);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;display:flex;align-items:center;justify-content:center;}
     /* Hero */
-    .hero{background:radial-gradient(circle at top right,#fb923c 0%,#f97316 30%,#111827 100%);padding:42px 20px 34px;color:#fff;text-align:center;position:relative;overflow:hidden;}
+    .hero{background:
+      linear-gradient(125deg,rgba(17,24,39,.88),rgba(30,41,59,.9)),
+      url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1800&q=80') center/cover;
+      padding:50px 20px 38px;color:#fff;text-align:center;position:relative;overflow:hidden;}
     .hero::after{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.12);right:-70px;top:-70px;}
-    .hero h1{font-size:32px;margin-bottom:10px;}
-    .hero p{opacity:.85;font-size:15px;margin-bottom:22px;}
-    .hero-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:760px;margin:16px auto 0;}
+    .hero::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.28));pointer-events:none;}
+    .hero h1{font-size:34px;margin-bottom:10px;text-shadow:0 8px 24px rgba(0,0,0,.35);position:relative;}
+    .hero p{opacity:.92;font-size:15px;margin-bottom:22px;position:relative;}
+    .hero-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:760px;margin:16px auto 0;position:relative;}
     .hero-kpi{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 8px;backdrop-filter:blur(4px);}
     .hero-kpi strong{display:block;font-size:15px;}
     .hero-kpi span{font-size:11px;opacity:.9;}
     .search-box{max-width:500px;margin:0 auto;position:relative;}
-    .search-box input{padding-left:44px;border-radius:30px;font-size:15px;}
+    .search-box input{padding-left:44px;border-radius:30px;font-size:15px;background:rgba(255,255,255,.97);border-color:#fff;box-shadow:0 12px 24px rgba(15,23,42,.2);}
     .search-box i{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);}
     /* Categories */
     .categories{display:flex;gap:10px;padding:20px;overflow-x:auto;scrollbar-width:none;}
@@ -62,20 +66,21 @@
     .category-chip.active{background:var(--primary);color:#fff;border-color:var(--primary);}
     /* Menu Grid */
     .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;padding:0 20px 20px;}
-    .menu-card{cursor:pointer;transition:transform .2s, box-shadow .2s;border-radius:18px;}
-    .menu-card:hover{transform:translateY(-5px);box-shadow:0 16px 30px rgba(17,24,39,.14);}
+    .menu-card{cursor:pointer;transition:transform .2s, box-shadow .2s;border-radius:18px;position:relative;}
+    .menu-card:hover{transform:translateY(-7px) scale(1.01);box-shadow:0 20px 34px rgba(17,24,39,.16);}
     .menu-media{position:relative;}
     .menu-media::before{content:'Chef recommended';position:absolute;left:12px;top:12px;background:rgba(17,24,39,.75);color:#fff;font-size:10px;padding:5px 8px;border-radius:20px;letter-spacing:.3px;z-index:2;}
-    .menu-img{width:100%;height:170px;object-fit:cover;background:linear-gradient(135deg,#f093fb,#f5576c);}
+    .menu-media::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(15,23,42,.5) 100%);}
+    .menu-img{width:100%;height:184px;object-fit:cover;background:linear-gradient(135deg,#f093fb,#f5576c);}
     .menu-img-placeholder{width:100%;height:170px;display:flex;align-items:center;justify-content:center;font-size:48px;position:relative;}
-    .menu-body{padding:16px;}
+    .menu-body{padding:16px;background:linear-gradient(180deg,#ffffff 0%,#fffaf5 100%);}
     .menu-title{font-size:16px;font-weight:700;margin-bottom:4px;}
     .menu-desc{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;}
     .menu-footer{display:flex;align-items:center;justify-content:space-between;}
     .price{font-size:20px;font-weight:800;color:var(--primary);}
-    .add-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
+    .add-btn{width:38px;height:38px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 16px rgba(249,115,22,.35);}
     .qty-ctrl{display:flex;align-items:center;gap:8px;}
-    .qty-btn{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:16px;}
+    .qty-btn{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:16px;box-shadow:0 6px 14px rgba(249,115,22,.3);}
     .qty-num{font-weight:700;min-width:20px;text-align:center;}
     /* Cart */
     .cart-sidebar{position:fixed;right:0;top:0;width:380px;height:100vh;background:#fff;box-shadow:-4px 0 20px rgba(0,0,0,.15);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s;}
@@ -183,6 +188,41 @@ const SPECIALS = [
   { title:'Executive Lunch', subtitle:'Biryani + Dessert', price:'₹149' },
   { title:'Evening Saver', subtitle:'Chai + Samosa', price:'₹45' },
 ];
+
+const FOOD_IMAGE_MAP = {
+  'masala dosa':'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=900&q=80',
+  poha:'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=80',
+  'idli sambar':'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=900&q=80',
+  'veg biryani':'https://images.unsplash.com/photo-1701579231378-372ea3c7ca87?auto=format&fit=crop&w=900&q=80',
+  'chicken biryani':'https://images.unsplash.com/photo-1633945274309-2c16c9682a8b?auto=format&fit=crop&w=900&q=80',
+  'dal tadka':'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80',
+  'paneer butter masala':'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=900&q=80',
+  'filter coffee':'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80',
+  'masala chai':'https://images.unsplash.com/photo-1597318181409-cf64d0b5d8a2?auto=format&fit=crop&w=900&q=80',
+  'veg sandwich':'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=900&q=80',
+  samosa:'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=80',
+  'gulab jamun':'https://images.unsplash.com/photo-1611293388250-580b08c4a145?auto=format&fit=crop&w=900&q=80'
+};
+
+function resolveFoodImage(item) {
+  if (item.image) return item.image;
+  const normalized = (item.name || '').toLowerCase().trim();
+  if (FOOD_IMAGE_MAP[normalized]) return FOOD_IMAGE_MAP[normalized];
+  const partialMatch = Object.keys(FOOD_IMAGE_MAP).find(key => normalized.includes(key) || key.includes(normalized));
+  if (partialMatch) return FOOD_IMAGE_MAP[partialMatch];
+  const query = encodeURIComponent(`${item.name || item.category || 'indian food'} plated food`);
+  return `https://source.unsplash.com/900x600/?${query}`;
+}
+
+function decorateMenuItems(list) {
+  return list.map((item, index) => ({
+    ...item,
+    id: item.id ?? index + 1,
+    rating: item.rating ?? (4.2 + (index % 6) * 0.1).toFixed(1),
+    preparationTime: item.preparationTime ?? (8 + (index % 5) * 3),
+    image: resolveFoodImage(item)
+  }));
+}
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 let toastTimer;
@@ -294,8 +334,8 @@ function MenuScreen({ cart, setCart, showToast }) {
   useEffect(() => {
     api('/api/v1/menu').then(data => {
       const list = Array.isArray(data) ? data : (data.content || data.items || SAMPLE_MENU);
-      setItems(list.length ? list : SAMPLE_MENU);
-    }).catch(() => setItems(SAMPLE_MENU)).finally(() => setLoading(false));
+      setItems(decorateMenuItems(list.length ? list : SAMPLE_MENU));
+    }).catch(() => setItems(decorateMenuItems(SAMPLE_MENU))).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
