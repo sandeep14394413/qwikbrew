@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
   <title>QwikBrew — Corporate Café</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -17,7 +20,7 @@
       --success:#28a745;--warning:#ffc107;--danger:#dc3545;
       --radius:16px;--shadow:0 12px 30px rgba(17,24,39,.08);
     }
-    body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;background:linear-gradient(180deg,#f9fafb 0%,#eef2ff 60%,#f9fafb 100%);color:var(--text);}
+    body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;background:radial-gradient(circle at 10% 10%,#fff7ed 0%,#f8fafc 35%,#eef2ff 100%);color:var(--text);}
     #root{min-height:100vh;display:flex;flex-direction:column;}
     .btn{padding:10px 20px;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;}
     .btn-primary{background:var(--primary);color:#fff;}
@@ -45,16 +48,20 @@
     .nav-icon{color:#fff;font-size:20px;cursor:pointer;position:relative;}
     .nav-badge{position:absolute;top:-6px;right:-6px;background:var(--primary);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;display:flex;align-items:center;justify-content:center;}
     /* Hero */
-    .hero{background:radial-gradient(circle at top right,#fb923c 0%,#f97316 30%,#111827 100%);padding:42px 20px 34px;color:#fff;text-align:center;position:relative;overflow:hidden;}
+    .hero{background:
+      linear-gradient(125deg,rgba(17,24,39,.88),rgba(30,41,59,.9)),
+      url('https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1800&q=80') center/cover;
+      padding:50px 20px 38px;color:#fff;text-align:center;position:relative;overflow:hidden;}
     .hero::after{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.12);right:-70px;top:-70px;}
-    .hero h1{font-size:32px;margin-bottom:10px;}
-    .hero p{opacity:.85;font-size:15px;margin-bottom:22px;}
-    .hero-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:760px;margin:16px auto 0;}
+    .hero::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.28));pointer-events:none;}
+    .hero h1{font-size:34px;margin-bottom:10px;text-shadow:0 8px 24px rgba(0,0,0,.35);position:relative;}
+    .hero p{opacity:.92;font-size:15px;margin-bottom:22px;position:relative;}
+    .hero-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:760px;margin:16px auto 0;position:relative;}
     .hero-kpi{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 8px;backdrop-filter:blur(4px);}
     .hero-kpi strong{display:block;font-size:15px;}
     .hero-kpi span{font-size:11px;opacity:.9;}
     .search-box{max-width:500px;margin:0 auto;position:relative;}
-    .search-box input{padding-left:44px;border-radius:30px;font-size:15px;}
+    .search-box input{padding-left:44px;border-radius:30px;font-size:15px;background:rgba(255,255,255,.97);border-color:#fff;box-shadow:0 12px 24px rgba(15,23,42,.2);}
     .search-box i{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);}
     /* Categories */
     .categories{display:flex;gap:10px;padding:20px;overflow-x:auto;scrollbar-width:none;}
@@ -62,20 +69,21 @@
     .category-chip.active{background:var(--primary);color:#fff;border-color:var(--primary);}
     /* Menu Grid */
     .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;padding:0 20px 20px;}
-    .menu-card{cursor:pointer;transition:transform .2s, box-shadow .2s;border-radius:18px;}
-    .menu-card:hover{transform:translateY(-5px);box-shadow:0 16px 30px rgba(17,24,39,.14);}
+    .menu-card{cursor:pointer;transition:transform .2s, box-shadow .2s;border-radius:18px;position:relative;}
+    .menu-card:hover{transform:translateY(-7px) scale(1.01);box-shadow:0 20px 34px rgba(17,24,39,.16);}
     .menu-media{position:relative;}
     .menu-media::before{content:'Chef recommended';position:absolute;left:12px;top:12px;background:rgba(17,24,39,.75);color:#fff;font-size:10px;padding:5px 8px;border-radius:20px;letter-spacing:.3px;z-index:2;}
-    .menu-img{width:100%;height:170px;object-fit:cover;background:linear-gradient(135deg,#f093fb,#f5576c);}
+    .menu-media::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(15,23,42,.5) 100%);}
+    .menu-img{width:100%;height:184px;object-fit:cover;background:linear-gradient(135deg,#f093fb,#f5576c);}
     .menu-img-placeholder{width:100%;height:170px;display:flex;align-items:center;justify-content:center;font-size:48px;position:relative;}
-    .menu-body{padding:16px;}
+    .menu-body{padding:16px;background:linear-gradient(180deg,#ffffff 0%,#fffaf5 100%);}
     .menu-title{font-size:16px;font-weight:700;margin-bottom:4px;}
     .menu-desc{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;}
     .menu-footer{display:flex;align-items:center;justify-content:space-between;}
     .price{font-size:20px;font-weight:800;color:var(--primary);}
-    .add-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
+    .add-btn{width:38px;height:38px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 16px rgba(249,115,22,.35);}
     .qty-ctrl{display:flex;align-items:center;gap:8px;}
-    .qty-btn{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:16px;}
+    .qty-btn{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:16px;box-shadow:0 6px 14px rgba(249,115,22,.3);}
     .qty-num{font-weight:700;min-width:20px;text-align:center;}
     /* Cart */
     .cart-sidebar{position:fixed;right:0;top:0;width:380px;height:100vh;background:#fff;box-shadow:-4px 0 20px rgba(0,0,0,.15);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s;}
@@ -144,7 +152,7 @@
 <script type="text/babel">
 
 const { useState, useEffect, useCallback } = React;
-const BUILD_VERSION = '2026-03-31-ui-r2';
+const BUILD_VERSION = '2026-03-31-ui-r8';
 
 // ── API client ────────────────────────────────────────────────────────────────
 const API = window.location.hostname === 'localhost' ? 'http://localhost:8080' : '';
@@ -175,14 +183,64 @@ const SAMPLE_MENU = [
   { id:10, name:'Veg Sandwich', category:'Snacks', price:50, description:'Grilled sandwich with seasonal veggies and cheese', emoji:'🥪', isVeg:true, rating:4.3, preparationTime:7, image:'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=900&q=80' },
   { id:11, name:'Samosa (2 pcs)', category:'Snacks', price:30, description:'Crispy pastry filled with spiced potatoes', emoji:'🥟', isVeg:true, rating:4.5, preparationTime:5, image:'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=80' },
   { id:12, name:'Gulab Jamun', category:'Desserts', price:40, description:'Soft milk-solid dumplings in sugar syrup', emoji:'🍮', isVeg:true, rating:4.7, preparationTime:5, image:'https://images.unsplash.com/photo-1611293388250-580b08c4a145?auto=format&fit=crop&w=900&q=80' },
+  { id:13, name:'Margherita Pizza', category:'Pizza', price:149, description:'Classic thin crust pizza with basil, mozzarella and tomato', emoji:'🍕', isVeg:true, rating:4.6, preparationTime:14, image:'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?auto=format&fit=crop&w=900&q=80' },
+  { id:14, name:'Farmhouse Pizza', category:'Pizza', price:189, description:'Loaded pizza with capsicum, onion, tomato and sweet corn', emoji:'🍕', isVeg:true, rating:4.7, preparationTime:16, image:'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80' },
+  { id:15, name:'Test Item (Verification)', category:'Snacks', price:1, description:'₹1 test item for payment verification transactions', emoji:'🧪', isVeg:true, rating:4.9, preparationTime:1, image:'https://images.unsplash.com/photo-1546549032-9571cd6b27df?auto=format&fit=crop&w=900&q=80' },
 ];
 
-const CATEGORIES = ['All', 'Breakfast', 'South Indian', 'Rice', 'Curry', 'Dal', 'Snacks', 'Beverages', 'Desserts'];
+const CATEGORIES = ['All', 'Breakfast', 'South Indian', 'Rice', 'Curry', 'Dal', 'Snacks', 'Beverages', 'Desserts', 'Pizza'];
 const SPECIALS = [
   { title:'Breakfast Combo', subtitle:'Idli + Filter Coffee', price:'₹59' },
   { title:'Executive Lunch', subtitle:'Biryani + Dessert', price:'₹149' },
   { title:'Evening Saver', subtitle:'Chai + Samosa', price:'₹45' },
 ];
+
+const FOOD_IMAGE_MAP = {
+  'masala dosa':'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=900&q=80',
+  poha:'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=80',
+  'idli sambar':'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=900&q=80',
+  'veg biryani':'https://images.unsplash.com/photo-1701579231378-372ea3c7ca87?auto=format&fit=crop&w=900&q=80',
+  'chicken biryani':'https://images.unsplash.com/photo-1633945274309-2c16c9682a8b?auto=format&fit=crop&w=900&q=80',
+  'dal tadka':'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80',
+  'paneer butter masala':'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=900&q=80',
+  'filter coffee':'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80',
+  'masala chai':'https://images.unsplash.com/photo-1597318181409-cf64d0b5d8a2?auto=format&fit=crop&w=900&q=80',
+  'veg sandwich':'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=900&q=80',
+  'margherita pizza':'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?auto=format&fit=crop&w=900&q=80',
+  'farmhouse pizza':'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80',
+  pizza:'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80',
+  samosa:'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=80',
+  'gulab jamun':'https://images.unsplash.com/photo-1611293388250-580b08c4a145?auto=format&fit=crop&w=900&q=80'
+};
+
+function resolveFoodImage(item) {
+  if (item.image) return item.image;
+  const normalized = (item.name || '').toLowerCase().trim();
+  if (FOOD_IMAGE_MAP[normalized]) return FOOD_IMAGE_MAP[normalized];
+  const partialMatch = Object.keys(FOOD_IMAGE_MAP).find(key => normalized.includes(key) || key.includes(normalized));
+  if (partialMatch) return FOOD_IMAGE_MAP[partialMatch];
+  const query = encodeURIComponent(`${item.name || item.category || 'indian food'} plated food`);
+  return `https://source.unsplash.com/900x600/?${query}`;
+}
+
+function decorateMenuItems(list) {
+  return list.map((item, index) => ({
+    ...item,
+    id: item.id ?? index + 1,
+    rating: item.rating ?? (4.2 + (index % 6) * 0.1).toFixed(1),
+    preparationTime: item.preparationTime ?? (8 + (index % 5) * 3),
+    image: resolveFoodImage(item)
+  }));
+}
+
+function mergeWithFeaturedDishes(list) {
+  const byName = new Map(list.map(item => [(item.name || '').toLowerCase(), item]));
+  SAMPLE_MENU.forEach(item => {
+    const key = (item.name || '').toLowerCase();
+    if (!byName.has(key)) byName.set(key, item);
+  });
+  return Array.from(byName.values());
+}
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 let toastTimer;
@@ -231,10 +289,13 @@ function AuthScreen({ onLogin }) {
   };
 
   return (
-    <div className="auth-container" style={{background:'linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%)'}}>
+    <div className="auth-container" style={{background:'linear-gradient(135deg,#fff7ed 0%,#fde68a 45%,#c4b5fd 100%)'}}>
       {toast && <Toast msg={toast.msg} type={toast.type}/>}
       <div className="card auth-card">
         <div className="auth-logo">
+          <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'#111827',color:'#fff',padding:'4px 10px',borderRadius:999,fontSize:11,fontWeight:700,marginBottom:12}}>
+            UI Refresh Active • {BUILD_VERSION}
+          </div>
           <div style={{fontSize:48,marginBottom:8}}>☕</div>
           <h1><span style={{color:'var(--primary)'}}>Qwik</span>Brew</h1>
           <p>Corporate Café — Order smart, eat well</p>
@@ -294,8 +355,8 @@ function MenuScreen({ cart, setCart, showToast }) {
   useEffect(() => {
     api('/api/v1/menu').then(data => {
       const list = Array.isArray(data) ? data : (data.content || data.items || SAMPLE_MENU);
-      setItems(list.length ? list : SAMPLE_MENU);
-    }).catch(() => setItems(SAMPLE_MENU)).finally(() => setLoading(false));
+      setItems(decorateMenuItems(mergeWithFeaturedDishes(list.length ? list : SAMPLE_MENU)));
+    }).catch(() => setItems(decorateMenuItems(mergeWithFeaturedDishes(SAMPLE_MENU)))).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -316,9 +377,13 @@ function MenuScreen({ cart, setCart, showToast }) {
 
   return (
     <div>
+      <div style={{margin:'14px 20px 0',padding:'10px 14px',borderRadius:12,background:'linear-gradient(90deg,#111827,#374151)',color:'#fff',display:'flex',justifyContent:'space-between',alignItems:'center',boxShadow:'0 10px 26px rgba(17,24,39,.22)'}}>
+        <strong style={{fontSize:12,letterSpacing:'.3px'}}>🎉 UI REFRESH IS LIVE</strong>
+        <span style={{fontSize:11,opacity:.9}}>Released: 31 Mar 2026 • {BUILD_VERSION}</span>
+      </div>
       <div className="hero">
-        <h1>Good food, faster checkout ☕</h1>
-        <p>Inspired by modern enterprise café experiences for busy teams.</p>
+        <h1>Fresh Look, Real Food Photos 🍽️</h1>
+        <p>Redesigned QwikBrew experience with richer visuals and photo-first menu cards.</p>
         <div className="search-box">
           <i className="fa fa-search"/>
           <input placeholder="Search dosa, biryani, coffee..." value={search} onChange={e => setSearch(e.target.value)}/>
@@ -333,6 +398,17 @@ function MenuScreen({ cart, setCart, showToast }) {
         {CATEGORIES.map(c => (
           <div key={c} className={`category-chip ${category===c?'active':''}`} onClick={() => setCategory(c)}>{c}</div>
         ))}
+      </div>
+      <div style={{margin:'0 20px 16px',background:'linear-gradient(135deg,#fff7ed,#ffedd5)',border:'1px solid #fed7aa',padding:'12px 14px',borderRadius:14,display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+        <div style={{fontSize:12,color:'#9a3412',fontWeight:600}}>
+          ✨ New UI pack live: richer visuals + real food photography now enabled.
+        </div>
+        <div style={{fontSize:11,fontWeight:800,color:'#c2410c',background:'#fff',border:'1px solid #fdba74',borderRadius:999,padding:'4px 8px'}}>
+          {BUILD_VERSION}
+        </div>
+      </div>
+      <div style={{margin:'0 20px 14px',background:'#ecfeff',border:'1px solid #a5f3fc',padding:'10px 12px',borderRadius:12,color:'#155e75',fontSize:12,fontWeight:600}}>
+        🧪 Payment test ready: add <strong>Test Item (Verification)</strong> (₹1) and pay via Wallet / UPI / Card.
       </div>
       <div style={{padding:'0 20px 8px',color:'var(--muted)',fontSize:13,display:'flex',justifyContent:'space-between'}}>
         <span>{filtered.length} curated items</span>
@@ -511,33 +587,59 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
   const [paymentMethod, setPaymentMethod] = useState('WALLET');
   const [gatewayOpen, setGatewayOpen] = useState(false);
   const [gatewayValue, setGatewayValue] = useState('');
+  const [upiCollectSent, setUpiCollectSent] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(() => {
+    const stored = Number(localStorage.getItem('qb_wallet_balance'));
+    if (!Number.isNaN(stored) && stored >= 0) return stored;
+    return Number(user?.walletBalance || 500);
+  });
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+
+  useEffect(() => {
+    localStorage.setItem('qb_wallet_balance', String(walletBalance));
+  }, [walletBalance]);
 
   const add = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty+1} : x));
   const rem = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty-1} : x).filter(x => x.qty>0));
 
   const submitOrder = async (method = paymentMethod, reference = `QB-${Date.now()}`) => {
     setPlacing(true);
+    const txnId = `TXN-${Date.now()}`;
     const payload = { items: cart.map(i => ({ menuItemId: i.id, menuItemName: i.name, quantity: i.qty, unitPrice: i.price })), totalAmount: total, paymentMethod: method };
     try {
       await api('/api/v1/payments/charge', {
         method:'POST',
-        body: JSON.stringify({ userId: user?.id || user?.email || 'demo-user', amount: total, paymentMethod: method, reference })
+        body: JSON.stringify({ userId: user?.id || user?.email || 'demo-user', amount: total, paymentMethod: method, reference, transactionId: txnId })
       });
       await api('/api/v1/orders', { method:'POST', body: JSON.stringify(payload) });
     } catch(e) { /* demo fallback */ }
-    showToast(`Order placed via ${method.replace('_',' ')}! Total ₹${total} 🎉`);
+    if (method === 'WALLET') setWalletBalance(b => Math.max(0, b - total));
+    showToast(`Paid via ${method.replace('_',' ')} • Txn ${txnId} • ₹${total}`, 'success');
     setCart([]); onClose(); setPlacing(false);
-    setGatewayOpen(false); setGatewayValue('');
+    setGatewayOpen(false); setGatewayValue(''); setUpiCollectSent(false);
   };
 
   const placeOrder = async () => {
-    if (paymentMethod === 'WALLET') return submitOrder('WALLET');
+    if (paymentMethod === 'WALLET') {
+      if (walletBalance < total) { showToast(`Insufficient wallet balance. Available ₹${walletBalance}`, 'error'); return; }
+      return submitOrder('WALLET');
+    }
     setGatewayOpen(true);
   };
 
   const confirmGatewayPayment = async () => {
     if (!gatewayValue.trim()) { showToast('Please complete payment details', 'error'); return; }
+    if (paymentMethod === 'UPI' && !/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(gatewayValue.trim())) {
+      showToast('Invalid UPI ID format (example: name@bank)', 'error'); return;
+    }
+    if (paymentMethod === 'CARD' && !/^\d{4}$/.test(gatewayValue.trim())) {
+      showToast('Enter card last 4 digits', 'error'); return;
+    }
+    if (paymentMethod === 'UPI' && !upiCollectSent) {
+      setUpiCollectSent(true);
+      showToast(`UPI collect request sent to ${gatewayValue.trim()}. Approve in your UPI app, then click confirm again.`, 'success');
+      return;
+    }
     submitOrder(paymentMethod, gatewayValue.trim());
   };
 
@@ -574,6 +676,9 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
         {cart.length > 0 && (
           <div className="cart-footer">
             <div className="cart-total"><span>Total</span><span style={{color:'var(--primary)'}}>₹{total}</span></div>
+            <div style={{fontSize:12,background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'8px 10px',borderRadius:10,marginBottom:10,fontWeight:600}}>
+              Wallet Balance: ₹{walletBalance}
+            </div>
             <div className="payment-methods">
               {[{id:'WALLET',label:'Wallet',icon:'fa-wallet'},{id:'UPI',label:'UPI',icon:'fa-mobile-screen'},{id:'CARD',label:'Card',icon:'fa-credit-card'},{id:'NET_BANKING',label:'NetBanking',icon:'fa-building-columns'}].map(m => (
                 <button key={m.id} className={`payment-method ${paymentMethod===m.id?'active':''}`} onClick={() => setPaymentMethod(m.id)}>
@@ -590,14 +695,14 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
       </div>
       {gatewayOpen && (
         <>
-          <div className="overlay" onClick={() => setGatewayOpen(false)}/>
+          <div className="overlay" onClick={() => { setGatewayOpen(false); setUpiCollectSent(false); }}/>
           <div className="gateway-modal">
             <div className="gateway-header">
               <div>
                 <h3 style={{fontSize:16}}>QwikPay Gateway</h3>
                 <p style={{fontSize:11,opacity:.85}}>Method: {paymentMethod.replace('_',' ')}</p>
               </div>
-              <button className="btn btn-sm btn-outline" onClick={() => setGatewayOpen(false)} style={{color:'#fff',borderColor:'rgba(255,255,255,.5)'}}>✕</button>
+              <button className="btn btn-sm btn-outline" onClick={() => { setGatewayOpen(false); setUpiCollectSent(false); }} style={{color:'#fff',borderColor:'rgba(255,255,255,.5)'}}>✕</button>
             </div>
             <div className="gateway-body">
               <p style={{fontSize:13,color:'var(--muted)',marginBottom:10}}>
@@ -609,8 +714,13 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
                 onChange={e => setGatewayValue(e.target.value)}
                 style={{marginBottom:12}}
               />
+              {paymentMethod === 'UPI' && upiCollectSent && (
+                <div style={{fontSize:12,marginBottom:10,padding:'8px 10px',borderRadius:8,background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe'}}>
+                  Collect request sent. Open your UPI app and approve, then click confirm.
+                </div>
+              )}
               <button className="btn btn-primary" style={{width:'100%'}} onClick={confirmGatewayPayment} disabled={placing}>
-                {placing ? 'Processing...' : `Confirm payment ₹${total}`}
+                {placing ? 'Processing...' : paymentMethod === 'UPI' && !upiCollectSent ? `Send collect request ₹${total}` : `Confirm payment ₹${total}`}
               </button>
             </div>
           </div>
@@ -627,6 +737,21 @@ function App() {
   const [cartOpen, setCartOpen] = useState(false);
   const [toast, setToast] = useState(null);
   const [user, setUser] = useState(() => { try { return JSON.parse(localStorage.getItem('user')||'null'); } catch { return null; } });
+
+  useEffect(() => {
+    const previousVersion = localStorage.getItem('qb_ui_version');
+    if (previousVersion !== BUILD_VERSION) {
+      localStorage.setItem('qb_ui_version', BUILD_VERSION);
+      if (!sessionStorage.getItem('qb_ui_reloaded')) {
+        sessionStorage.setItem('qb_ui_reloaded', '1');
+        window.location.reload();
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    document.title = `QwikBrew — Corporate Café (${BUILD_VERSION})`;
+  }, []);
 
   const showToast = useCallback((msg, type='success') => {
     setToast({ msg, type }); clearTimeout(toastTimer); toastTimer = setTimeout(() => setToast(null), 3000);
@@ -648,7 +773,7 @@ function App() {
     <div id="root">
       {toast && <Toast msg={toast.msg} type={toast.type}/>}
       <nav>
-        <div className="nav-brand">☕ <span>Qwik</span>Brew</div>
+        <div className="nav-brand">☕ <span>Qwik</span>Brew <span style={{fontSize:11,fontWeight:700,background:'rgba(249,115,22,.22)',padding:'2px 8px',borderRadius:999}}>NEW UI</span></div>
         <div className="nav-right">
           <div style={{background:'rgba(249,115,22,.2)',color:'#fdba74',fontSize:10,padding:'4px 8px',borderRadius:999,fontWeight:700}}>
             UI {BUILD_VERSION}
