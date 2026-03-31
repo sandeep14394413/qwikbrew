@@ -152,7 +152,7 @@
 <script type="text/babel">
 
 const { useState, useEffect, useCallback } = React;
-const BUILD_VERSION = '2026-03-31-ui-r9';
+const BUILD_VERSION = '2026-03-31-ui-r11';
 
 // ── API client ────────────────────────────────────────────────────────────────
 const API = window.location.hostname === 'localhost' ? 'http://localhost:8080' : '';
@@ -351,6 +351,9 @@ function MenuScreen({ cart, setCart, showToast }) {
   const [category, setCategory] = useState('All');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [lastTxn, setLastTxn] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('qb_last_txn') || 'null'); } catch { return null; }
+  });
 
   useEffect(() => {
     api('/api/v1/menu').then(data => {
@@ -410,6 +413,11 @@ function MenuScreen({ cart, setCart, showToast }) {
       <div style={{margin:'0 20px 14px',background:'#ecfeff',border:'1px solid #a5f3fc',padding:'10px 12px',borderRadius:12,color:'#155e75',fontSize:12,fontWeight:600}}>
         🧪 Payment test ready: add <strong>Test Item (Verification)</strong> (₹1) and pay via Wallet / UPI / Card.
       </div>
+      {lastTxn && (
+        <div style={{margin:'0 20px 14px',background:'#f8fafc',border:'1px solid #cbd5e1',padding:'10px 12px',borderRadius:12,color:'#0f172a',fontSize:12}}>
+          Last payment: <strong>{lastTxn.status}</strong> • Txn {lastTxn.transactionId || 'N/A'} • Ref {lastTxn.reference || 'N/A'} • ₹{lastTxn.amount || 0}
+        </div>
+      )}
       <div style={{padding:'0 20px 8px',color:'var(--muted)',fontSize:13,display:'flex',justifyContent:'space-between'}}>
         <span>{filtered.length} curated items</span>
         <span style={{fontWeight:600}}>Live counter open • 8:00 AM – 8:00 PM</span>
@@ -589,6 +597,7 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
   const [gatewayValue, setGatewayValue] = useState('');
   const [upiCollectSent, setUpiCollectSent] = useState(false);
   const [upiCollectReference, setUpiCollectReference] = useState('');
+  const [upiIntentLink, setUpiIntentLink] = useState('');
   const [walletBalance, setWalletBalance] = useState(() => {
     const stored = Number(localStorage.getItem('qb_wallet_balance'));
     if (!Number.isNaN(stored) && stored >= 0) return stored;
@@ -607,17 +616,22 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
     setPlacing(true);
     const txnId = `TXN-${Date.now()}`;
     const payload = { items: cart.map(i => ({ menuItemId: i.id, menuItemName: i.name, quantity: i.qty, unitPrice: i.price })), totalAmount: total, paymentMethod: method };
+    let paymentRes = null;
+    let txnStatus = null;
     try {
-      await api('/api/v1/payments/charge', {
+      paymentRes = await api('/api/v1/payments/charge', {
         method:'POST',
         body: JSON.stringify({ userId: user?.id || user?.email || 'demo-user', amount: total, paymentMethod: method, reference, transactionId: txnId })
       });
+      txnStatus = await api(`/api/v1/payments/transactions/status?transactionId=${encodeURIComponent(paymentRes.transactionId || '')}&reference=${encodeURIComponent(reference)}`);
       await api('/api/v1/orders', { method:'POST', body: JSON.stringify(payload) });
     } catch(e) { /* demo fallback */ }
     if (method === 'WALLET') setWalletBalance(b => Math.max(0, b - total));
-    showToast(`Paid via ${method.replace('_',' ')} • Txn ${txnId} • ₹${total}`, 'success');
+    const statusObj = txnStatus || { transactionId: paymentRes?.transactionId || txnId, reference, status:'SUCCESS', amount: total };
+    localStorage.setItem('qb_last_txn', JSON.stringify(statusObj));
+    showToast(`Paid via ${method.replace('_',' ')} • ${statusObj.status} • ₹${total}`, 'success');
     setCart([]); onClose(); setPlacing(false);
-    setGatewayOpen(false); setGatewayValue(''); setUpiCollectSent(false); setUpiCollectReference('');
+    setGatewayOpen(false); setGatewayValue(''); setUpiCollectSent(false); setUpiCollectReference(''); setUpiIntentLink('');
   };
 
   const placeOrder = async () => {
@@ -651,6 +665,8 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
       } catch {
         setUpiCollectReference(gatewayValue.trim());
       }
+      const intent = `upi://pay?pa=${encodeURIComponent(gatewayValue.trim())}&pn=${encodeURIComponent('QwikBrew')}&am=${encodeURIComponent(total)}&cu=INR&tn=${encodeURIComponent('QwikBrew order payment')}`;
+      setUpiIntentLink(intent);
       setUpiCollectSent(true);
       showToast(`UPI collect request sent to ${gatewayValue.trim()}. Approve in your UPI app, then click confirm again.`, 'success');
       return;
@@ -710,14 +726,14 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
       </div>
       {gatewayOpen && (
         <>
-          <div className="overlay" onClick={() => { setGatewayOpen(false); setUpiCollectSent(false); setUpiCollectReference(''); }}/>
+          <div className="overlay" onClick={() => { setGatewayOpen(false); setUpiCollectSent(false); setUpiCollectReference(''); setUpiIntentLink(''); }}/>
           <div className="gateway-modal">
             <div className="gateway-header">
               <div>
                 <h3 style={{fontSize:16}}>QwikPay Gateway</h3>
                 <p style={{fontSize:11,opacity:.85}}>Method: {paymentMethod.replace('_',' ')}</p>
               </div>
-              <button className="btn btn-sm btn-outline" onClick={() => { setGatewayOpen(false); setUpiCollectSent(false); setUpiCollectReference(''); }} style={{color:'#fff',borderColor:'rgba(255,255,255,.5)'}}>✕</button>
+              <button className="btn btn-sm btn-outline" onClick={() => { setGatewayOpen(false); setUpiCollectSent(false); setUpiCollectReference(''); setUpiIntentLink(''); }} style={{color:'#fff',borderColor:'rgba(255,255,255,.5)'}}>✕</button>
             </div>
             <div className="gateway-body">
               <p style={{fontSize:13,color:'var(--muted)',marginBottom:10}}>
@@ -733,6 +749,11 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
                 <div style={{fontSize:12,marginBottom:10,padding:'8px 10px',borderRadius:8,background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe'}}>
                   Collect request sent. Open your UPI app and approve, then click confirm.
                 </div>
+              )}
+              {paymentMethod === 'UPI' && upiCollectSent && upiIntentLink && (
+                <a href={upiIntentLink} className="btn btn-outline" style={{width:'100%',marginBottom:10,textAlign:'center',display:'block'}}>
+                  Open UPI App
+                </a>
               )}
               <button className="btn btn-primary" style={{width:'100%'}} onClick={confirmGatewayPayment} disabled={placing}>
                 {placing ? 'Processing...' : paymentMethod === 'UPI' && !upiCollectSent ? `Send collect request ₹${total}` : `Confirm payment ₹${total}`}

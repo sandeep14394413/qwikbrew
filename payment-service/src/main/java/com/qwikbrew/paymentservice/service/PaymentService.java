@@ -47,7 +47,7 @@ public class PaymentService {
             .gatewayTxnId("UPI-REQ-" + UUID.randomUUID().toString().substring(0, 10).toUpperCase(Locale.ROOT))
             .build();
         txRepo.save(tx);
-        paymentEventPublisher.publishUpiCollectRequested(tx, maskedUpi);
+        paymentEventPublisher.publishUpiCollectRequested(tx, req.getUpiId(), maskedUpi);
 
         log.info("UPI collect initiated for user {} amount {} upi={} reference={}",
             req.getUserId(), req.getAmount(), maskedUpi, collectRef);
@@ -156,6 +156,30 @@ public class PaymentService {
     @Transactional(readOnly = true)
     public List<WalletTransaction> getTransactions(String userId) {
         return txRepo.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public TransactionStatusResponse getTransactionStatus(String txnId, String reference) {
+        WalletTransaction tx = null;
+        if (txnId != null && !txnId.isBlank()) {
+            tx = txRepo.findById(txnId).orElse(null);
+        }
+        if (tx == null && reference != null && !reference.isBlank()) {
+            tx = txRepo.findTopByReferenceOrderByCreatedAtDesc(reference).orElse(null);
+        }
+        if (tx == null) {
+            return new TransactionStatusResponse(null, reference, null, "NOT_FOUND", null, "No transaction found");
+        }
+        return new TransactionStatusResponse(
+            tx.getId(),
+            tx.getReference(),
+            tx.getPayMethod() != null ? tx.getPayMethod().name() : null,
+            tx.getStatus().name(),
+            tx.getAmount(),
+            tx.getStatus() == WalletTransaction.TxnStatus.SUCCESS ? "Transaction completed" :
+                tx.getStatus() == WalletTransaction.TxnStatus.PENDING ? "Transaction pending approval" :
+                "Transaction failed"
+        );
     }
 
     private static String maskUpi(String upiId) {

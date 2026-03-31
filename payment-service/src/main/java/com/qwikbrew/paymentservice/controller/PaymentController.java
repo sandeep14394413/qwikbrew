@@ -48,4 +48,12 @@ public class PaymentController {
     public ResponseEntity<List<WalletTransaction>> transactions(@PathVariable String userId) {
         return ResponseEntity.ok(paymentService.getTransactions(userId));
     }
+
+    @GetMapping("/transactions/status")
+    public ResponseEntity<TransactionStatusResponse> transactionStatus(
+        @RequestParam(required = false) String transactionId,
+        @RequestParam(required = false) String reference
+    ) {
+        return ResponseEntity.ok(paymentService.getTransactionStatus(transactionId, reference));
+    }
 }
