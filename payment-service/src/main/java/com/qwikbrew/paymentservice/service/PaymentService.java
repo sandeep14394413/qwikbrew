@@ -88,15 +88,24 @@ public class PaymentService {
     private ChargeResponse chargeGateway(ChargeRequest req) {
         // TODO: integrate Razorpay / Pine Labs gateway
         String mockGwId = "GW-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-        WalletTransaction tx = WalletTransaction.builder()
-            .userId(req.getUserId())
-            .amount(req.getAmount())
-            .type(WalletTransaction.TxnType.DEBIT)
-            .status(WalletTransaction.TxnStatus.SUCCESS)
-            .payMethod(req.getPaymentMethod())
-            .reference(req.getReference())
-            .gatewayTxnId(mockGwId)
-            .build();
+        WalletTransaction tx = txRepo.findTopByReferenceOrderByCreatedAtDesc(req.getReference())
+            .filter(existing -> existing.getPayMethod() == req.getPaymentMethod()
+                && existing.getStatus() == WalletTransaction.TxnStatus.PENDING)
+            .map(existing -> {
+                existing.setStatus(WalletTransaction.TxnStatus.SUCCESS);
+                existing.setGatewayTxnId(mockGwId);
+                existing.setFailureReason(null);
+                return existing;
+            })
+            .orElseGet(() -> WalletTransaction.builder()
+                .userId(req.getUserId())
+                .amount(req.getAmount())
+                .type(WalletTransaction.TxnType.DEBIT)
+                .status(WalletTransaction.TxnStatus.SUCCESS)
+                .payMethod(req.getPaymentMethod())
+                .reference(req.getReference())
+                .gatewayTxnId(mockGwId)
+                .build());
         txRepo.save(tx);
         paymentEventPublisher.publishCharged(tx, null);
         return new ChargeResponse(tx.getId(), "SUCCESS", null);
