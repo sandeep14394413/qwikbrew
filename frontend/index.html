@@ -8,23 +8,24 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.4/babel.min.js"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
     :root{
-      --primary:#e85d26;--primary-dark:#c44d1e;--secondary:#2c3e50;
-      --bg:#f8f9fa;--card:#fff;--text:#2c3e50;--muted:#6c757d;
+      --primary:#f97316;--primary-dark:#ea580c;--secondary:#1f2937;
+      --bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;
       --success:#28a745;--warning:#ffc107;--danger:#dc3545;
-      --radius:12px;--shadow:0 2px 12px rgba(0,0,0,.1);
+      --radius:16px;--shadow:0 12px 30px rgba(17,24,39,.08);
     }
-    body{font-family:'Segoe UI',Tahoma,sans-serif;background:var(--bg);color:var(--text);}
+    body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;background:linear-gradient(180deg,#f9fafb 0%,#eef2ff 60%,#f9fafb 100%);color:var(--text);}
     #root{min-height:100vh;display:flex;flex-direction:column;}
-    .btn{padding:10px 20px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;}
+    .btn{padding:10px 20px;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;}
     .btn-primary{background:var(--primary);color:#fff;}
     .btn-primary:hover{background:var(--primary-dark);}
     .btn-outline{background:transparent;border:2px solid var(--primary);color:var(--primary);}
     .btn-outline:hover{background:var(--primary);color:#fff;}
     .btn-sm{padding:6px 14px;font-size:12px;}
-    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;}
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border:1px solid #eef2f7;}
     .badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;}
     .badge-veg{background:#e8f5e9;color:#2e7d32;}
     .badge-nonveg{background:#fce4ec;color:#c62828;}
@@ -37,34 +38,41 @@
     .spinner{border:3px solid #f3f3f3;border-top:3px solid var(--primary);border-radius:50%;width:32px;height:32px;animation:spin .8s linear infinite;margin:40px auto;}
     @keyframes spin{to{transform:rotate(360deg);}}
     /* Nav */
-    nav{background:var(--secondary);padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;height:60px;}
+    nav{background:rgba(17,24,39,.92);backdrop-filter:blur(12px);padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;height:66px;border-bottom:1px solid rgba(255,255,255,.08);}
     .nav-brand{color:#fff;font-size:22px;font-weight:800;display:flex;align-items:center;gap:8px;}
     .nav-brand span{color:var(--primary);}
     .nav-right{display:flex;align-items:center;gap:16px;}
     .nav-icon{color:#fff;font-size:20px;cursor:pointer;position:relative;}
     .nav-badge{position:absolute;top:-6px;right:-6px;background:var(--primary);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;display:flex;align-items:center;justify-content:center;}
     /* Hero */
-    .hero{background:linear-gradient(135deg,var(--secondary) 0%,#34495e 100%);padding:40px 20px;color:#fff;text-align:center;}
+    .hero{background:radial-gradient(circle at top right,#fb923c 0%,#f97316 30%,#111827 100%);padding:42px 20px 34px;color:#fff;text-align:center;position:relative;overflow:hidden;}
+    .hero::after{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.12);right:-70px;top:-70px;}
     .hero h1{font-size:32px;margin-bottom:10px;}
-    .hero p{opacity:.8;font-size:16px;margin-bottom:24px;}
+    .hero p{opacity:.85;font-size:15px;margin-bottom:22px;}
+    .hero-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:760px;margin:16px auto 0;}
+    .hero-kpi{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 8px;backdrop-filter:blur(4px);}
+    .hero-kpi strong{display:block;font-size:15px;}
+    .hero-kpi span{font-size:11px;opacity:.9;}
     .search-box{max-width:500px;margin:0 auto;position:relative;}
     .search-box input{padding-left:44px;border-radius:30px;font-size:15px;}
     .search-box i{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);}
     /* Categories */
-    .categories{display:flex;gap:12px;padding:20px;overflow-x:auto;scrollbar-width:none;}
-    .category-chip{padding:10px 20px;border-radius:30px;cursor:pointer;white-space:nowrap;font-weight:600;font-size:13px;transition:all .2s;border:2px solid #e0e0e0;background:#fff;}
+    .categories{display:flex;gap:10px;padding:20px;overflow-x:auto;scrollbar-width:none;}
+    .category-chip{padding:10px 18px;border-radius:30px;cursor:pointer;white-space:nowrap;font-weight:600;font-size:12px;transition:all .2s;border:1px solid #e5e7eb;background:#fff;}
     .category-chip.active{background:var(--primary);color:#fff;border-color:var(--primary);}
     /* Menu Grid */
     .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;padding:0 20px 20px;}
-    .menu-card{cursor:pointer;transition:transform .2s;}
-    .menu-card:hover{transform:translateY(-4px);}
-    .menu-img{width:100%;height:180px;object-fit:cover;background:linear-gradient(135deg,#f093fb,#f5576c);}
-    .menu-img-placeholder{width:100%;height:180px;display:flex;align-items:center;justify-content:center;font-size:48px;}
+    .menu-card{cursor:pointer;transition:transform .2s, box-shadow .2s;border-radius:18px;}
+    .menu-card:hover{transform:translateY(-5px);box-shadow:0 16px 30px rgba(17,24,39,.14);}
+    .menu-media{position:relative;}
+    .menu-media::before{content:'Chef recommended';position:absolute;left:12px;top:12px;background:rgba(17,24,39,.75);color:#fff;font-size:10px;padding:5px 8px;border-radius:20px;letter-spacing:.3px;z-index:2;}
+    .menu-img{width:100%;height:170px;object-fit:cover;background:linear-gradient(135deg,#f093fb,#f5576c);}
+    .menu-img-placeholder{width:100%;height:170px;display:flex;align-items:center;justify-content:center;font-size:48px;position:relative;}
     .menu-body{padding:16px;}
     .menu-title{font-size:16px;font-weight:700;margin-bottom:4px;}
     .menu-desc{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;}
     .menu-footer{display:flex;align-items:center;justify-content:space-between;}
-    .price{font-size:18px;font-weight:800;color:var(--primary);}
+    .price{font-size:20px;font-weight:800;color:var(--primary);}
     .add-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
     .qty-ctrl{display:flex;align-items:center;gap:8px;}
     .qty-btn{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:16px;}
@@ -80,8 +88,14 @@
     .cart-item-price{color:var(--primary);font-weight:700;}
     .cart-footer{padding:20px;border-top:1px solid #f0f0f0;}
     .cart-total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-bottom:16px;}
+    .payment-methods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px;}
+    .payment-method{border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:10px 8px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;display:flex;align-items:center;gap:6px;justify-content:center;}
+    .payment-method.active{border-color:var(--primary);background:#fff7ed;color:var(--primary-dark);}
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;}
-    /* Auth */
+    .gateway-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,92vw);background:#fff;border-radius:16px;z-index:250;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;}
+    .gateway-header{padding:16px 20px;background:linear-gradient(135deg,#111827,#374151);color:#fff;display:flex;justify-content:space-between;align-items:center;}
+    .gateway-body{padding:16px 20px;}
+  /* Auth */
     .auth-container{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
     .auth-card{width:100%;max-width:420px;padding:40px;}
     .auth-logo{text-align:center;margin-bottom:32px;}
@@ -109,7 +123,7 @@
     .wallet-card{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;border-radius:16px;padding:24px;margin:20px;}
     .wallet-balance{font-size:36px;font-weight:800;}
     /* Bottom nav */
-    .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e0e0e0;z-index:100;}
+    .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e0e0e0;z-index:100;box-shadow:0 -6px 24px rgba(17,24,39,.08);}
     .bottom-nav-items{display:flex;}
     .bottom-nav-item{flex:1;padding:12px 0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--muted);font-size:10px;font-weight:600;}
     .bottom-nav-item.active{color:var(--primary);}
@@ -121,6 +135,7 @@
       .menu-img-placeholder{height:120px;font-size:32px;}
       .cart-sidebar{width:100%;}
       .hero h1{font-size:24px;}
+      .hero-kpis{grid-template-columns:1fr;}
     }
   </style>
 </head>
@@ -129,6 +144,7 @@
 <script type="text/babel">
 
 const { useState, useEffect, useCallback } = React;
+const BUILD_VERSION = '2026-03-31-ui-r2';
 
 // ── API client ────────────────────────────────────────────────────────────────
 const API = window.location.hostname === 'localhost' ? 'http://localhost:8080' : '';
@@ -147,21 +163,26 @@ async function api(path, opts = {}) {
 
 // ── Sample data (shown when backend returns empty) ────────────────────────────
 const SAMPLE_MENU = [
-  { id:1, name:'Masala Dosa', category:'South Indian', price:55, description:'Crispy rice crepe with spiced potato filling', emoji:'🫓', isVeg:true, rating:4.5, preparationTime:10 },
-  { id:2, name:'Poha', category:'Breakfast', price:35, description:'Flattened rice with veggies and spices', emoji:'🍚', isVeg:true, rating:4.2, preparationTime:8 },
-  { id:3, name:'Idli Sambar', category:'South Indian', price:45, description:'Soft steamed rice cakes with sambar and chutney', emoji:'⚪', isVeg:true, rating:4.7, preparationTime:5 },
-  { id:4, name:'Veg Biryani', category:'Rice', price:95, description:'Fragrant basmati rice cooked with mixed vegetables', emoji:'🍛', isVeg:true, rating:4.4, preparationTime:20 },
-  { id:5, name:'Chicken Biryani', category:'Rice', price:130, description:'Aromatic basmati with tender chicken pieces', emoji:'🍗', isVeg:false, rating:4.8, preparationTime:25 },
-  { id:6, name:'Dal Tadka', category:'Dal', price:65, description:'Yellow lentils tempered with ghee and spices', emoji:'🍲', isVeg:true, preparationTime:12 },
-  { id:7, name:'Paneer Butter Masala', category:'Curry', price:110, description:'Soft paneer in rich tomato-butter gravy', emoji:'🧀', isVeg:true, rating:4.6, preparationTime:15 },
-  { id:8, name:'Filter Coffee', category:'Beverages', price:25, description:'Freshly brewed South Indian filter coffee', emoji:'☕', isVeg:true, rating:4.9, preparationTime:3 },
-  { id:9, name:'Masala Chai', category:'Beverages', price:20, description:'Ginger spiced milk tea', emoji:'🍵', isVeg:true, rating:4.8, preparationTime:3 },
-  { id:10, name:'Veg Sandwich', category:'Snacks', price:50, description:'Grilled sandwich with seasonal veggies and cheese', emoji:'🥪', isVeg:true, rating:4.3, preparationTime:7 },
-  { id:11, name:'Samosa (2 pcs)', category:'Snacks', price:30, description:'Crispy pastry filled with spiced potatoes', emoji:'🥟', isVeg:true, rating:4.5, preparationTime:5 },
-  { id:12, name:'Gulab Jamun', category:'Desserts', price:40, description:'Soft milk-solid dumplings in sugar syrup', emoji:'🍮', isVeg:true, rating:4.7, preparationTime:5 },
+  { id:1, name:'Masala Dosa', category:'South Indian', price:55, description:'Crispy rice crepe with spiced potato filling', emoji:'🫓', isVeg:true, rating:4.5, preparationTime:10, image:'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=900&q=80' },
+  { id:2, name:'Poha', category:'Breakfast', price:35, description:'Flattened rice with veggies and spices', emoji:'🍚', isVeg:true, rating:4.2, preparationTime:8, image:'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=80' },
+  { id:3, name:'Idli Sambar', category:'South Indian', price:45, description:'Soft steamed rice cakes with sambar and chutney', emoji:'⚪', isVeg:true, rating:4.7, preparationTime:5, image:'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=900&q=80' },
+  { id:4, name:'Veg Biryani', category:'Rice', price:95, description:'Fragrant basmati rice cooked with mixed vegetables', emoji:'🍛', isVeg:true, rating:4.4, preparationTime:20, image:'https://images.unsplash.com/photo-1701579231378-372ea3c7ca87?auto=format&fit=crop&w=900&q=80' },
+  { id:5, name:'Chicken Biryani', category:'Rice', price:130, description:'Aromatic basmati with tender chicken pieces', emoji:'🍗', isVeg:false, rating:4.8, preparationTime:25, image:'https://images.unsplash.com/photo-1633945274309-2c16c9682a8b?auto=format&fit=crop&w=900&q=80' },
+  { id:6, name:'Dal Tadka', category:'Dal', price:65, description:'Yellow lentils tempered with ghee and spices', emoji:'🍲', isVeg:true, preparationTime:12, image:'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80' },
+  { id:7, name:'Paneer Butter Masala', category:'Curry', price:110, description:'Soft paneer in rich tomato-butter gravy', emoji:'🧀', isVeg:true, rating:4.6, preparationTime:15, image:'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=900&q=80' },
+  { id:8, name:'Filter Coffee', category:'Beverages', price:25, description:'Freshly brewed South Indian filter coffee', emoji:'☕', isVeg:true, rating:4.9, preparationTime:3, image:'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80' },
+  { id:9, name:'Masala Chai', category:'Beverages', price:20, description:'Ginger spiced milk tea', emoji:'🍵', isVeg:true, rating:4.8, preparationTime:3, image:'https://images.unsplash.com/photo-1597318181409-cf64d0b5d8a2?auto=format&fit=crop&w=900&q=80' },
+  { id:10, name:'Veg Sandwich', category:'Snacks', price:50, description:'Grilled sandwich with seasonal veggies and cheese', emoji:'🥪', isVeg:true, rating:4.3, preparationTime:7, image:'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=900&q=80' },
+  { id:11, name:'Samosa (2 pcs)', category:'Snacks', price:30, description:'Crispy pastry filled with spiced potatoes', emoji:'🥟', isVeg:true, rating:4.5, preparationTime:5, image:'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=80' },
+  { id:12, name:'Gulab Jamun', category:'Desserts', price:40, description:'Soft milk-solid dumplings in sugar syrup', emoji:'🍮', isVeg:true, rating:4.7, preparationTime:5, image:'https://images.unsplash.com/photo-1611293388250-580b08c4a145?auto=format&fit=crop&w=900&q=80' },
 ];
 
 const CATEGORIES = ['All', 'Breakfast', 'South Indian', 'Rice', 'Curry', 'Dal', 'Snacks', 'Beverages', 'Desserts'];
+const SPECIALS = [
+  { title:'Breakfast Combo', subtitle:'Idli + Filter Coffee', price:'₹59' },
+  { title:'Executive Lunch', subtitle:'Biryani + Dessert', price:'₹149' },
+  { title:'Evening Saver', subtitle:'Chai + Samosa', price:'₹45' },
+];
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 let toastTimer;
@@ -296,11 +317,16 @@ function MenuScreen({ cart, setCart, showToast }) {
   return (
     <div>
       <div className="hero">
-        <h1>What are you craving today? 😋</h1>
-        <p>Fresh, nutritious meals from your corporate café</p>
+        <h1>Good food, faster checkout ☕</h1>
+        <p>Inspired by modern enterprise café experiences for busy teams.</p>
         <div className="search-box">
           <i className="fa fa-search"/>
           <input placeholder="Search dosa, biryani, coffee..." value={search} onChange={e => setSearch(e.target.value)}/>
+        </div>
+        <div className="hero-kpis">
+          <div className="hero-kpi"><strong>12 min</strong><span>Avg prep time</span></div>
+          <div className="hero-kpi"><strong>4.8 ★</strong><span>Employee rating</span></div>
+          <div className="hero-kpi"><strong>100% cashless</strong><span>Wallet + quick pay</span></div>
         </div>
       </div>
       <div className="categories">
@@ -308,14 +334,34 @@ function MenuScreen({ cart, setCart, showToast }) {
           <div key={c} className={`category-chip ${category===c?'active':''}`} onClick={() => setCategory(c)}>{c}</div>
         ))}
       </div>
-      <div style={{padding:'0 20px 8px',color:'var(--muted)',fontSize:13}}>{filtered.length} items</div>
+      <div style={{padding:'0 20px 16px'}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(190px,1fr))',gap:10}}>
+          {SPECIALS.map(s => (
+            <div key={s.title} className="card" style={{padding:'12px 14px',background:'linear-gradient(135deg,#fff7ed,#ffedd5)'}}>
+              <div style={{fontSize:11,color:'var(--muted)',marginBottom:3}}>Today’s Special</div>
+              <div style={{fontWeight:700,fontSize:14}}>{s.title}</div>
+              <div style={{fontSize:12,color:'var(--muted)',margin:'2px 0 6px'}}>{s.subtitle}</div>
+              <div style={{color:'var(--primary-dark)',fontWeight:800}}>{s.price}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{padding:'0 20px 8px',color:'var(--muted)',fontSize:13,display:'flex',justifyContent:'space-between'}}>
+        <span>{filtered.length} curated items</span>
+        <span style={{fontWeight:600}}>Live counter open • 8:00 AM – 8:00 PM</span>
+      </div>
       <div className="menu-grid">
         {filtered.map(item => {
           const qty = getQty(item.id);
           return (
             <div key={item.id} className="card menu-card">
-              <div className="menu-img-placeholder" style={{background:`linear-gradient(135deg,${item.isVeg?'#e8f5e9,#a5d6a7':'#fce4ec,#ef9a9a'})`}}>
-                <span style={{fontSize:48}}>{item.emoji || '🍽️'}</span>
+              <div className="menu-media">
+                {item.image
+                  ? <img className="menu-img" src={item.image} alt={item.name} loading="lazy"/>
+                  : <div className="menu-img-placeholder" style={{background:`linear-gradient(135deg,${item.isVeg?'#e8f5e9,#a5d6a7':'#fce4ec,#ef9a9a'})`}}>
+                      <span style={{fontSize:48}}>{item.emoji || '🍽️'}</span>
+                    </div>
+                }
               </div>
               <div className="menu-body">
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:4}}>
@@ -474,19 +520,37 @@ function ProfileScreen({ user, onLogout, showToast }) {
 // ── Cart Sidebar ──────────────────────────────────────────────────────────────
 function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
   const [placing, setPlacing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('WALLET');
+  const [gatewayOpen, setGatewayOpen] = useState(false);
+  const [gatewayValue, setGatewayValue] = useState('');
   const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   const add = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty+1} : x));
   const rem = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty-1} : x).filter(x => x.qty>0));
 
-  const placeOrder = async () => {
+  const submitOrder = async (method = paymentMethod, reference = `QB-${Date.now()}`) => {
     setPlacing(true);
-    const payload = { items: cart.map(i => ({ menuItemId: i.id, menuItemName: i.name, quantity: i.qty, unitPrice: i.price })), totalAmount: total, paymentMethod: 'WALLET' };
+    const payload = { items: cart.map(i => ({ menuItemId: i.id, menuItemName: i.name, quantity: i.qty, unitPrice: i.price })), totalAmount: total, paymentMethod: method };
     try {
+      await api('/api/v1/payments/charge', {
+        method:'POST',
+        body: JSON.stringify({ userId: user?.id || user?.email || 'demo-user', amount: total, paymentMethod: method, reference })
+      });
       await api('/api/v1/orders', { method:'POST', body: JSON.stringify(payload) });
     } catch(e) { /* demo fallback */ }
-    showToast(`Order placed! Total ₹${total} 🎉`);
+    showToast(`Order placed via ${method.replace('_',' ')}! Total ₹${total} 🎉`);
     setCart([]); onClose(); setPlacing(false);
+    setGatewayOpen(false); setGatewayValue('');
+  };
+
+  const placeOrder = async () => {
+    if (paymentMethod === 'WALLET') return submitOrder('WALLET');
+    setGatewayOpen(true);
+  };
+
+  const confirmGatewayPayment = async () => {
+    if (!gatewayValue.trim()) { showToast('Please complete payment details', 'error'); return; }
+    submitOrder(paymentMethod, gatewayValue.trim());
   };
 
   return (
@@ -522,13 +586,48 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
         {cart.length > 0 && (
           <div className="cart-footer">
             <div className="cart-total"><span>Total</span><span style={{color:'var(--primary)'}}>₹{total}</span></div>
-            <div style={{fontSize:12,color:'var(--muted)',marginBottom:12,textAlign:'center'}}>Paying via Wallet • Free delivery</div>
+            <div className="payment-methods">
+              {[{id:'WALLET',label:'Wallet',icon:'fa-wallet'},{id:'UPI',label:'UPI',icon:'fa-mobile-screen'},{id:'CARD',label:'Card',icon:'fa-credit-card'},{id:'NET_BANKING',label:'NetBanking',icon:'fa-building-columns'}].map(m => (
+                <button key={m.id} className={`payment-method ${paymentMethod===m.id?'active':''}`} onClick={() => setPaymentMethod(m.id)}>
+                  <i className={`fa ${m.icon}`}/> {m.label}
+                </button>
+              ))}
+            </div>
+            <div style={{fontSize:12,color:'var(--muted)',marginBottom:12,textAlign:'center'}}>Secure checkout • Free delivery</div>
             <button className="btn btn-primary" style={{width:'100%',padding:14,fontSize:15}} onClick={placeOrder} disabled={placing}>
-              {placing ? <><i className="fa fa-spinner fa-spin"/> Placing Order...</> : `Place Order ₹${total}`}
+              {placing ? <><i className="fa fa-spinner fa-spin"/> Placing Order...</> : `Pay & Place Order ₹${total}`}
             </button>
           </div>
         )}
       </div>
+      {gatewayOpen && (
+        <>
+          <div className="overlay" onClick={() => setGatewayOpen(false)}/>
+          <div className="gateway-modal">
+            <div className="gateway-header">
+              <div>
+                <h3 style={{fontSize:16}}>QwikPay Gateway</h3>
+                <p style={{fontSize:11,opacity:.85}}>Method: {paymentMethod.replace('_',' ')}</p>
+              </div>
+              <button className="btn btn-sm btn-outline" onClick={() => setGatewayOpen(false)} style={{color:'#fff',borderColor:'rgba(255,255,255,.5)'}}>✕</button>
+            </div>
+            <div className="gateway-body">
+              <p style={{fontSize:13,color:'var(--muted)',marginBottom:10}}>
+                {paymentMethod === 'UPI' ? 'Enter UPI ID' : paymentMethod === 'CARD' ? 'Enter card last 4 digits' : 'Enter bank reference'}
+              </p>
+              <input
+                placeholder={paymentMethod === 'UPI' ? 'name@bank' : paymentMethod === 'CARD' ? '1234' : 'Transaction reference'}
+                value={gatewayValue}
+                onChange={e => setGatewayValue(e.target.value)}
+                style={{marginBottom:12}}
+              />
+              <button className="btn btn-primary" style={{width:'100%'}} onClick={confirmGatewayPayment} disabled={placing}>
+                {placing ? 'Processing...' : `Confirm payment ₹${total}`}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
@@ -563,6 +662,9 @@ function App() {
       <nav>
         <div className="nav-brand">☕ <span>Qwik</span>Brew</div>
         <div className="nav-right">
+          <div style={{background:'rgba(249,115,22,.2)',color:'#fdba74',fontSize:10,padding:'4px 8px',borderRadius:999,fontWeight:700}}>
+            UI {BUILD_VERSION}
+          </div>
           <div style={{color:'rgba(255,255,255,.7)',fontSize:13}}>Hi, {(user.name||'').split(' ')[0]} 👋</div>
           <div className="nav-icon" onClick={() => setCartOpen(true)}>
             <i className="fa fa-shopping-cart"/>
