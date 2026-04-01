@@ -1,47 +1,92 @@
+# QwikBrew ALB Ingress
+#
+# Routes:
+#   /api  → api-gateway (ClusterIP :8080)   — all backend microservices
+#   /     → frontend    (ClusterIP :80)      — React SPA
+#
+# The frontend is ALSO exposed directly via its own NLB LoadBalancer
+# service (http only, port 80). This Ingress adds HTTPS termination
+# once an ACM certificate is configured.
+#
+# Why the ALB was stuck for 7 days:
+#   1. Both deprecated 'kubernetes.io/ingress.class' annotation AND
+#      the new 'spec.ingressClassName' were set simultaneously.
+#      AWS LBC v2.x+ treats this as a conflict on some versions and
+#      silently skips provisioning the ALB.
+#      Fix: removed the deprecated annotation; kept ingressClassName only.
+#
+#   2. 'alb.ingress.kubernetes.io/certificate-arn: CERT_ARN' was never
+#      substituted when STAGING_ACM_CERT_ARN secret is missing.
+#      An invalid ARN causes the ALB controller to reject the Ingress.
+#      Fix: HTTPS listen port + cert annotation are now commented out
+#      by default. Uncomment once ACM cert is provisioned.
+
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: qwikbrew-ingress
   namespace: qwikbrew
   annotations:
-    kubernetes.io/ingress.class:                            alb
-    alb.ingress.kubernetes.io/scheme:                       internet-facing
-    alb.ingress.kubernetes.io/target-type:                  ip
-    alb.ingress.kubernetes.io/listen-ports:                 '[{"HTTP":80,"HTTPS":443}]'
-    alb.ingress.kubernetes.io/ssl-redirect:                 "443"
-    alb.ingress.kubernetes.io/certificate-arn:              "CERT_ARN"
+    # ──────────────────────────────────────────────────────────────────
+    # NOTE: Do NOT also set 'kubernetes.io/ingress.class: alb' here.
+    # Using both the deprecated annotation AND spec.ingressClassName
+    # simultaneously causes AWS LBC v2+ to skip this Ingress silently.
+    # The correct approach (AWS LBC v2+) is spec.ingressClassName only.
+    # ──────────────────────────────────────────────────────────────────
+    alb.ingress.kubernetes.io/scheme:      internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/group.name:  qwikbrew
     alb.ingress.kubernetes.io/healthcheck-path:             /
     alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
     alb.ingress.kubernetes.io/success-codes:                "200-399"
-    alb.ingress.kubernetes.io/group.name:                   qwikbrew
+
+    # ── HTTP only (no cert required — ALB will be created immediately) ──
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+
+    # ── HTTPS + cert (uncomment once ACM cert ARN is set in GitHub secret) ──
+    # Uncomment the 3 lines below and comment out the HTTP-only listen-ports
+    # line above once STAGING_ACM_CERT_ARN is configured in GitHub secrets.
+    # The pipeline substitutes CERT_ARN automatically.
+    #
+    # alb.ingress.kubernetes.io/listen-ports:    '[{"HTTP":80,"HTTPS":443}]'
+    # alb.ingress.kubernetes.io/ssl-redirect:    "443"
+    # alb.ingress.kubernetes.io/certificate-arn: "CERT_ARN"
+
 spec:
+  # spec.ingressClassName is the correct AWS LBC v2+ approach.
+  # Do NOT add 'kubernetes.io/ingress.class' annotation alongside this.
   ingressClassName: alb
+
   rules:
-    # Allow direct ALB DNS access (no Host header match required)
+    # ── Rule 1: match any host (direct ALB DNS access, no Host header) ─────
     - http:
         paths:
           - path: /api
             pathType: Prefix
             backend:
               service:
-                # api-gateway is now ClusterIP on port 8080
                 name: api-gateway
                 port: { number: 8080 }
           - path: /
             pathType: Prefix
             backend:
-              service: { name: frontend, port: { number: 80 } }
+              service:
+                name: frontend
+                port: { number: 80 }
+
+    # ── Rule 2: api.qwikbrew.in custom domain ───────────────────────────
     - host: api.qwikbrew.in
       http:
         paths:
-          - path:     /api
+          - path: /api
             pathType: Prefix
             backend:
               service:
-                # api-gateway is now ClusterIP on port 8080
                 name: api-gateway
                 port: { number: 8080 }
-          - path:     /
+          - path: /
             pathType: Prefix
             backend:
-              service: { name: frontend, port: { number: 80 } }
+              service:
+                name: frontend
+                port: { number: 80 }
