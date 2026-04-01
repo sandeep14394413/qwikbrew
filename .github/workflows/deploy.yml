@@ -618,6 +618,11 @@ jobs:
           docker build -t "${FRONTEND_IMAGE}" ./frontend
           docker push "${FRONTEND_IMAGE}"
           echo "✅ Frontend image pushed: ${FRONTEND_IMAGE}"
+      - name: 🚀 Restart Frontend Deployment
+        run: |
+          kubectl rollout restart deployment/frontend -n qwikbrew
+          echo "✅ Frontend deployment restarted — new image will be pulled"
+          
 
       - name: 🔧 Verify k8s manifests exist
         run: |
