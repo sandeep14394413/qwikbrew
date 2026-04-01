@@ -1,7 +1,7 @@
 # QwikBrew — Corporate Café Management System
 
 ## Overview
-QwikBrew is a microservices-based coffee shop / corporate café management app. It includes user authentication, menu browsing, order placement, payments, and notifications.
+QwikCafe is a corporate cafeteria ordering app inspired by the Pine Labs QwikCafe app on Google Play. It includes user authentication, menu browsing, cart, order placement, order tracking, Pine Wallet, and a profile screen — all in a mobile-first UI matching the Pine Labs design language.
 
 ## Architecture
 - **Frontend**: Static React 18 app (via CDN + Babel) — served by `server.js` (Node.js HTTP server) on port 5000

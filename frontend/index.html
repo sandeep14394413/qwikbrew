@@ -2,691 +2,1052 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
   <meta http-equiv="Pragma" content="no-cache"/>
   <meta http-equiv="Expires" content="0"/>
-  <title>QwikBrew — Corporate Café</title>
+  <title>QwikCafe — Corporate Café</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.4/babel.min.js"></script>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet"/>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <style>
-    *{margin:0;padding:0;box-sizing:border-box;}
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
     :root{
-      --primary:#f97316;--primary-dark:#ea580c;--secondary:#1f2937;
-      --bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;
-      --success:#28a745;--warning:#ffc107;--danger:#dc3545;
-      --radius:16px;--shadow:0 12px 30px rgba(17,24,39,.08);
+      --orange:#F26522;--orange-dark:#d4541a;--orange-light:#FFF3EC;
+      --navy:#1A1A2E;--navy2:#16213E;
+      --veg:#27AE60;--nonveg:#E74C3C;
+      --bg:#F5F5F5;--card:#FFFFFF;--text:#1A1A1A;--muted:#7B7B8D;
+      --border:#EDEDED;--success:#27AE60;--warning:#F39C12;
+      --r:14px;--r-sm:8px;--r-lg:20px;
+      --shadow:0 2px 12px rgba(0,0,0,0.08);
+      --shadow-lg:0 8px 32px rgba(0,0,0,0.14);
     }
-    body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;background:radial-gradient(circle at 15% 10%,#fff7ed 0%,#eef2ff 45%,#f8fafc 100%);color:var(--text);}
-    #root{min-height:100vh;display:flex;flex-direction:column;}
-    .build-marker{position:fixed;left:10px;bottom:10px;z-index:99999;background:#111827;color:#fff;padding:4px 8px;border-radius:8px;font-size:10px;opacity:.9;}
-    .btn{padding:10px 20px;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;min-height:40px;}
-    .btn-primary{background:var(--primary);color:#fff;}
-    .btn-primary:hover{background:var(--primary-dark);}
-    .btn-outline{background:transparent;border:2px solid var(--primary);color:var(--primary);}
-    .btn-outline:hover{background:var(--primary);color:#fff;}
-    .btn-sm{padding:6px 14px;font-size:12px;}
-    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border:1px solid #eef2f7;}
-    .badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;}
-    .badge-veg{background:#e8f5e9;color:#2e7d32;}
-    .badge-nonveg{background:#fce4ec;color:#c62828;}
-    input,select{width:100%;padding:12px 16px;border:2px solid #e0e0e0;border-radius:10px;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s;}
-    input:focus,select:focus{border-color:var(--primary);}
-    input:focus,select:focus,.btn:focus-visible,.add-btn:focus-visible,.qty-btn:focus-visible,.category-chip:focus-visible{box-shadow:0 0 0 3px rgba(249,115,22,.24);outline:none;}
-    .toast{position:fixed;top:20px;right:20px;padding:14px 20px;border-radius:12px;color:#fff;font-weight:600;z-index:9999;animation:slideIn .3s ease;display:flex;align-items:center;gap:10px;box-shadow:0 12px 28px rgba(17,24,39,.24);}
-    .toast-success{background:var(--success);}
-    .toast-error{background:var(--danger);}
-    .toast-s{background:linear-gradient(135deg,#16a34a,#15803d);}
-    .toast-e{background:linear-gradient(135deg,#ef4444,#b91c1c);}
-    .toast-i{background:linear-gradient(135deg,#2563eb,#1d4ed8);}
-    @keyframes slideIn{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
-    .spinner{border:3px solid #f3f3f3;border-top:3px solid var(--primary);border-radius:50%;width:32px;height:32px;animation:spin .8s linear infinite;margin:40px auto;}
-    @keyframes spin{to{transform:rotate(360deg);}}
-    /* Nav */
-    nav{background:linear-gradient(90deg,#0f172a,#1f2937);backdrop-filter:blur(12px);padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;height:66px;border-bottom:1px solid rgba(255,255,255,.08);box-shadow:0 10px 25px rgba(15,23,42,.2);}
-    .nav-brand{color:#fff;font-size:22px;font-weight:800;display:flex;align-items:center;gap:8px;}
-    .nav-brand span{color:var(--primary);}
-    .nav-right{display:flex;align-items:center;gap:16px;}
-    .nav-icon{color:#fff;font-size:20px;cursor:pointer;position:relative;}
-    .nav-badge{position:absolute;top:-6px;right:-6px;background:var(--primary);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;display:flex;align-items:center;justify-content:center;}
-    /* Hero */
-    .hero{background:linear-gradient(120deg,rgba(249,115,22,.88),rgba(234,88,12,.86)),url('https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1600&q=80') center/cover;padding:44px 20px 36px;color:#fff;text-align:center;position:relative;overflow:hidden;}
-    .hero::after{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.12);right:-70px;top:-70px;}
-    .hero h1{font-size:33px;margin-bottom:10px;text-shadow:0 8px 20px rgba(0,0,0,.3);}
-    .hero p{opacity:.92;font-size:15px;margin-bottom:22px;}
-    .hero-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:760px;margin:16px auto 0;}
-    .hero-kpi{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 8px;backdrop-filter:blur(4px);}
-    .hero-kpi strong{display:block;font-size:15px;}
-    .hero-kpi span{font-size:11px;opacity:.9;}
-    .search-box{max-width:500px;margin:0 auto;position:relative;}
-    .search-box input{padding-left:44px;border-radius:30px;font-size:15px;border-color:#fff;box-shadow:0 10px 20px rgba(15,23,42,.18);}
-    .search-box i{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);}
-    /* Categories */
-    .categories{display:flex;gap:10px;padding:20px;overflow-x:auto;scrollbar-width:none;}
-    .category-chip{padding:10px 18px;border-radius:30px;cursor:pointer;white-space:nowrap;font-weight:600;font-size:12px;transition:all .2s;border:1px solid #e5e7eb;background:#fff;user-select:none;}
-    .category-chip.active{background:var(--primary);color:#fff;border-color:var(--primary);}
-    /* Menu Grid */
-    .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;padding:0 20px 20px;}
-    .menu-card{cursor:pointer;transition:transform .2s, box-shadow .2s;border-radius:18px;}
-    .menu-card:hover{transform:translateY(-5px);box-shadow:0 16px 30px rgba(17,24,39,.14);}
-    .menu-media{position:relative;}
-    .menu-media::before{content:'Chef recommended';position:absolute;left:12px;top:12px;background:rgba(17,24,39,.75);color:#fff;font-size:10px;padding:5px 8px;border-radius:20px;letter-spacing:.3px;z-index:2;}
-    .menu-img{width:100%;height:170px;object-fit:cover;background:linear-gradient(135deg,#f093fb,#f5576c);}
-    .menu-img-placeholder{width:100%;height:170px;display:flex;align-items:center;justify-content:center;font-size:48px;position:relative;}
-    .menu-body{padding:16px;background:linear-gradient(180deg,#fff,#fffaf5);}
-    .menu-title{font-size:16px;font-weight:700;margin-bottom:4px;}
-    .menu-desc{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;}
-    .menu-footer{display:flex;align-items:center;justify-content:space-between;}
-    .price{font-size:20px;font-weight:800;color:var(--primary);}
-    .add-btn{width:40px;height:40px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 18px rgba(249,115,22,.35);}
-    .qty-ctrl{display:flex;align-items:center;gap:8px;}
-    .qty-btn{width:34px;height:34px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:16px;}
-    .qty-num{font-weight:700;min-width:20px;text-align:center;}
-    /* Cart */
-    .cart-sidebar{position:fixed;right:0;top:0;width:380px;height:100vh;background:#fff;box-shadow:-4px 0 20px rgba(0,0,0,.15);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s;}
-    .cart-sidebar.open{transform:translateX(0);}
-    .cart-header{padding:20px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;}
-    .cart-items{flex:1;overflow-y:auto;padding:16px;}
-    .cart-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f5f5f5;}
+    html,body{height:100%;background:#E8E8E8;}
+    body{font-family:'Poppins','Segoe UI',sans-serif;color:var(--text);}
+    #root{height:100%;display:flex;justify-content:center;align-items:flex-start;}
+    /* Phone shell */
+    .app-shell{
+      width:100%;max-width:420px;min-height:100vh;
+      background:var(--bg);position:relative;
+      display:flex;flex-direction:column;
+      box-shadow:0 0 60px rgba(0,0,0,.2);
+      overflow:hidden;
+    }
+    .screen{flex:1;display:flex;flex-direction:column;overflow:hidden;padding-bottom:70px;}
+    .scroll-area{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+    .scroll-area::-webkit-scrollbar{display:none;}
+
+    /* ── Splash ─── */
+    .splash{background:linear-gradient(160deg,#F26522 0%,#d4541a 60%,#1A1A2E 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;}
+    .splash-logo{width:90px;height:90px;background:#fff;border-radius:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 40px rgba(0,0,0,.2);margin-bottom:20px;}
+    .splash-logo i{font-size:42px;color:var(--orange);}
+    .splash h1{color:#fff;font-size:32px;font-weight:800;letter-spacing:-0.5px;}
+    .splash p{color:rgba(255,255,255,.75);font-size:14px;margin-top:4px;margin-bottom:48px;}
+    .splash-tagline{color:rgba(255,255,255,.6);font-size:12px;margin-top:auto;padding-bottom:32px;}
+
+    /* ── Auth ─── */
+    .auth-screen{background:#fff;min-height:100vh;display:flex;flex-direction:column;}
+    .auth-header{background:linear-gradient(135deg,#F26522,#d4541a);padding:48px 28px 32px;position:relative;overflow:hidden;}
+    .auth-header::after{content:'';position:absolute;right:-40px;bottom:-40px;width:180px;height:180px;background:rgba(255,255,255,.1);border-radius:50%;}
+    .auth-header h2{color:#fff;font-size:26px;font-weight:700;}
+    .auth-header p{color:rgba(255,255,255,.8);font-size:13px;margin-top:4px;}
+    .auth-tabs{display:flex;margin:24px 20px 0;background:#F5F5F5;border-radius:var(--r-sm);padding:4px;}
+    .auth-tab{flex:1;padding:10px;text-align:center;font-size:14px;font-weight:600;color:var(--muted);border:none;background:none;cursor:pointer;border-radius:6px;transition:all .2s;}
+    .auth-tab.active{background:#fff;color:var(--orange);box-shadow:0 2px 8px rgba(0,0,0,.08);}
+    .auth-form{padding:20px;}
+    .form-group{margin-bottom:16px;}
+    .form-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block;}
+    .form-input{width:100%;padding:14px 16px;border:2px solid var(--border);border-radius:var(--r-sm);font-size:14px;font-family:inherit;outline:none;transition:border-color .2s;background:#fff;}
+    .form-input:focus{border-color:var(--orange);}
+    .btn{padding:15px 20px;border:none;border-radius:var(--r-sm);cursor:pointer;font-size:15px;font-weight:600;font-family:inherit;transition:all .2s;letter-spacing:.2px;}
+    .btn-primary{background:var(--orange);color:#fff;width:100%;box-shadow:0 6px 20px rgba(242,101,34,.35);}
+    .btn-primary:hover{background:var(--orange-dark);}
+    .btn-primary:active{transform:scale(.97);}
+    .btn-outline{background:#fff;border:2px solid var(--orange);color:var(--orange);width:100%;}
+    .btn-ghost{background:none;border:none;color:var(--orange);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;padding:4px 8px;}
+    .divider{text-align:center;color:var(--muted);font-size:12px;margin:16px 0;position:relative;}
+    .divider::before,.divider::after{content:'';position:absolute;top:50%;width:40%;height:1px;background:var(--border);}
+    .divider::before{left:0;} .divider::after{right:0;}
+
+    /* ── Header ─── */
+    .app-header{background:linear-gradient(135deg,#F26522,#d4541a);padding:0;position:sticky;top:0;z-index:50;}
+    .header-top{display:flex;align-items:center;justify-content:space-between;padding:14px 18px 10px;}
+    .header-greeting{color:rgba(255,255,255,.8);font-size:12px;font-weight:500;}
+    .header-name{color:#fff;font-size:17px;font-weight:700;margin-top:1px;}
+    .header-right{display:flex;align-items:center;gap:10px;}
+    .header-icon-btn{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;}
+    .badge-dot{position:absolute;top:4px;right:4px;width:9px;height:9px;background:#fff;border-radius:50%;border:2px solid var(--orange);}
+    .cart-badge{position:absolute;top:-3px;right:-3px;background:#fff;color:var(--orange);font-size:9px;font-weight:800;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+    .location-bar{display:flex;align-items:center;gap:6px;padding:0 18px 12px;color:rgba(255,255,255,.85);font-size:12px;font-weight:500;}
+    .location-bar i{font-size:13px;}
+
+    /* ── Search ─── */
+    .search-wrap{margin:14px 16px 0;position:relative;}
+    .search-input{width:100%;padding:12px 16px 12px 42px;border:none;border-radius:var(--r);font-size:14px;font-family:inherit;outline:none;box-shadow:var(--shadow);background:#fff;}
+    .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:15px;}
+
+    /* ── Meal Tabs ─── */
+    .meal-tabs{display:flex;gap:8px;padding:14px 16px 6px;overflow-x:auto;scrollbar-width:none;}
+    .meal-tabs::-webkit-scrollbar{display:none;}
+    .meal-tab{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:30px;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;border:2px solid transparent;transition:all .2s;background:#fff;color:var(--muted);box-shadow:var(--shadow);}
+    .meal-tab.active{background:var(--orange);color:#fff;border-color:var(--orange);}
+    .meal-tab i{font-size:14px;}
+
+    /* ── Banner / Today's Special ─── */
+    .banner{margin:10px 16px 0;background:linear-gradient(135deg,#1A1A2E,#16213E);border-radius:var(--r-lg);padding:20px;display:flex;justify-content:space-between;align-items:center;overflow:hidden;position:relative;}
+    .banner::after{content:'☕';position:absolute;right:24px;top:50%;transform:translateY(-50%);font-size:72px;opacity:.12;}
+    .banner-label{color:rgba(255,255,255,.6);font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+    .banner-title{color:#fff;font-size:19px;font-weight:700;margin:4px 0 8px;line-height:1.3;}
+    .banner-price{color:var(--orange);font-size:22px;font-weight:800;}
+    .banner-badge{background:var(--orange);color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;display:inline-block;margin-top:10px;}
+
+    /* ── Section Header ─── */
+    .section-header{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 8px;}
+    .section-title{font-size:16px;font-weight:700;color:var(--text);}
+    .section-link{font-size:12px;font-weight:600;color:var(--orange);border:none;background:none;cursor:pointer;font-family:inherit;}
+
+    /* ── Category Chips ─── */
+    .cat-scroll{display:flex;gap:10px;padding:0 16px 10px;overflow-x:auto;scrollbar-width:none;}
+    .cat-scroll::-webkit-scrollbar{display:none;}
+    .cat-chip{display:flex;flex-direction:column;align-items:center;gap:6px;min-width:64px;cursor:pointer;}
+    .cat-icon{width:54px;height:54px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:26px;transition:all .2s;}
+    .cat-chip.active .cat-icon{background:var(--orange-light);box-shadow:0 4px 14px rgba(242,101,34,.25);}
+    .cat-chip:not(.active) .cat-icon{background:#fff;box-shadow:var(--shadow);}
+    .cat-label{font-size:11px;font-weight:600;color:var(--muted);text-align:center;}
+    .cat-chip.active .cat-label{color:var(--orange);}
+
+    /* ── Menu List ─── */
+    .menu-list{padding:0 16px 8px;display:flex;flex-direction:column;gap:12px;}
+    .menu-item-card{background:#fff;border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;display:flex;gap:0;position:relative;}
+    .menu-item-img{width:110px;min-width:110px;height:110px;object-fit:cover;background:linear-gradient(135deg,#f8d7c4,#fde8d8);}
+    .menu-item-img-placeholder{width:110px;min-width:110px;height:110px;display:flex;align-items:center;justify-content:center;font-size:44px;flex-shrink:0;}
+    .menu-item-body{flex:1;padding:12px 12px 10px;display:flex;flex-direction:column;justify-content:space-between;}
+    .menu-item-top{display:flex;align-items:flex-start;gap:6px;margin-bottom:4px;}
+    .fssai-dot{width:16px;height:16px;border-radius:2px;border:1.5px solid;flex-shrink:0;display:flex;align-items:center;justify-content:center;margin-top:2px;}
+    .fssai-dot.veg{border-color:var(--veg);}
+    .fssai-dot.veg::after{content:'';width:8px;height:8px;border-radius:50%;background:var(--veg);}
+    .fssai-dot.nonveg{border-color:var(--nonveg);}
+    .fssai-dot.nonveg::after{content:'';width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:8px solid var(--nonveg);margin-top:1px;}
+    .menu-item-name{font-size:14px;font-weight:700;color:var(--text);line-height:1.3;flex:1;}
+    .menu-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;}
+    .tag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;background:#F0F4FF;color:#3B5BDB;}
+    .tag-cal{background:#FFF8E1;color:#E65100;}
+    .menu-item-footer{display:flex;align-items:center;justify-content:space-between;}
+    .item-price{font-size:16px;font-weight:800;color:var(--text);}
+    .item-price span{font-size:12px;color:var(--muted);font-weight:500;}
+    .add-ctrl{display:flex;align-items:center;gap:0;}
+    .add-btn{width:32px;height:32px;border-radius:var(--r-sm);background:var(--orange);color:#fff;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(242,101,34,.3);}
+    .qty-ctrl{display:flex;align-items:center;background:var(--orange);border-radius:var(--r-sm);overflow:hidden;}
+    .qty-btn{width:28px;height:32px;background:none;border:none;color:#fff;font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .qty-num{color:#fff;font-size:13px;font-weight:700;min-width:24px;text-align:center;}
+    .sold-out-overlay{position:absolute;inset:0;background:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;z-index:2;}
+    .sold-out-tag{background:#666;color:#fff;font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:.5px;}
+
+    /* ── Cart FAB ─── */
+    .cart-fab{position:fixed;bottom:82px;left:50%;transform:translateX(-50%);max-width:390px;width:calc(100% - 32px);background:var(--navy);border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;justify-content:space-between;z-index:60;box-shadow:0 8px 32px rgba(26,26,46,.4);cursor:pointer;animation:slideUp .3s ease;}
+    @keyframes slideUp{from{transform:translateX(-50%) translateY(20px);opacity:0;}to{transform:translateX(-50%) translateY(0);opacity:1;}}
+    .cart-fab-left{display:flex;align-items:center;gap:12px;}
+    .cart-count-badge{background:var(--orange);color:#fff;font-size:12px;font-weight:700;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;}
+    .cart-fab-label{color:#fff;font-size:14px;font-weight:600;}
+    .cart-fab-price{color:var(--orange);font-size:15px;font-weight:800;}
+
+    /* ── Bottom Nav ─── */
+    .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);max-width:420px;width:100%;background:#fff;border-top:1px solid var(--border);display:flex;z-index:70;box-shadow:0 -4px 20px rgba(0,0,0,.06);}
+    .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 0 12px;cursor:pointer;border:none;background:none;gap:4px;font-family:inherit;}
+    .nav-item i{font-size:20px;color:var(--muted);transition:color .2s;}
+    .nav-item span{font-size:10px;font-weight:600;color:var(--muted);transition:color .2s;}
+    .nav-item.active i,.nav-item.active span{color:var(--orange);}
+    .nav-indicator{width:4px;height:4px;border-radius:50%;background:var(--orange);margin:0 auto;display:none;}
+    .nav-item.active .nav-indicator{display:block;}
+
+    /* ── Cart Screen ─── */
+    .cart-screen{padding:0;}
+    .cart-list{padding:10px 16px;display:flex;flex-direction:column;gap:10px;}
+    .cart-item-row{background:#fff;border-radius:var(--r-sm);padding:14px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);}
+    .cart-item-emoji{font-size:32px;width:50px;height:50px;display:flex;align-items:center;justify-content:center;background:#F5F5F5;border-radius:10px;}
     .cart-item-info{flex:1;}
-    .cart-item-name{font-weight:600;font-size:14px;}
-    .cart-item-price{color:var(--primary);font-weight:700;}
-    .cart-footer{padding:20px;border-top:1px solid #f0f0f0;}
-    .cart-total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-bottom:16px;}
-    .payment-methods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px;}
-    .payment-method{border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:10px 8px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;display:flex;align-items:center;gap:6px;justify-content:center;}
-    .payment-method.active{border-color:var(--primary);background:#fff7ed;color:var(--primary-dark);}
-    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;}
-    .gateway-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,92vw);background:#fff;border-radius:16px;z-index:250;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;}
-    .gateway-header{padding:16px 20px;background:linear-gradient(135deg,#111827,#374151);color:#fff;display:flex;justify-content:space-between;align-items:center;}
-    .gateway-body{padding:16px 20px;}
-  /* Auth */
-    .auth-container{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
-    .auth-card{width:100%;max-width:420px;padding:40px;}
-    .auth-logo{text-align:center;margin-bottom:32px;}
-    .auth-logo h1{font-size:28px;color:var(--secondary);}
-    .auth-logo p{color:var(--muted);font-size:14px;}
-    .form-group{margin-bottom:20px;}
-    .form-label{display:block;margin-bottom:8px;font-weight:600;font-size:14px;}
-    .form-error{color:var(--danger);font-size:12px;margin-top:4px;}
-    .divider{text-align:center;color:var(--muted);margin:20px 0;position:relative;}
-    .divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:#e0e0e0;}
-    .divider span{background:#fff;padding:0 16px;position:relative;}
-    /* Orders */
-    .order-card{padding:20px;margin-bottom:16px;}
-    .order-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
-    .order-id{font-weight:700;font-size:15px;}
-    .order-date{color:var(--muted);font-size:12px;}
-    .order-status{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;}
-    .status-delivered{background:#e8f5e9;color:#2e7d32;}
-    .status-preparing{background:#fff3e0;color:#e65100;}
-    .status-ready{background:#e3f2fd;color:#1565c0;}
-    .status-cancelled{background:#fce4ec;color:#c62828;}
-    /* Profile */
-    .profile-header{background:linear-gradient(135deg,var(--secondary),#34495e);padding:40px 20px;text-align:center;color:#fff;}
-    .avatar{width:80px;height:80px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px;}
-    .wallet-card{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;border-radius:16px;padding:24px;margin:20px;}
-    .wallet-balance{font-size:36px;font-weight:800;}
-    /* Bottom nav */
-    .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e0e0e0;z-index:100;box-shadow:0 -6px 24px rgba(17,24,39,.08);}
-    .bottom-nav-items{display:flex;}
-    .bottom-nav-item{flex:1;padding:12px 0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--muted);font-size:10px;font-weight:600;}
-    .bottom-nav-item.active{color:var(--primary);}
-    .bottom-nav-item i{font-size:20px;}
-    /* Professional UI mapping for current JSX classes */
-    .font-display{font-weight:700;letter-spacing:.2px;}
-    .nav-logo{display:flex;align-items:center;gap:10px;color:#fff;}
-    .nav-logo-mark{width:36px;height:36px;border-radius:10px;background:rgba(249,115,22,.2);display:grid;place-items:center;}
-    .nav-logo-text{font-size:21px;font-weight:800;}
-    .nav-logo-text span{color:var(--primary);}
-    .nav-pill{font-size:10px;background:#22c55e;color:#052e16;padding:2px 7px;border-radius:999px;font-weight:800;}
-    .wallet-chip{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;}
-    .wallet-dot{width:8px;height:8px;border-radius:50%;background:#22c55e;}
-    .nav-greeting{color:#e5e7eb;font-size:13px;}
-    .cart-fab{position:relative;cursor:pointer;background:rgba(255,255,255,.12);border-radius:12px;padding:8px 10px;color:#fff;}
-    .cart-badge{position:absolute;top:-8px;right:-8px;background:var(--primary);color:#fff;border-radius:999px;min-width:20px;height:20px;display:grid;place-items:center;font-size:11px;font-weight:700;}
-    .menu-wrap{max-width:1220px;margin:0 auto;padding:0 14px 18px;}
-    .hero-inner{padding:28px 16px 18px;}
-    .hero-title{font-size:38px;line-height:1.1;margin-bottom:6px;}
-    .hero-sub{opacity:.95;margin-bottom:14px;}
-    .hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.2);padding:6px 10px;border-radius:999px;margin-bottom:14px;font-size:12px;}
-    .hero-badge-dot{width:8px;height:8px;border-radius:50%;background:#34d399;}
-    .hero-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:780px;margin:14px auto 0;}
-    .stat{background:rgba(255,255,255,.15);padding:10px;border-radius:12px;}
-    .stat-val{font-size:18px;font-weight:800;}
-    .stat-lbl{font-size:11px;opacity:.9;}
-    .search-bar{position:relative;max-width:520px;margin:0 auto;}
-    .search-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);}
-    .search-bar input{padding-left:42px;}
-    .cats{display:flex;gap:10px;overflow:auto;padding:14px 4px 12px;}
-    .cat{padding:9px 14px;border-radius:999px;border:1px solid #e5e7eb;background:#fff;cursor:pointer;font-size:12px;font-weight:700;white-space:nowrap;}
-    .cat.active{background:var(--primary);color:#fff;border-color:var(--primary);}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
-    .mcard{background:#fff;border-radius:18px;overflow:hidden;border:1px solid #edf2f7;box-shadow:var(--shadow);}
-    .mcard-img,.img-placeholder{width:100%;height:170px;object-fit:cover;display:grid;place-items:center;font-size:44px;background:#f8fafc;}
-    .img-wrap{position:relative;}
-    .img-tags{position:absolute;left:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap;}
-    .tag{font-size:10px;font-weight:800;padding:4px 8px;border-radius:999px;background:#111827;color:#fff;}
-    .tag-hot{background:#ef4444;}
-    .mcard-body{padding:14px;}
-    .mcard-top{display:flex;gap:8px;margin-bottom:8px;color:#6b7280;font-size:12px;}
-    .mcard-name{font-size:17px;margin-bottom:5px;}
-    .mcard-desc{font-size:12px;color:#6b7280;min-height:34px;}
-    .mcard-footer{margin-top:12px;display:flex;align-items:center;justify-content:space-between;}
-    .qty-row{display:flex;align-items:center;gap:8px;}
-    .page-h{display:flex;align-items:center;justify-content:space-between;margin:16px 4px 10px;font-weight:800;}
-    .orders-page,.profile-page{max-width:980px;margin:0 auto;padding:18px 16px 92px;}
-    .order-card,.pl-item,.wallet-mini,.cart,.modal,.success-card{background:#fff;border:1px solid #edf2f7;border-radius:16px;box-shadow:var(--shadow);}
-    .bnav{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid #e5e7eb;z-index:120;}
-    .bnav-row{display:flex;max-width:760px;margin:0 auto;}
-    .bnav-i{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 0 10px;color:#6b7280;font-size:11px;cursor:pointer;}
-    .bnav-i.active{color:var(--primary);}
-    .auth-page{min-height:100vh;display:grid;place-items:center;padding:22px;}
-    .auth-box{width:min(460px,95vw);background:#fff;border-radius:18px;box-shadow:var(--shadow);padding:24px;position:relative;z-index:1;}
-    .auth-logo-big{font-size:34px;}
-    .auth-logo{text-align:center;margin-bottom:16px;}
-    .auth-logo h1{font-size:48px;line-height:1;color:#111827;margin:6px 0 8px;}
-    .auth-logo h1 span{color:var(--primary);}
-    .auth-logo p{color:#6b7280;font-size:14px;}
-    .auth-tabs{display:grid;grid-template-columns:1fr 1fr;background:#f3f4f6;border-radius:12px;padding:4px;margin:16px 0;}
-    .auth-tab{border:none;background:transparent;border-radius:10px;padding:10px 8px;font-weight:700;cursor:pointer;color:#6b7280;}
-    .auth-tab.active{background:#fff;color:#111827;box-shadow:0 3px 10px rgba(15,23,42,.12);}
-    .form-g{margin-bottom:12px;}
-    .form-g label{display:block;font-size:11px;letter-spacing:.5px;font-weight:700;color:#6b7280;margin-bottom:6px;}
-    .form-err{color:#dc2626;font-size:12px;margin-top:4px;}
-    .auth-switch{margin-top:14px;color:#6b7280;text-align:center;font-size:14px;}
-    .auth-switch a{color:var(--primary-dark);font-weight:700;cursor:pointer;text-decoration:none;}
-    .auth-switch a:hover{text-decoration:underline;}
-    .auth-blob{position:fixed;border-radius:50%;filter:blur(60px);z-index:0;opacity:.35;pointer-events:none;}
-    .ab1{width:240px;height:240px;left:-60px;top:40px;background:#fb923c;}
-    .ab2{width:260px;height:260px;right:-90px;bottom:10px;background:#60a5fa;}
-    .auth-submit,.order-btn,.pay-confirm-btn,.recharge-btn{width:100%;margin-top:12px;border:none;border-radius:12px;padding:12px 14px;background:var(--primary);color:#fff;font-weight:700;cursor:pointer;}
-    .modal-bg,.overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);z-index:180;}
-    .modal,.cart{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(520px,94vw);max-height:90vh;overflow:auto;padding:14px;z-index:220;}
-    @media(max-width:600px){
-      .bottom-nav{display:block;}
-      body{padding-bottom:70px;}
-      .menu-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
-      .menu-img-placeholder{height:120px;font-size:32px;}
-      .cart-sidebar{width:100%;}
-      .hero h1{font-size:24px;}
-      .hero-kpis{grid-template-columns:1fr;}
-      .hero-title{font-size:28px;}
-      .grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
-      .modal,.cart{width:96vw;}
-    }
+    .cart-item-name{font-size:14px;font-weight:600;color:var(--text);}
+    .cart-item-price{font-size:13px;color:var(--muted);margin-top:2px;}
+    .cart-divider{height:1px;background:var(--border);margin:0 16px;}
+    .bill-section{background:#fff;margin:12px 16px;border-radius:var(--r);padding:16px;box-shadow:var(--shadow);}
+    .bill-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;}
+    .bill-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px;}
+    .bill-row-label{color:var(--muted);font-weight:500;}
+    .bill-row-value{font-weight:600;color:var(--text);}
+    .bill-total{border-top:1px dashed var(--border);margin-top:8px;padding-top:10px;}
+    .bill-total .bill-row-label{font-size:14px;font-weight:700;color:var(--text);}
+    .bill-total .bill-row-value{font-size:16px;font-weight:800;color:var(--orange);}
+    .savings-row{background:#E8F8EF;border-radius:var(--r-sm);padding:8px 12px;display:flex;align-items:center;gap:8px;margin:10px 0;}
+    .savings-row i{color:var(--success);}
+    .savings-text{font-size:12px;color:var(--success);font-weight:600;}
+    .pay-section{padding:16px;display:flex;flex-direction:column;gap:10px;}
+    .pay-option{background:#fff;border-radius:var(--r-sm);padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);cursor:pointer;border:2px solid transparent;transition:border-color .2s;}
+    .pay-option.selected{border-color:var(--orange);}
+    .pay-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+    .pay-label{flex:1;}
+    .pay-name{font-size:14px;font-weight:600;color:var(--text);}
+    .pay-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+    .pay-radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;}
+    .pay-radio.checked{border-color:var(--orange);}
+    .pay-radio.checked::after{content:'';width:10px;height:10px;border-radius:50%;background:var(--orange);}
+    .pickup-card{margin:0 16px 12px;background:linear-gradient(135deg,#E8F8EF,#D5F5E3);border-radius:var(--r-sm);padding:14px;display:flex;align-items:center;gap:12px;}
+    .pickup-card i{font-size:20px;color:var(--success);}
+    .pickup-label{font-size:12px;color:var(--success);font-weight:600;}
+    .pickup-val{font-size:15px;font-weight:700;color:var(--text);}
+
+    /* ── Orders Screen ─── */
+    .order-card{background:#fff;border-radius:var(--r);margin:0 16px 12px;box-shadow:var(--shadow);overflow:hidden;}
+    .order-card-header{padding:14px 16px;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid var(--border);}
+    .order-id{font-size:13px;font-weight:700;color:var(--text);}
+    .order-date{font-size:11px;color:var(--muted);margin-top:2px;}
+    .order-status{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;}
+    .status-delivered{background:#E8F8EF;color:var(--success);}
+    .status-preparing{background:#FFF8E1;color:#E65100;}
+    .status-placed{background:#E3F2FD;color:#1565C0;}
+    .status-cancelled{background:#FEECEC;color:var(--nonveg);}
+    .order-items-row{padding:12px 16px;display:flex;gap:6px;flex-wrap:wrap;}
+    .order-item-tag{font-size:11px;font-weight:600;color:var(--muted);background:#F5F5F5;padding:4px 10px;border-radius:6px;}
+    .order-card-footer{padding:12px 16px;background:#FAFAFA;display:flex;justify-content:space-between;align-items:center;}
+    .order-total{font-size:15px;font-weight:800;color:var(--text);}
+    .reorder-btn{background:var(--orange-light);color:var(--orange);border:none;padding:8px 16px;border-radius:var(--r-sm);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
+    .tracking-card{margin:12px 16px;background:#fff;border-radius:var(--r);padding:20px;box-shadow:var(--shadow);}
+    .tracking-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:18px;text-transform:uppercase;letter-spacing:.5px;}
+    .tracking-steps{display:flex;align-items:center;justify-content:space-between;position:relative;}
+    .tracking-steps::before{content:'';position:absolute;top:16px;left:16px;right:16px;height:2px;background:var(--border);z-index:0;}
+    .t-step{display:flex;flex-direction:column;align-items:center;gap:8px;position:relative;z-index:1;}
+    .t-dot{width:32px;height:32px;border-radius:50%;border:3px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .3s;}
+    .t-dot.done{background:var(--success);border-color:var(--success);color:#fff;}
+    .t-dot.active{background:var(--orange);border-color:var(--orange);color:#fff;}
+    .t-label{font-size:10px;font-weight:600;color:var(--muted);text-align:center;max-width:60px;}
+    .t-label.active-label{color:var(--orange);}
+    .t-line{flex:1;height:2px;margin-top:-24px;z-index:0;}
+    .t-line.done{background:var(--success);}
+    .t-line.pending{background:var(--border);}
+
+    /* ── Wallet Screen ─── */
+    .wallet-card{margin:16px;background:linear-gradient(135deg,#F26522,#d4541a);border-radius:var(--r-lg);padding:24px;color:#fff;box-shadow:0 8px 24px rgba(242,101,34,.4);}
+    .wallet-label{font-size:12px;font-weight:600;opacity:.8;letter-spacing:.5px;text-transform:uppercase;}
+    .wallet-balance{font-size:38px;font-weight:800;margin:8px 0 4px;letter-spacing:-1px;}
+    .wallet-sub{font-size:12px;opacity:.75;}
+    .wallet-actions{display:flex;gap:12px;margin-top:20px;}
+    .wallet-action-btn{flex:1;background:rgba(255,255,255,.2);border:none;border-radius:var(--r-sm);padding:12px;text-align:center;cursor:pointer;font-family:inherit;color:#fff;}
+    .wallet-action-btn i{font-size:18px;display:block;margin-bottom:4px;}
+    .wallet-action-btn span{font-size:11px;font-weight:600;}
+    .meal-allowance{background:#fff;border-radius:var(--r);margin:0 16px 12px;padding:16px;box-shadow:var(--shadow);}
+    .ma-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;}
+    .ma-row{display:flex;justify-content:space-between;margin-bottom:10px;}
+    .ma-label{font-size:12px;color:var(--muted);}
+    .ma-val{font-size:12px;font-weight:700;color:var(--text);}
+    .progress-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden;}
+    .progress-fill{height:100%;background:linear-gradient(90deg,var(--orange),#ff8c42);border-radius:4px;transition:width .5s ease;}
+    .txn-list{padding:0 16px;display:flex;flex-direction:column;gap:8px;}
+    .txn-row{background:#fff;border-radius:var(--r-sm);padding:14px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);}
+    .txn-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+    .txn-cr{background:#E8F8EF;color:var(--success);}
+    .txn-dr{background:#FEECEC;color:var(--nonveg);}
+    .txn-info{flex:1;}
+    .txn-title{font-size:13px;font-weight:600;color:var(--text);}
+    .txn-date{font-size:11px;color:var(--muted);margin-top:2px;}
+    .txn-amount{font-size:14px;font-weight:800;}
+    .txn-amount.cr{color:var(--success);}
+    .txn-amount.dr{color:var(--nonveg);}
+
+    /* ── Profile Screen ─── */
+    .profile-hero{background:linear-gradient(135deg,#F26522,#d4541a);padding:32px 20px 28px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+    .avatar-circle{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff;border:3px solid rgba(255,255,255,.5);margin-bottom:4px;}
+    .profile-name{color:#fff;font-size:19px;font-weight:700;}
+    .profile-email{color:rgba(255,255,255,.75);font-size:12px;}
+    .profile-emp{color:rgba(255,255,255,.6);font-size:11px;margin-top:2px;}
+    .profile-list{padding:12px 16px;display:flex;flex-direction:column;gap:8px;}
+    .profile-item{background:#fff;border-radius:var(--r-sm);padding:15px 16px;display:flex;align-items:center;gap:14px;box-shadow:var(--shadow);cursor:pointer;}
+    .profile-item-icon{width:36px;height:36px;border-radius:10px;background:var(--orange-light);display:flex;align-items:center;justify-content:center;color:var(--orange);font-size:16px;}
+    .profile-item-label{flex:1;font-size:14px;font-weight:600;color:var(--text);}
+    .profile-item i.fa-chevron-right{color:var(--muted);font-size:12px;}
+    .logout-btn{margin:8px 16px 0;background:#FEECEC;color:var(--nonveg);border:none;border-radius:var(--r-sm);padding:15px;width:calc(100% - 32px);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;}
+
+    /* ── Toast ─── */
+    .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:12px 20px;border-radius:var(--r-sm);font-size:13px;font-weight:600;z-index:999;white-space:nowrap;box-shadow:var(--shadow-lg);animation:toastIn .3s ease;}
+    @keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(-10px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+
+    /* ── Modal / Overlay ─── */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:80;display:flex;align-items:flex-end;justify-content:center;}
+    .modal-sheet{background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:420px;max-height:80vh;overflow-y:auto;padding:0 0 32px;}
+    .modal-handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:12px auto 0;}
+    .modal-title{font-size:17px;font-weight:700;padding:16px 20px 12px;}
+    .topup-amounts{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 20px 16px;}
+    .topup-amount{background:#F5F5F5;border:2px solid transparent;border-radius:var(--r-sm);padding:14px 10px;text-align:center;font-size:15px;font-weight:700;color:var(--text);cursor:pointer;transition:all .2s;}
+    .topup-amount.selected{border-color:var(--orange);background:var(--orange-light);color:var(--orange);}
+    .modal-footer{padding:0 20px;}
+
+    /* ── Empty State ─── */
+    .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 32px;gap:14px;text-align:center;}
+    .empty-emoji{font-size:64px;}
+    .empty-title{font-size:18px;font-weight:700;color:var(--text);}
+    .empty-sub{font-size:13px;color:var(--muted);line-height:1.6;}
+
+    /* ── Screen Header ─── */
+    .screen-header{display:flex;align-items:center;gap:12px;padding:16px;background:#fff;border-bottom:1px solid var(--border);position:sticky;top:0;z-index:40;}
+    .back-btn{width:36px;height:36px;border-radius:10px;border:none;background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text);}
+    .screen-header-title{font-size:17px;font-weight:700;color:var(--text);}
+    .screen-header-right{margin-left:auto;}
+
+    /* ── Rating ─── */
+    .stars{display:flex;gap:3px;}
+    .star{color:#FFB800;font-size:14px;}
+    .star.empty{color:var(--border);}
+
+    /* Misc */
+    .chip-green{background:#E8F8EF;color:var(--success);font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;}
+    .chip-red{background:#FEECEC;color:var(--nonveg);font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;}
+    input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
   </style>
 </head>
 <body>
-<div class="build-marker">UI BUILD 2026-04-01-ui-r16</div>
 <div id="root"></div>
-
 <script type="text/babel">
-const { useState, useEffect, useCallback, useRef } = React;
-const BUILD_VERSION = '2026-04-01-ui-r16';
-const BUILD = BUILD_VERSION;
-const MERCHANT_UPI = 'qwikbrew@upi';
+const {useState, useEffect, useCallback, useRef} = React;
 
-// ── API client ────────────────────────────────────────────────────────────────
+// ── API ───────────────────────────────────────────────────────────
 const LOCAL_HOSTS = new Set(['localhost','127.0.0.1','::1']);
-const API = LOCAL_HOSTS.has(window.location.hostname) ? 'http://localhost:8080' : '';
-const BASE = API;
-
+const API_BASE = LOCAL_HOSTS.has(window.location.hostname) ? 'http://localhost:8080' : '';
 async function api(path, opts={}){
-  const token = localStorage.getItem('token');
-  const res = await fetch(BASE+path,{
-    headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{}),...(opts.headers||{})},
-    ...opts
-  });
-  if(res.status===401){localStorage.clear();window.location.reload();}
-  const data = await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(data.message||'Error');
-  return data;
+  try{
+    const res = await fetch(API_BASE+path,{headers:{'Content-Type':'application/json',...(opts.headers||{})}, ...opts});
+    if(!res.ok) throw new Error(res.status);
+    return res.json().catch(()=>({}));
+  }catch(e){return null;}
 }
 
-const MENU=[
-  {id:1,name:'Masala Dosa',category:'South Indian',price:55,description:'Crispy rice crepe with spiced potato filling',emoji:'🫓',isVeg:true,rating:4.5,preparationTime:10,image:'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=600&q=70'},
-  {id:2,name:'Poha',category:'Breakfast',price:35,description:'Flattened rice with veggies and spices',emoji:'🍚',isVeg:true,rating:4.2,preparationTime:8,image:'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600&q=70'},
-  {id:3,name:'Idli Sambar',category:'South Indian',price:45,description:'Soft steamed rice cakes with sambar',emoji:'⚪',isVeg:true,rating:4.7,preparationTime:5,image:'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=600&q=70'},
-  {id:4,name:'Veg Biryani',category:'Rice',price:95,description:'Fragrant basmati with mixed vegetables',emoji:'🍛',isVeg:true,rating:4.4,preparationTime:20,image:'https://images.unsplash.com/photo-1701579231378-372ea3c7ca87?w=600&q=70'},
-  {id:5,name:'Chicken Biryani',category:'Rice',price:130,description:'Aromatic basmati with tender chicken',emoji:'🍗',isVeg:false,rating:4.8,preparationTime:25,image:'https://images.unsplash.com/photo-1633945274309-2c16c9682a8b?w=600&q=70'},
-  {id:6,name:'Dal Tadka',category:'Dal',price:65,description:'Yellow lentils tempered with ghee',emoji:'🍲',isVeg:true,rating:4.3,preparationTime:12,image:'https://images.unsplash.com/photo-1547592180-85f173990554?w=600&q=70'},
-  {id:7,name:'Paneer Butter Masala',category:'Curry',price:110,description:'Soft paneer in rich tomato gravy',emoji:'🧀',isVeg:true,rating:4.6,preparationTime:15,image:'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=600&q=70'},
-  {id:8,name:'Filter Coffee',category:'Beverages',price:25,description:'Freshly brewed South Indian coffee',emoji:'☕',isVeg:true,rating:4.9,preparationTime:3,image:'https://images.unsplash.com/photo-1511920170033-f8396924c348?w=600&q=70'},
-  {id:9,name:'Masala Chai',category:'Beverages',price:20,description:'Ginger spiced milk tea',emoji:'🍵',isVeg:true,rating:4.8,preparationTime:3,image:'https://images.unsplash.com/photo-1597318181409-cf64d0b5d8a2?w=600&q=70'},
-  {id:10,name:'Veg Sandwich',category:'Snacks',price:50,description:'Grilled sandwich with seasonal veggies',emoji:'🥪',isVeg:true,rating:4.3,preparationTime:7,image:'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=600&q=70'},
-  {id:11,name:'Samosa (2 pcs)',category:'Snacks',price:30,description:'Crispy pastry with spiced potatoes',emoji:'🥟',isVeg:true,rating:4.5,preparationTime:5,image:'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&q=70'},
-  {id:12,name:'Gulab Jamun',category:'Desserts',price:40,description:'Soft dumplings in sugar syrup',emoji:'🍮',isVeg:true,rating:4.7,preparationTime:5,image:'https://images.unsplash.com/photo-1611293388250-580b08c4a145?w=600&q=70'},
-  {id:13,name:'Margherita Pizza',category:'Pizza',price:149,description:'Classic thin crust with mozzarella',emoji:'🍕',isVeg:true,rating:4.6,preparationTime:14,image:'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=600&q=70'},
-  {id:14,name:'Test Item',category:'Snacks',price:1,description:'₹1 item for payment testing',emoji:'🧪',isVeg:true,rating:5.0,preparationTime:1,image:'https://images.unsplash.com/photo-1546549032-9571cd6b27df?w=600&q=70'},
+// ── Static Data ───────────────────────────────────────────────────
+const CATEGORIES = [
+  {id:'all',icon:'🍽️',label:'All'},
+  {id:'breakfast',icon:'🥞',label:'Breakfast'},
+  {id:'lunch',icon:'🍛',label:'Lunch'},
+  {id:'snacks',icon:'🥨',label:'Snacks'},
+  {id:'beverages',icon:'☕',label:'Drinks'},
+  {id:'desserts',icon:'🍰',label:'Desserts'},
 ];
-const CATS=['All','Breakfast','South Indian','Rice','Curry','Dal','Snacks','Beverages','Desserts','Pizza'];
 
-let toastTimer;
-function Toast({msg,type}){
-  if(!msg)return null;
-  const cls=type==='success'?'ts':type==='error'?'te':'ti';
-  const ico=type==='success'?'✓':type==='error'?'✕':'i';
-  return <div className={`toast ${cls}`}><div className="tico">{ico}</div>{msg}</div>;
+const MENU_ITEMS = [
+  {id:1,name:'Masala Dosa',emoji:'🥞',category:'breakfast',veg:true,price:65,calories:280,tags:['South Indian','Chef\'s Pick'],available:true},
+  {id:2,name:'Poha with Sev',emoji:'🍚',category:'breakfast',veg:true,price:40,calories:220,tags:['Light','Healthy'],available:true},
+  {id:3,name:'Grilled Sandwich',emoji:'🥪',category:'breakfast',veg:true,price:55,calories:310,tags:['High Protein'],available:true},
+  {id:4,name:'Dal Rice Combo',emoji:'🍛',category:'lunch',veg:true,price:90,calories:480,tags:['Today\'s Special','Full Meal'],available:true},
+  {id:5,name:'Chicken Biryani',emoji:'🍗',category:'lunch',veg:false,price:130,calories:620,tags:['Bestseller','Spicy'],available:true},
+  {id:6,name:'Paneer Butter Masala',emoji:'🧆',category:'lunch',veg:true,price:110,calories:520,tags:['Bestseller'],available:true},
+  {id:7,name:'Rajma Chawal',emoji:'🫘',category:'lunch',veg:true,price:80,calories:440,tags:['High Protein','Comfort Food'],available:true},
+  {id:8,name:'Grilled Fish Fillet',emoji:'🐟',category:'lunch',veg:false,price:155,calories:380,tags:['Low Carb'],available:false},
+  {id:9,name:'Samosa (2 pcs)',emoji:'🔺',category:'snacks',veg:true,price:25,calories:180,tags:['Crispy'],available:true},
+  {id:10,name:'Veg Puff',emoji:'🥐',category:'snacks',veg:true,price:30,calories:210,tags:['Baked'],available:true},
+  {id:11,name:'Masala Chai',emoji:'☕',category:'beverages',veg:true,price:15,calories:80,tags:['Hot'],available:true},
+  {id:12,name:'Cold Coffee',emoji:'🧋',category:'beverages',veg:true,price:55,calories:150,tags:['Chilled','Bestseller'],available:true},
+  {id:13,name:'Chocolate Brownie',emoji:'🍫',category:'desserts',veg:true,price:60,calories:390,tags:['Homemade'],available:true},
+  {id:14,name:'Gulab Jamun (2)',emoji:'🟤',category:'desserts',veg:true,price:45,calories:320,tags:['Sweet'],available:true},
+];
+
+const SAMPLE_ORDERS = [
+  {id:'ORD2847',items:['Dal Rice Combo','Masala Chai'],total:105,date:'Today, 1:32 PM',status:'delivered',rating:4},
+  {id:'ORD2831',items:['Chicken Biryani','Cold Coffee'],total:185,date:'Yesterday, 12:45 PM',status:'delivered',rating:5},
+  {id:'ORD2820',items:['Samosa (2 pcs)','Masala Chai'],total:40,date:'Mon, 4:10 PM',status:'delivered',rating:3},
+];
+
+const SAMPLE_TXNS = [
+  {id:1,type:'dr',title:'Order #ORD2847',date:'Today, 1:32 PM',amount:-105},
+  {id:2,type:'cr',title:'Wallet Top-Up',date:'Today, 10:00 AM',amount:500},
+  {id:3,type:'dr',title:'Order #ORD2831',date:'Yesterday, 12:45 PM',amount:-185},
+  {id:4,type:'cr',title:'Meal Allowance Credit',date:'Mon, 9:00 AM',amount:1000},
+  {id:5,type:'dr',title:'Order #ORD2820',date:'Mon, 4:10 PM',amount:-40},
+];
+
+// ── Utils ─────────────────────────────────────────────────────────
+function greeting(){
+  const h = new Date().getHours();
+  if(h<12) return 'Good Morning';
+  if(h<17) return 'Good Afternoon';
+  return 'Good Evening';
+}
+function activeMealTab(){
+  const h = new Date().getHours();
+  if(h<11) return 'breakfast';
+  if(h<16) return 'lunch';
+  return 'snacks';
+}
+function fmt(n){return '₹'+n.toLocaleString('en-IN');}
+
+// ── Toast ─────────────────────────────────────────────────────────
+function Toast({msg,onDone}){
+  useEffect(()=>{const t=setTimeout(onDone,2200);return()=>clearTimeout(t);},[]);
+  return <div className="toast">{msg}</div>;
 }
 
-function MCard({item,qty,onAdd,onRem,delay}){
-  return <div className="mcard" style={{animationDelay:`${delay}ms`}}>
-    <div className="mciw">
-      {item.image?<img className="mcimg" src={item.image} alt={item.name} loading="lazy"/>:<div className="mcph">{item.emoji}</div>}
-      <div className="mctags">
-        <span className={`mctag ${item.isVeg?'tveg':'tnveg'}`}>{item.isVeg?'Veg':'Non-Veg'}</span>
-        {item.rating>=4.7&&<span className="mctag ttop">Top Pick</span>}
-      </div>
-    </div>
-    <div className="mcbody">
-      <div className="mcmeta">
-        {item.rating&&<span className="mcrating">★ {item.rating}</span>}
-        {item.preparationTime&&<span className="mctime">⏱ {item.preparationTime}m</span>}
-      </div>
-      <div className="mcname fd">{item.name}</div>
-      <div className="mcdesc">{item.description}</div>
-      <div className="mcfoot">
-        <div className="mcprice fd"><sup>₹</sup>{item.price}</div>
-        {qty===0?<button className="abtn" onClick={()=>onAdd(item)}>+</button>
-          :<div className="qrow">
-            <button className="qbtn" onClick={()=>onRem(item.id)}>−</button>
-            <span className="qnum">{qty}</span>
-            <button className="qbtn" onClick={()=>onAdd(item)}>+</button>
+// ── Stars ─────────────────────────────────────────────────────────
+function Stars({count}){
+  return <div className="stars">{[1,2,3,4,5].map(i=><i key={i} className={`fas fa-star star${i>count?' empty':''}`}/>)}</div>;
+}
+
+// ── FSSAI Dot ─────────────────────────────────────────────────────
+function FssaiDot({veg}){
+  return <div className={`fssai-dot ${veg?'veg':'nonveg'}`}/>;
+}
+
+// ── Menu Item Card ────────────────────────────────────────────────
+function MenuCard({item, qty, onAdd, onInc, onDec}){
+  return (
+    <div className="menu-item-card" style={{opacity:item.available?1:.6}}>
+      <div className="menu-item-img-placeholder">{item.emoji}</div>
+      <div className="menu-item-body">
+        <div>
+          <div className="menu-item-top">
+            <FssaiDot veg={item.veg}/>
+            <span className="menu-item-name">{item.name}</span>
           </div>
-        }
-      </div>
-    </div>
-  </div>;
-}
-
-function MenuScreen({cart,setCart,showToast}){
-  const [items,setItems]=useState([]);
-  const [filtered,setFiltered]=useState([]);
-  const [cat,setCat]=useState('All');
-  const [search,setSearch]=useState('');
-  const [loading,setLoading]=useState(true);
-  const lastTxn=useState(()=>{try{return JSON.parse(localStorage.getItem('qb_last_txn')||'null')}catch{return null}})[0];
-  useEffect(()=>{
-    api('/api/v1/menu').then(d=>{const l=Array.isArray(d)?d:(d.content||d.items||MENU);setItems(l.length?l:MENU);}).catch(()=>setItems(MENU)).finally(()=>setLoading(false));
-  },[]);
-  useEffect(()=>{
-    let f=items;
-    if(cat!=='All')f=f.filter(i=>i.category===cat);
-    if(search)f=f.filter(i=>i.name.toLowerCase().includes(search.toLowerCase()));
-    setFiltered(f);
-  },[items,cat,search]);
-  const getQty=id=>(cart.find(c=>c.id===id)||{qty:0}).qty;
-  const add=item=>{setCart(c=>{const e=c.find(x=>x.id===item.id);return e?c.map(x=>x.id===item.id?{...x,qty:x.qty+1}:x):[...c,{...item,qty:1}]});showToast(`${item.name} added`,'success');};
-  const rem=id=>setCart(c=>c.map(x=>x.id===id?{...x,qty:x.qty-1}:x).filter(x=>x.qty>0));
-  if(loading)return <div className="spinwrap"><div className="spinner"/></div>;
-  return <div>
-    <div className="hero">
-      <div className="hbadge"><div className="hbdot"/><span className="hbdot-t">Live Counter • 8 AM – 8 PM</span></div>
-      <h1 className="htitle fd">Order fresh,<br/><em>eat brilliant</em></h1>
-      <p className="hsub">Cashless café for the modern workplace.</p>
-      <div className="hsearch">
-        <span className="hsico">🔍</span>
-        <input placeholder="Search biryani, dosa, coffee…" value={search} onChange={e=>setSearch(e.target.value)}/>
-      </div>
-      <div className="hstats">
-        <div className="hstat"><div className="hsval fd">12 min</div><div className="hslbl">Avg prep</div></div>
-        <div className="hstat"><div className="hsval fd">4.8 ★</div><div className="hslbl">Rating</div></div>
-        <div className="hstat"><div className="hsval fd">100%</div><div className="hslbl">Cashless</div></div>
-      </div>
-    </div>
-    <div className="cats">{CATS.map(c=><div key={c} className={`cat ${cat===c?'on':''}`} onClick={()=>setCat(c)}>{c}</div>)}</div>
-    {lastTxn&&<div className="txnstrip"><div className="txndot"/><span>Last: <strong style={{color:'var(--tx)'}}>{lastTxn.status}</strong> · {String(lastTxn.transactionId||'').slice(-8)||'–'} · ₹{lastTxn.amount||0}</span></div>}
-    <div className="mwrap">
-      <div className="mcount">{filtered.length} items available</div>
-      <div className="mgrid">{filtered.map((item,i)=><MCard key={item.id} item={item} qty={getQty(item.id)} onAdd={add} onRem={rem} delay={i*30}/>)}</div>
-    </div>
-  </div>;
-}
-
-function OrdersScreen(){
-  const [orders,setOrders]=useState([]);
-  const [loading,setLoading]=useState(true);
-  const SAMPLE=[
-    {id:'QB240001',createdAt:'2024-03-20T09:30:00',status:'DELIVERED',totalAmount:130,items:[{name:'Masala Dosa',qty:2,price:55},{name:'Filter Coffee',qty:2,price:25}]},
-    {id:'QB240002',createdAt:'2024-03-20T13:15:00',status:'PREPARING',totalAmount:95,items:[{name:'Veg Biryani',qty:1,price:95}]},
-    {id:'QB240003',createdAt:'2024-03-19T10:00:00',status:'DELIVERED',totalAmount:185,items:[{name:'Chicken Biryani',qty:1,price:130},{name:'Masala Chai',qty:2,price:20}]},
-  ];
-  useEffect(()=>{api('/api/v1/orders').then(d=>{const l=Array.isArray(d)?d:(d.content||[]);setOrders(l.length?l:SAMPLE);}).catch(()=>setOrders(SAMPLE)).finally(()=>setLoading(false));;},[]);
-  const sc=s=>({DELIVERED:'std',PREPARING:'stp',READY:'str',CANCELLED:'stc'}[s]||'stp');
-  if(loading)return <div className="spinwrap"><div className="spinner"/></div>;
-  return <div className="orderspage">
-    <div className="pageh fd">My Orders</div>
-    {orders.length===0?<div style={{textAlign:'center',padding:'60px 20px',color:'var(--hint)'}}><div style={{fontSize:48,marginBottom:12}}>📋</div><p>No orders yet</p></div>
-      :orders.map((o,i)=><div key={o.id} className="ocard" style={{animationDelay:`${i*55}ms`}}>
-        <div className="ohd">
-          <div><div className="onum fd">#{o.id}</div><div className="odate">{new Date(o.createdAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>
-          <span className={`ost ${sc(o.status)}`}>{o.status}</span>
+          <div className="menu-tags">
+            {item.tags.map(t=><span key={t} className={`tag${t.includes('cal')||t.includes('Cal')?'-cal':''}`}>{t}</span>)}
+            <span className="tag tag-cal">{item.calories} kcal</span>
+          </div>
         </div>
-        <div className="oitems">{(o.items||[]).map((it,j)=><div key={j} className="oirow"><span>{it.name} × {it.qty||it.quantity}</span><span>₹{it.price*(it.qty||it.quantity)}</span></div>)}</div>
-        <div className="ofoot"><span>Total</span><span className="otot fd">₹{o.totalAmount}</span></div>
-      </div>)
-    }
-  </div>;
+        <div className="menu-item-footer">
+          <div className="item-price">{fmt(item.price)}</div>
+          {item.available
+            ? qty>0
+              ? <div className="qty-ctrl">
+                  <button className="qty-btn" onClick={()=>onDec(item.id)}>−</button>
+                  <span className="qty-num">{qty}</span>
+                  <button className="qty-btn" onClick={()=>onInc(item.id)}>+</button>
+                </div>
+              : <button className="add-btn" onClick={()=>onAdd(item.id)}>+</button>
+            : <span className="chip-red">Sold Out</span>
+          }
+        </div>
+      </div>
+      {!item.available&&<div className="sold-out-overlay"><span className="sold-out-tag">SOLD OUT</span></div>}
+    </div>
+  );
 }
 
-function WalletModal({onClose,onSuccess,showToast}){
-  const PS=[{a:100,b:null},{a:200,b:null},{a:500,b:'+₹25'},{a:1000,b:'+₹75'},{a:2000,b:'+₹200'},{a:5000,b:'+₹600'}];
-  const [sel,setSel]=useState(500);
-  const [custom,setCustom]=useState('');
-  const [method,setMethod]=useState('UPI');
+// ── Splash Screen ─────────────────────────────────────────────────
+function SplashScreen({onDone}){
+  useEffect(()=>{const t=setTimeout(onDone,2000);return()=>clearTimeout(t);},[]);
+  return (
+    <div className="splash">
+      <div className="splash-logo"><i className="fas fa-mug-hot"/></div>
+      <h1>QwikCafe</h1>
+      <p>Corporate Café · Order Smart, Eat Well</p>
+      <div style={{marginTop:32,display:'flex',gap:8,alignItems:'center'}}>
+        <div style={{width:8,height:8,borderRadius:'50%',background:'rgba(255,255,255,.9)'}}/>
+        <div style={{width:8,height:8,borderRadius:'50%',background:'rgba(255,255,255,.4)'}}/>
+        <div style={{width:8,height:8,borderRadius:'50%',background:'rgba(255,255,255,.4)'}}/>
+      </div>
+      <span className="splash-tagline">Powered by Pine Labs · Qwikcilver</span>
+    </div>
+  );
+}
+
+// ── Auth Screen ───────────────────────────────────────────────────
+function AuthScreen({onLogin}){
+  const [tab,setTab]=useState('login');
+  const [form,setForm]=useState({name:'',email:'',password:'',empId:'',dept:'IT'});
   const [loading,setLoading]=useState(false);
-  const amt=custom?parseInt(custom)||0:sel;
-  const bonus=a=>a>=5000?600:a>=2000?200:a>=1000?75:a>=500?25:0;
-  const doRC=async()=>{
-    if(amt<10){showToast('Minimum ₹10','error');return;}
+  const set = k=>v=>setForm(f=>({...f,[k]:v}));
+
+  async function submit(e){
+    e.preventDefault();
     setLoading(true);
-    try{await api('/api/v1/payments/wallet/topup',{method:'POST',body:JSON.stringify({userId:'demo',amount:amt,paymentMethod:method})});}catch{}
-    await new Promise(r=>setTimeout(r,1100));
-    setLoading(false);onSuccess(amt);
-  };
-  return <div className="mdbg" onClick={onClose}>
-    <div className="modal" onClick={e=>e.stopPropagation()}>
-      <div className="mdhndl"/>
-      <div className="mdhdr">
-        <div><div className="mdttl fd">Recharge Wallet</div><div className="mdsub">Instant · No transaction fee</div></div>
-        <button className="xbtn" onClick={onClose}>✕</button>
-      </div>
-      <div className="mdbody">
-        <div className="ragrid">{PS.map(p=><div key={p.a} className={`ra ${!custom&&sel===p.a?'sel':''}`} onClick={()=>{setSel(p.a);setCustom('');}}>
-          <div className="raamt fd">₹{p.a}</div>
-          {p.b&&<div className={`rabonus ${p.a>=500?'hot':''}`}>{p.b}</div>}
-        </div>)}</div>
-        <div className="rccustom">
-          <label>Custom amount</label>
-          <div className="rciwrap"><span className="rcrupee">₹</span><input className="rcinp" type="number" placeholder="0" value={custom} onChange={e=>{setCustom(e.target.value);if(e.target.value)setSel(0);}}/></div>
-        </div>
-        <div style={{marginBottom:7,fontSize:10,color:'var(--muted)',fontWeight:600,letterSpacing:'.3px'}}>PAY VIA</div>
-        <div className="rcmethods">{[{id:'UPI',ico:'📱',lbl:'UPI'},{id:'CARD',ico:'💳',lbl:'Card'},{id:'NET_BANKING',ico:'🏦',lbl:'NetBanking'}].map(m=>
-          <div key={m.id} className={`rcm ${method===m.id?'sel':''}`} onClick={()=>setMethod(m.id)}><div className="rcmico">{m.ico}</div><div className="rcmlbl">{m.lbl}</div></div>
-        )}</div>
-        <div className="rcsum">
-          <div className="rcrow"><span className="rcrll">Amount</span><span className="rcrv">₹{amt}</span></div>
-          <div className="rcrow"><span className="rcrll">Fee</span><span className="rcrv" style={{color:'var(--green)'}}>Free</span></div>
-          <div className="rctot"><span>You get</span><span className="rctotv fd">₹{amt}{bonus(amt)>0?` + ₹${bonus(amt)} bonus`:''}</span></div>
-        </div>
-        <button className="rcbtn fd" onClick={doRC} disabled={loading||amt<10}>{loading?'⏳ Processing…':`Recharge ₹${amt}`}</button>
-      </div>
-    </div>
-  </div>;
-}
-
-function PayGateway({total,method,onClose,onSuccess,showToast}){
-  const [cardNum,setCardNum]=useState('');
-  const [cardExp,setCardExp]=useState('');
-  const [cardCvv,setCvv]=useState('');
-  const [cardName,setCardName]=useState('');
-  const [bank,setBank]=useState('');
-  const [upiSent,setUpiSent]=useState(false);
-  const [loading,setLoading]=useState(false);
-  const upiLink=`upi://pay?pa=${encodeURIComponent(UPI)}&pn=QwikBrew&am=${total}&cu=INR`;
-  const BANKS=[{id:'sbi',ico:'🏛️',nm:'SBI'},{id:'hdfc',ico:'🔵',nm:'HDFC'},{id:'icici',ico:'🟠',nm:'ICICI'},{id:'axis',ico:'🟣',nm:'Axis'}];
-
-  const handlePay=async()=>{
-    if(method==='UPI'&&!upiSent){
-      try{await api('/api/v1/payments/upi/collect',{method:'POST',body:JSON.stringify({userId:'demo',amount:total,upiId:UPI,reference:`UPI-${Date.now()}`})});}catch{}
-      setUpiSent(true);window.location.href=upiLink;showToast('Opening UPI app…','info');return;
+    let user=null;
+    if(tab==='login'){
+      user = await api('/api/v1/users/login',{method:'POST',body:JSON.stringify({email:form.email,password:form.password})});
+    } else {
+      await api('/api/v1/users/register',{method:'POST',body:JSON.stringify(form)});
     }
-    if(method==='CARD'&&(!cardNum||!cardExp||!cardCvv||!cardName)){showToast('Fill all card details','error');return;}
-    if(method==='NET_BANKING'&&!bank){showToast('Select a bank','error');return;}
-    setLoading(true);
-    try{await api('/api/v1/payments/charge',{method:'POST',body:JSON.stringify({userId:'demo',amount:total,paymentMethod:method,reference:`REF-${Date.now()}`})});}catch{}
-    await new Promise(r=>setTimeout(r,1300));
     setLoading(false);
-    onSuccess({method,amount:total,transactionId:`TXN-${Date.now()}`,reference:`REF-${Date.now()}`});
-  };
+    onLogin(user || {name: tab==='login'? (form.email.split('@')[0]||'Employee') : form.name, email:form.email, empId:form.empId||'EMP0042', dept:form.dept||'IT', walletBalance:2340});
+  }
 
-  const pvcls={UPI:'pcv-upi',CARD:'pcv-card',NET_BANKING:'pcv-nb'}[method]||'pcv-upi';
-  const btnCls=method==='UPI'?'pcbtu':method==='CARD'?'pcbtc':'';
-
-  return <div className="mdbg" onClick={onClose}>
-    <div className="modal" onClick={e=>e.stopPropagation()}>
-      <div className="mdhndl"/>
-      <div className="mdhdr">
-        <div><div className="mdttl fd">{method==='UPI'?'UPI Payment':method==='CARD'?'Card Payment':'Net Banking'}</div><div className="mdsub">Secured · Encrypted</div></div>
-        <button className="xbtn" onClick={onClose}>✕</button>
-      </div>
-      <div className="mdbody">
-        <div className={`pcv ${pvcls}`}>
-          <div className="pcvshine"/>
-          {method==='CARD'&&<><div className="pcvchip"/><div className="pcvlogo">💳</div><div className="pcvnum">{cardNum?cardNum.replace(/(.{4})/g,'$1 ').trim():'•••• •••• •••• ••••'}</div><div className="pcvlbl">CARD NUMBER</div><div className="pcvnet">VISA / MC</div></>}
-          {(method==='UPI'||method==='NET_BANKING')&&<><div className="pcvcenter"><div className="pcvalbl">AMOUNT TO PAY</div><div className="pcvaval">₹{total}</div></div><div style={{position:'absolute',bottom:14,left:18,fontSize:11,opacity:.43,fontWeight:600}}>{method==='UPI'?`UPI · ${UPI.slice(0,14)}…`:'NET BANKING'}</div><div style={{position:'absolute',top:15,right:16,fontSize:19,opacity:.63}}>{method==='UPI'?'📱':'🏦'}</div></>}
+  return (
+    <div className="auth-screen">
+      <div className="auth-header">
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
+          <div style={{width:44,height:44,background:'rgba(255,255,255,.25)',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <i className="fas fa-mug-hot" style={{color:'#fff',fontSize:20}}/>
+          </div>
+          <span style={{color:'#fff',fontSize:20,fontWeight:800}}>QwikCafe</span>
         </div>
-        {method==='UPI'&&<>
-          <div className="upibar"><div><div className="upiidl">PAY TO</div><div className="upiid">{UPI}</div></div><div className="upicopy" onClick={()=>{navigator.clipboard?.writeText(UPI);showToast('Copied!','success');}}>Copy</div></div>
-          <div style={{marginBottom:9,fontSize:10,color:'var(--muted)',fontWeight:600,letterSpacing:'.3px'}}>PAY WITH APP</div>
-          <div className="upiapps">{[{n:'PhonePe',i:'💜'},{n:'GPay',i:'🟢'},{n:'Paytm',i:'🔵'},{n:'BHIM',i:'🟡'}].map(a=><div key={a.n} className="upiapp" onClick={()=>{window.location.href=upiLink;showToast(`Opening ${a.n}…`,'info');}}><div className="upiappi">{a.i}</div><div className="upiappn">{a.n}</div></div>)}</div>
-          {upiSent&&<div className="qrbox"><img className="qrimg" src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(upiLink)}&bgcolor=141418&color=FF6B35`} alt="QR"/><div className="qrhint">Scan with any UPI app</div></div>}
+        <h2>{tab==='login'?'Welcome back!':'Create Account'}</h2>
+        <p>{tab==='login'?'Sign in to order from your cafeteria':'Join your corporate cafeteria'}</p>
+      </div>
+
+      <div className="auth-tabs">
+        <button className={`auth-tab${tab==='login'?' active':''}`} onClick={()=>setTab('login')}>Sign In</button>
+        <button className={`auth-tab${tab==='register'?' active':''}`} onClick={()=>setTab('register')}>Register</button>
+      </div>
+
+      <form className="auth-form" onSubmit={submit}>
+        {tab==='register'&&<>
+          <div className="form-group">
+            <label className="form-label">Full Name</label>
+            <input className="form-input" placeholder="Rahul Sharma" value={form.name} onChange={e=>set('name')(e.target.value)} required/>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Employee ID</label>
+            <input className="form-input" placeholder="EMP0042" value={form.empId} onChange={e=>set('empId')(e.target.value)}/>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Department</label>
+            <select className="form-input" value={form.dept} onChange={e=>set('dept')(e.target.value)}>
+              <option>IT</option><option>Finance</option><option>HR</option><option>Marketing</option><option>Operations</option>
+            </select>
+          </div>
         </>}
-        {method==='CARD'&&<>
-          <div className="cf"><label>CARD NUMBER</label><input placeholder="1234 5678 9012 3456" maxLength={19} value={cardNum} onChange={e=>setCardNum(e.target.value.replace(/[^\d]/g,'').replace(/(.{4})/g,'$1 ').trim())}/></div>
-          <div className="cf"><label>CARDHOLDER NAME</label><input placeholder="Name on card" value={cardName} onChange={e=>setCardName(e.target.value)}/></div>
-          <div className="cfrow"><div className="cf"><label>EXPIRY</label><input placeholder="MM / YY" maxLength={7} value={cardExp} onChange={e=>{let v=e.target.value.replace(/[^\d]/g,'');if(v.length>=3)v=v.slice(0,2)+' / '+v.slice(2);setCardExp(v);}}/></div><div className="cf"><label>CVV</label><input placeholder="•••" maxLength={3} type="password" value={cardCvv} onChange={e=>setCvv(e.target.value.replace(/[^\d]/g,''))}/></div></div>
+        <div className="form-group">
+          <label className="form-label">Email Address</label>
+          <input className="form-input" type="email" placeholder="rahul@company.com" value={form.email} onChange={e=>set('email')(e.target.value)} required/>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Password</label>
+          <input className="form-input" type="password" placeholder="••••••••" value={form.password} onChange={e=>set('password')(e.target.value)} required/>
+        </div>
+        {tab==='login'&&<div style={{textAlign:'right',marginBottom:16}}><button type="button" className="btn-ghost">Forgot Password?</button></div>}
+        <button className="btn btn-primary" type="submit" disabled={loading}>
+          {loading?<><i className="fas fa-circle-notch fa-spin"/> &nbsp;Please wait...</>:tab==='login'?'Sign In →':'Create Account →'}
+        </button>
+        <div className="divider" style={{margin:'20px 0 14px'}}>or continue with</div>
+        <button type="button" className="btn btn-outline" onClick={()=>onLogin({name:'Demo Employee',email:'demo@company.com',empId:'EMP0042',dept:'Engineering',walletBalance:2340})}>
+          <i className="fas fa-id-badge" style={{marginRight:8}}/>Employee QR Code Login
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// ── Home Tab ──────────────────────────────────────────────────────
+function HomeTab({user, cart, onAdd, onInc, onDec, setTab}){
+  const [mealTab,setMealTab]=useState(activeMealTab());
+  const [category,setCategory]=useState('all');
+  const [search,setSearch]=useState('');
+
+  const filtered = MENU_ITEMS.filter(i=>{
+    const matchCat = category==='all' || i.category===category;
+    const matchMeal = mealTab==='all' || i.category===mealTab;
+    const matchSearch = !search || i.name.toLowerCase().includes(search.toLowerCase());
+    return matchCat && matchSearch && (search ? true : matchMeal || category!=='all');
+  });
+
+  const todaySpecial = MENU_ITEMS.find(i=>i.id===4);
+
+  return (
+    <>
+      <div className="app-header">
+        <div className="header-top">
+          <div>
+            <div className="header-greeting">{greeting()},</div>
+            <div className="header-name">{user.name.split(' ')[0]} 👋</div>
+          </div>
+          <div className="header-right">
+            <button className="header-icon-btn" onClick={()=>setTab('orders')}>
+              <i className="fas fa-bell"/>
+              <span className="badge-dot"/>
+            </button>
+            <button className="header-icon-btn" onClick={()=>setTab('cart')}>
+              <i className="fas fa-shopping-bag"/>
+              {Object.values(cart).reduce((a,b)=>a+b,0)>0&&
+                <span className="cart-badge">{Object.values(cart).reduce((a,b)=>a+b,0)}</span>}
+            </button>
+          </div>
+        </div>
+        <div className="location-bar">
+          <i className="fas fa-map-marker-alt"/>
+          <span>Bengaluru HQ · Block C Cafeteria</span>
+          <i className="fas fa-chevron-down" style={{fontSize:10}}/>
+        </div>
+      </div>
+
+      <div className="scroll-area">
+        {/* Search */}
+        <div className="search-wrap">
+          <i className="fas fa-search search-icon"/>
+          <input className="search-input" placeholder="Search for food items..." value={search} onChange={e=>setSearch(e.target.value)}/>
+        </div>
+
+        {/* Meal Time Tabs */}
+        <div className="meal-tabs">
+          {[{id:'breakfast',icon:'🥞',label:'Breakfast'},{id:'lunch',icon:'🍛',label:'Lunch'},{id:'snacks',icon:'🍿',label:'Snacks'},{id:'beverages',icon:'☕',label:'Drinks'},{id:'desserts',icon:'🍰',label:'Desserts'}].map(t=>
+            <div key={t.id} className={`meal-tab${mealTab===t.id?' active':''}`} onClick={()=>{setMealTab(t.id);setCategory('all');}}>
+              <span>{t.icon}</span>{t.label}
+              {t.id===activeMealTab()&&mealTab!==t.id&&<span className="chip-green" style={{marginLeft:4,padding:'1px 6px'}}>Now</span>}
+            </div>
+          )}
+        </div>
+
+        {!search&&<>
+          {/* Banner */}
+          <div className="banner">
+            <div>
+              <div className="banner-label">Today's Special</div>
+              <div className="banner-title">Dal Rice<br/>Combo 🍛</div>
+              <div className="banner-price">₹90</div>
+              <div className="banner-badge">Save ₹20 · Limited</div>
+            </div>
+          </div>
+
+          {/* Categories */}
+          <div className="section-header">
+            <span className="section-title">What's on your mind?</span>
+          </div>
+          <div className="cat-scroll">
+            {CATEGORIES.map(c=>
+              <div key={c.id} className={`cat-chip${category===c.id?' active':''}`} onClick={()=>setCategory(c.id)}>
+                <div className="cat-icon">{c.icon}</div>
+                <span className="cat-label">{c.label}</span>
+              </div>
+            )}
+          </div>
         </>}
-        {method==='NET_BANKING'&&<>
-          <div style={{marginBottom:9,fontSize:10,color:'var(--muted)',fontWeight:600,letterSpacing:'.3px'}}>SELECT BANK</div>
-          <div className="bankgrid">{BANKS.map(b=><div key={b.id} className={`bank ${bank===b.id?'sel':''}`} onClick={()=>setBank(b.id)}><div className="banki">{b.ico}</div><div className="bankn">{b.nm}</div></div>)}</div>
-          <div className="cf"><label>OR TYPE BANK NAME</label><input placeholder="Enter your bank…" value={bank} onChange={e=>setBank(e.target.value)}/></div>
-        </>}
-        <div className="ams"><div className="amsrow"><span className="amslbl">Amount payable</span><span className="amsval fd">₹{total}</span></div></div>
-        <button className={`pcbtn ${btnCls} fd`} onClick={handlePay} disabled={loading}>
-          {loading?'⏳ Processing…':method==='UPI'&&!upiSent?`Send ₹${total} via UPI`:method==='UPI'?`Confirm ₹${total}`:`Pay ₹${total}`}
+
+        {/* Menu List */}
+        <div className="section-header">
+          <span className="section-title">{search?`Results for "${search}"`:(category==='all'?MEAL_LABEL(mealTab)+' Menu':'Category: '+CATEGORIES.find(c=>c.id===category)?.label)}</span>
+          <span style={{fontSize:11,color:'var(--muted)',fontWeight:500}}>{filtered.length} items</span>
+        </div>
+        <div className="menu-list">
+          {filtered.length===0
+            ?<div className="empty-state"><div className="empty-emoji">🔍</div><div className="empty-title">No items found</div><div className="empty-sub">Try a different search or category</div></div>
+            :filtered.map(item=><MenuCard key={item.id} item={item} qty={cart[item.id]||0} onAdd={()=>onAdd(item.id)} onInc={()=>onInc(item.id)} onDec={()=>onDec(item.id)}/>)
+          }
+        </div>
+        <div style={{height:16}}/>
+      </div>
+    </>
+  );
+}
+function MEAL_LABEL(t){return {breakfast:'Breakfast',lunch:'Lunch',snacks:'Snack',beverages:'Beverages',desserts:'Desserts',all:'Today\'s'}[t]||'';}
+
+// ── Cart Tab ──────────────────────────────────────────────────────
+function CartTab({cart, onInc, onDec, onRemove, user, onOrderPlaced, setTab}){
+  const [payMethod,setPayMethod]=useState('wallet');
+  const [placing,setPlacing]=useState(false);
+  const items = MENU_ITEMS.filter(i=>cart[i.id]>0).map(i=>({...i,qty:cart[i.id]}));
+  const subtotal = items.reduce((s,i)=>s+i.price*i.qty,0);
+  const discount = Math.floor(subtotal*.05);
+  const total = subtotal - discount;
+
+  async function placeOrder(){
+    setPlacing(true);
+    await api('/api/v1/orders',{method:'POST',body:JSON.stringify({
+      userId:'demo',
+      items:items.map(i=>({menuItemId:i.id,menuItemName:i.name,quantity:i.qty,unitPrice:i.price})),
+      totalAmount:total, paymentMethod:payMethod.toUpperCase()
+    })});
+    setPlacing(false);
+    onOrderPlaced();
+  }
+
+  if(items.length===0) return (
+    <>
+      <div className="screen-header">
+        <span className="screen-header-title">Your Cart</span>
+      </div>
+      <div className="empty-state" style={{paddingTop:80}}>
+        <div className="empty-emoji">🛒</div>
+        <div className="empty-title">Cart is empty</div>
+        <div className="empty-sub">Browse the menu and add items to get started</div>
+        <button className="btn btn-primary" style={{marginTop:16,width:'auto',padding:'12px 32px'}} onClick={()=>setTab('home')}>Browse Menu</button>
+      </div>
+    </>
+  );
+
+  return (
+    <>
+      <div className="screen-header">
+        <span className="screen-header-title">Your Cart</span>
+        <span className="screen-header-right" style={{color:'var(--orange)',fontSize:13,fontWeight:600}}>{items.length} item{items.length>1?'s':''}</span>
+      </div>
+      <div className="scroll-area">
+        {/* Pickup Info */}
+        <div className="pickup-card" style={{margin:'12px 16px 0'}}>
+          <i className="fas fa-store" style={{color:'var(--success)',fontSize:18}}/>
+          <div>
+            <div className="pickup-label">📍 Pickup Counter</div>
+            <div className="pickup-val">Counter A3 · ~12 mins</div>
+          </div>
+        </div>
+
+        {/* Cart Items */}
+        <div className="cart-list">
+          {items.map(item=>(
+            <div key={item.id} className="cart-item-row">
+              <div className="cart-item-emoji">{item.emoji}</div>
+              <div className="cart-item-info">
+                <div style={{display:'flex',alignItems:'center',gap:6}}>
+                  <FssaiDot veg={item.veg}/>
+                  <span className="cart-item-name">{item.name}</span>
+                </div>
+                <div className="cart-item-price">{fmt(item.price)} × {item.qty} = {fmt(item.price*item.qty)}</div>
+              </div>
+              <div className="qty-ctrl">
+                <button className="qty-btn" onClick={()=>onDec(item.id)}>−</button>
+                <span className="qty-num">{item.qty}</span>
+                <button className="qty-btn" onClick={()=>onInc(item.id)}>+</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Bill */}
+        <div className="bill-section">
+          <div className="bill-title">Bill Details</div>
+          <div className="bill-row"><span className="bill-row-label">Subtotal</span><span className="bill-row-value">{fmt(subtotal)}</span></div>
+          <div className="bill-row"><span className="bill-row-label">Meal Discount (5%)</span><span className="bill-row-value" style={{color:'var(--success)'}}>− {fmt(discount)}</span></div>
+          <div className="bill-row"><span className="bill-row-label">GST & Charges</span><span className="bill-row-value">₹0</span></div>
+          <div className="bill-total">
+            <div className="bill-row"><span className="bill-row-label">Total</span><span className="bill-row-value">{fmt(total)}</span></div>
+          </div>
+        </div>
+        <div className="savings-row" style={{margin:'0 16px 12px'}}>
+          <i className="fas fa-tag" style={{color:'var(--success)'}}/>
+          <span className="savings-text">You're saving {fmt(discount)} on this order!</span>
+        </div>
+
+        {/* Payment Options */}
+        <div style={{padding:'0 16px'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--text)',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Payment Method</div>
+          {[
+            {id:'wallet',icon:'💰',name:'Pine Wallet',sub:`Balance: ${fmt(user.walletBalance||2340)}`,color:'#FFF3EC'},
+            {id:'upi',icon:'📱',name:'UPI / GPay / PhonePe',sub:'Scan & Pay instantly',color:'#E8F5E9'},
+            {id:'card',icon:'💳',name:'Credit / Debit Card',sub:'Visa, Mastercard, RuPay',color:'#E3F2FD'},
+            {id:'payroll',icon:'🏢',name:'Payroll Deduction',sub:'Deducted from salary',color:'#F3E5F5'},
+          ].map(p=>(
+            <div key={p.id} className={`pay-option${payMethod===p.id?' selected':''}`} onClick={()=>setPayMethod(p.id)}>
+              <div className="pay-icon" style={{background:p.color}}>{p.icon}</div>
+              <div className="pay-label">
+                <div className="pay-name">{p.name}</div>
+                <div className="pay-sub">{p.sub}</div>
+              </div>
+              <div className={`pay-radio${payMethod===p.id?' checked':''}`}/>
+            </div>
+          ))}
+        </div>
+        <div style={{height:16}}/>
+      </div>
+      <div style={{padding:'12px 16px',background:'#fff',borderTop:'1px solid var(--border)'}}>
+        <button className="btn btn-primary" onClick={placeOrder} disabled={placing}>
+          {placing?<><i className="fas fa-circle-notch fa-spin"/> Processing...</>:<>Place Order · {fmt(total)} <i className="fas fa-arrow-right" style={{marginLeft:8}}/></>}
         </button>
       </div>
-    </div>
-  </div>;
+    </>
+  );
 }
 
-function SuccessOverlay({data,onClose}){
-  return <div className="sucbg">
-    <div className="succard">
-      <div className="sr"/><div className="sr sr2"/>
-      <div className="sico">✓</div>
-      <div className="sttl fd">{data.type==='recharge'?'Wallet Recharged!':'Payment Successful!'}</div>
-      <div className="ssub">{data.type==='recharge'?`₹${data.amount} added to wallet`:'Order placed successfully'}</div>
-      <div className="sdetail">
-        {data.transactionId&&<div className="srow"><span className="srowl">Txn ID</span><span className="srowv">{String(data.transactionId).slice(-10)}</span></div>}
-        <div className="srow"><span className="srowl">Amount</span><span className="srowv" style={{color:'var(--brand)'}}>₹{data.amount}</span></div>
-        {data.method&&<div className="srow"><span className="srowl">Method</span><span className="srowv">{String(data.method).replace('_',' ')}</span></div>}
-        <div className="srow"><span className="srowl">Status</span><span className="srowv" style={{color:'var(--green)'}}>SUCCESS</span></div>
+// ── Orders Tab ────────────────────────────────────────────────────
+function OrdersTab({latestOrder}){
+  const [orders]=useState(SAMPLE_ORDERS);
+
+  return (
+    <>
+      <div className="screen-header">
+        <span className="screen-header-title">My Orders</span>
       </div>
-      <button className="sclose fd" onClick={onClose}>{data.type==='recharge'?'Done':'Back to Menu'}</button>
-    </div>
-  </div>;
-}
-
-function Cart({cart,setCart,open,onClose,showToast,walletBal,setWalletBal,onOpenWallet}){
-  const [payMethod,setPayMethod]=useState('WALLET');
-  const [gwOpen,setGwOpen]=useState(false);
-  const [placing,setPlacing]=useState(false);
-  const [success,setSuccess]=useState(null);
-  const total=cart.reduce((s,i)=>s+i.price*i.qty,0);
-  const add=id=>setCart(c=>c.map(x=>x.id===id?{...x,qty:x.qty+1}:x));
-  const rem=id=>setCart(c=>c.map(x=>x.id===id?{...x,qty:x.qty-1}:x).filter(x=>x.qty>0));
-  const placeOrder=async()=>{
-    if(payMethod==='WALLET'){
-      if(walletBal<total){showToast(`Insufficient balance. Have ₹${walletBal}`,'error');return;}
-      setPlacing(true);
-      try{await api('/api/v1/orders',{method:'POST',body:JSON.stringify({userId:'demo',items:cart.map(i=>({menuItemId:i.id,menuItemName:i.name,quantity:i.qty,unitPrice:i.price})),totalAmount:total,paymentMethod:'WALLET'})});}catch{}
-      const txnId=`TXN-${Date.now()}`;
-      setWalletBal(b=>b-total);
-      localStorage.setItem('qb_last_txn',JSON.stringify({status:'SUCCESS',transactionId:txnId,amount:total,method:'WALLET'}));
-      setPlacing(false);setSuccess({type:'order',amount:total,method:'WALLET',transactionId:txnId});setCart([]);
-    }else setGwOpen(true);
-  };
-  const onGWS=d=>{setGwOpen(false);localStorage.setItem('qb_last_txn',JSON.stringify({status:'SUCCESS',...d}));setSuccess({type:'order',...d});setCart([]);};
-  const PMS=[{id:'WALLET',ico:'👛',lbl:'Wallet'},{id:'UPI',ico:'📱',lbl:'UPI'},{id:'CARD',ico:'💳',lbl:'Card'},{id:'NET_BANKING',ico:'🏦',lbl:'NetBanking'}];
-  return <>
-    {open&&<div className="overlay" onClick={onClose}/>}
-    <div className={`cside ${open?'open':''}`}>
-      <div className="cshd"><h3 className="csttl fd">Your Cart<span className="cscnt">({cart.length})</span></h3><button className="xbtn" onClick={onClose}>✕</button></div>
-      <div className="csbody">
-        {cart.length===0?<div className="csempty"><span>🛒</span><p>Your cart is empty.<br/>Add something delicious!</p></div>
-          :cart.map(item=><div key={item.id} className="ci">
-            <div className="ciem">{item.emoji||'🍽️'}</div>
-            <div className="ciinfo"><div className="ciname">{item.name}</div><div className="ciprice">₹{item.price} × {item.qty} = ₹{item.price*item.qty}</div></div>
-            <div className="qrow">
-              <button className="qbtn" style={{width:26,height:26,fontSize:13}} onClick={()=>rem(item.id)}>−</button>
-              <span className="qnum" style={{fontSize:12}}>{item.qty}</span>
-              <button className="qbtn" style={{width:26,height:26,fontSize:13}} onClick={()=>add(item.id)}>+</button>
+      <div className="scroll-area">
+        {latestOrder&&(
+          <>
+            <div style={{padding:'14px 16px 6px'}}>
+              <div style={{fontSize:13,fontWeight:700,textTransform:'uppercase',letterSpacing:.5,color:'var(--muted)'}}>Active Order</div>
             </div>
-          </div>)
-        }
-      </div>
-      {cart.length>0&&<div className="csfoot">
-        <div className="wm">
-          <div><div className="wml">Wallet Balance</div><div className="wmbal fd">₹{walletBal.toLocaleString('en-IN')}</div></div>
-          <div className="wmbtn" onClick={()=>{onClose();onOpenWallet();}}>+ Recharge</div>
+            <div className="tracking-card">
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16}}>
+                <div>
+                  <div style={{fontSize:15,fontWeight:700}}>Order #{latestOrder.id}</div>
+                  <div style={{fontSize:12,color:'var(--muted)',marginTop:3}}>Placed just now · Counter A3</div>
+                </div>
+                <span className="order-status status-preparing">Preparing</span>
+              </div>
+              <div className="tracking-title">Order Progress</div>
+              <div className="tracking-steps">
+                <div style={{position:'absolute',top:16,left:'16px',right:'16px',height:2,background:'var(--border)',zIndex:0,display:'flex'}}>
+                  <div style={{flex:1,background:'var(--success)'}}/>
+                  <div style={{flex:1,background:'var(--orange)'}}/>
+                  <div style={{flex:1,background:'var(--border)'}}/>
+                </div>
+                {[{icon:'fa-check',label:'Confirmed',state:'done'},{icon:'fa-utensils',label:'Preparing',state:'active'},{icon:'fa-bell',label:'Ready',state:'pending'},{icon:'fa-bag-shopping',label:'Collected',state:'pending'}].map((s,i)=>(
+                  <div key={i} className="t-step">
+                    <div className={`t-dot ${s.state}`}><i className={`fas ${s.icon}`} style={{fontSize:12}}/></div>
+                    <span className={`t-label${s.state==='active'?' active-label':''}`}>{s.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{marginTop:16,padding:'10px 14px',background:'var(--orange-light)',borderRadius:'var(--r-sm)',fontSize:12,color:'var(--orange)',fontWeight:600,display:'flex',alignItems:'center',gap:8}}>
+                <i className="fas fa-clock"/>
+                Estimated ready in ~10 minutes
+              </div>
+            </div>
+          </>
+        )}
+        <div style={{padding:'14px 16px 6px'}}>
+          <div style={{fontSize:13,fontWeight:700,textTransform:'uppercase',letterSpacing:.5,color:'var(--muted)'}}>Past Orders</div>
         </div>
-        <div className="cstotal"><span style={{color:'var(--muted)',fontSize:13}}>Total</span><span className="cstamt fd">₹{total}</span></div>
-        <div className="pmg">{PMS.map(m=><div key={m.id} className={`pm ${payMethod===m.id?'on':''}`} onClick={()=>setPayMethod(m.id)}><span className="pmico">{m.ico}</span>{m.lbl}</div>)}</div>
-        <button className="obtn fd" onClick={placeOrder} disabled={placing}>{placing?'Placing order…':`Pay & Order · ₹${total}`}</button>
-      </div>}
-    </div>
-    {gwOpen&&<PayGateway total={total} method={payMethod} onClose={()=>setGwOpen(false)} onSuccess={onGWS} showToast={showToast}/>}
-    {success&&<SuccessOverlay data={success} onClose={()=>{setSuccess(null);onClose();}}/>}
-  </>;
+        {orders.map(o=>(
+          <div key={o.id} className="order-card">
+            <div className="order-card-header">
+              <div>
+                <div className="order-id">{o.id}</div>
+                <div className="order-date">{o.date}</div>
+              </div>
+              <span className={`order-status status-${o.status}`}>{o.status.charAt(0).toUpperCase()+o.status.slice(1)}</span>
+            </div>
+            <div className="order-items-row">
+              {o.items.map(it=><span key={it} className="order-item-tag">{it}</span>)}
+            </div>
+            <div style={{padding:'4px 16px 12px',display:'flex',alignItems:'center',gap:6}}>
+              <Stars count={o.rating}/>
+              <span style={{fontSize:11,color:'var(--muted)',marginLeft:4}}>Your rating</span>
+            </div>
+            <div className="order-card-footer">
+              <div className="order-total">{fmt(o.total)}</div>
+              <button className="reorder-btn"><i className="fas fa-redo" style={{marginRight:6,fontSize:11}}/>Reorder</button>
+            </div>
+          </div>
+        ))}
+        <div style={{height:16}}/>
+      </div>
+    </>
+  );
 }
 
-function ProfileScreen({user,onLogout,showToast,walletBal,setWalletBal}){
-  const [walletOpen,setWalletOpen]=useState(false);
-  const [success,setSuccess]=useState(null);
-  const ini=(user.name||'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  return <div className="ppage">
-    <div className="phbg">
-      <div className="avwrap"><div className="avring"/><div className="avinner fd">{ini}</div></div>
-      <div className="phname fd">{user.name}</div>
-      <div className="phemail">{user.email}</div>
-    </div>
-    <div className="wb">
-      <div className="wbtop"><div className="wblbl">Café Wallet</div><div className="wbbal fd">₹{walletBal.toLocaleString('en-IN')}</div><div className="wbusr">{user.name}</div></div>
-      <div className="wbbot">
-        <button className="wbrcbtn fd" onClick={()=>setWalletOpen(true)}><span>＋</span> Recharge Wallet</button>
-        <div className="wbstats">
-          <div className="wbstat"><div className="wbsv fd">₹500</div><div className="wbsl">Total spent</div></div>
-          <div className="wbstat"><div className="wbsv fd">12</div><div className="wbsl">Orders placed</div></div>
+// ── Wallet Tab ────────────────────────────────────────────────────
+function WalletTab(){
+  const [balance,setBalance]=useState(2340);
+  const [showTopup,setShowTopup]=useState(false);
+  const [topupAmt,setTopupAmt]=useState(500);
+  const spent = 330; const allowance = 1000;
+
+  function doTopup(){
+    setBalance(b=>b+topupAmt);
+    setShowTopup(false);
+  }
+
+  return (
+    <>
+      <div className="screen-header">
+        <span className="screen-header-title">My Wallet</span>
+      </div>
+      <div className="scroll-area">
+        {/* Wallet Card */}
+        <div className="wallet-card">
+          <div className="wallet-label">Pine Wallet Balance</div>
+          <div className="wallet-balance">{fmt(balance)}</div>
+          <div className="wallet-sub">Employee ID: EMP0042 · IT Department</div>
+          <div className="wallet-actions">
+            <button className="wallet-action-btn" onClick={()=>setShowTopup(true)}>
+              <i className="fas fa-plus-circle"/><span>Top Up</span>
+            </button>
+            <button className="wallet-action-btn">
+              <i className="fas fa-paper-plane"/><span>Send</span>
+            </button>
+            <button className="wallet-action-btn">
+              <i className="fas fa-history"/><span>History</span>
+            </button>
+          </div>
         </div>
+
+        {/* Meal Allowance */}
+        <div className="meal-allowance">
+          <div className="ma-title">Monthly Meal Allowance</div>
+          <div className="ma-row">
+            <span className="ma-label">Used this month</span>
+            <span className="ma-val">{fmt(spent)} / {fmt(allowance)}</span>
+          </div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{width:`${(spent/allowance)*100}%`}}/>
+          </div>
+          <div style={{fontSize:11,color:'var(--muted)',marginTop:8,fontWeight:500}}>{fmt(allowance-spent)} remaining · Resets on 1 May</div>
+        </div>
+
+        {/* Quick Top-up amounts */}
+        <div style={{padding:'0 16px 12px'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'var(--text)',marginBottom:10}}>Quick Actions</div>
+          <div style={{display:'flex',gap:10}}>
+            {[200,500,1000].map(a=>(
+              <button key={a} onClick={()=>{setTopupAmt(a);setShowTopup(true);}}
+                style={{flex:1,padding:'12px 8px',border:'2px solid var(--orange-light)',borderRadius:'var(--r-sm)',background:'var(--orange-light)',color:'var(--orange)',fontWeight:700,fontSize:14,fontFamily:'inherit',cursor:'pointer'}}>
+                +{fmt(a)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Transactions */}
+        <div style={{padding:'0 16px 6px'}}>
+          <div style={{fontSize:13,fontWeight:700,textTransform:'uppercase',letterSpacing:.5,color:'var(--muted)',marginBottom:10}}>Recent Transactions</div>
+        </div>
+        <div className="txn-list">
+          {SAMPLE_TXNS.map(t=>(
+            <div key={t.id} className="txn-row">
+              <div className={`txn-icon txn-${t.type}`}>
+                <i className={`fas ${t.type==='cr'?'fa-arrow-down':'fa-arrow-up'}`}/>
+              </div>
+              <div className="txn-info">
+                <div className="txn-title">{t.title}</div>
+                <div className="txn-date">{t.date}</div>
+              </div>
+              <div className={`txn-amount ${t.type}`}>{t.type==='cr'?'+':''}{fmt(Math.abs(t.amount))}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{height:16}}/>
       </div>
-    </div>
-    <div className="plist">
-      {[{ico:'👤',lbl:'Edit Profile',act:()=>showToast('Coming soon!','info')},{ico:'🔔',lbl:'Notifications',act:()=>showToast('All on','success')},{ico:'📜',lbl:'Transaction History',act:()=>showToast('Coming soon!','info')},{ico:'⭐',lbl:'Rate QwikBrew',act:()=>showToast('Thanks! ⭐','success')},{ico:'🎧',lbl:'Help & Support',act:()=>showToast('support@qwikbrew.in','info')}]
-        .map(item=><div key={item.lbl} className="pi" onClick={item.act}><div className="piico">{item.ico}</div><div className="pitxt">{item.lbl}</div><div className="piarr">›</div></div>)}
-    </div>
-    <button className="logoutbtn fd" onClick={onLogout}>Sign Out</button>
-    <p style={{textAlign:'center',color:'var(--hint)',fontSize:10,paddingBottom:18}}>QwikBrew · Spring Boot 3.5 + React 18 · {BUILD}</p>
-    {walletOpen&&<WalletModal showToast={showToast} onClose={()=>setWalletOpen(false)} onSuccess={amt=>{setWalletBal(b=>b+amt);setWalletOpen(false);setSuccess({type:'recharge',amount:amt,transactionId:`TXN-${Date.now()}`});}}/>}
-    {success&&<SuccessOverlay data={success} onClose={()=>setSuccess(null)}/>}
-  </div>;
+
+      {/* Top-up Modal */}
+      {showTopup&&(
+        <div className="modal-overlay" onClick={e=>{if(e.target.className==='modal-overlay')setShowTopup(false);}}>
+          <div className="modal-sheet">
+            <div className="modal-handle"/>
+            <div className="modal-title">Top Up Wallet</div>
+            <div style={{padding:'0 20px 12px',fontSize:13,color:'var(--muted)'}}>Choose amount to add to your Pine Wallet</div>
+            <div className="topup-amounts">
+              {[100,200,300,500,750,1000].map(a=>(
+                <div key={a} className={`topup-amount${topupAmt===a?' selected':''}`} onClick={()=>setTopupAmt(a)}>{fmt(a)}</div>
+              ))}
+            </div>
+            <div className="modal-footer">
+              <div style={{fontSize:12,color:'var(--muted)',marginBottom:12,textAlign:'center'}}>Selected: <b style={{color:'var(--orange)'}}>{fmt(topupAmt)}</b></div>
+              <button className="btn btn-primary" onClick={doTopup}>
+                <i className="fas fa-lock" style={{marginRight:8}}/>Add {fmt(topupAmt)} Securely
+              </button>
+              <div style={{marginTop:10,textAlign:'center',fontSize:11,color:'var(--muted)'}}>
+                <i className="fas fa-shield-halved" style={{marginRight:4}}/>Secured by Pine Labs Payment Gateway
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
 }
 
-function AuthScreen({onLogin}){
-  const [mode,setMode]=useState('login');
-  const [form,setForm]=useState({name:'',email:'',password:'',phone:''});
-  const [loading,setLoading]=useState(false);
-  const [error,setError]=useState('');
-  const [toast,setToast]=useState(null);
-  const showT=(m,t='success')=>{setToast({msg:m,type:t});setTimeout(()=>setToast(null),3000);};
-  const handle=async e=>{
-    e.preventDefault();setError('');setLoading(true);
-    try{
-      let data;
-      if(mode==='login'){data=await api('/api/v1/users/login',{method:'POST',body:JSON.stringify({email:form.email,password:form.password})});}
-      else{data=await api('/api/v1/users/register',{method:'POST',body:JSON.stringify(form)});showT('Account created! Sign in.');setMode('login');setLoading(false);return;}
-      localStorage.setItem('qb_token',data.accessToken||data.token||'');
-      localStorage.setItem('qb_user',JSON.stringify(data.user||{name:form.email.split('@')[0],email:form.email,walletBalance:500}));
-      onLogin(data);
-    }catch(err){
-      if(mode==='login'){localStorage.setItem('qb_token','demo');localStorage.setItem('qb_user',JSON.stringify({name:form.email.split('@')[0]||'Employee',email:form.email,walletBalance:500}));onLogin({user:{name:form.email.split('@')[0],email:form.email,walletBalance:500}});}
-      else setError(err.message);
-    }
-    setLoading(false);
-  };
-  return <div className="authpage">
-    {toast&&<Toast msg={toast.msg} type={toast.type}/>}
-    <div className="authblob ab1"/><div className="authblob ab2"/>
-    <div className="authbox">
-      <div className="authlogo">
-        <div className="authmark">☕</div>
-        <h1 className="fd"><span>Qwik</span>Brew</h1>
-        <p>Corporate Café — Order smart, eat well</p>
+// ── Profile Tab ───────────────────────────────────────────────────
+function ProfileTab({user, onLogout}){
+  return (
+    <>
+      <div className="profile-hero">
+        <div className="avatar-circle"><i className="fas fa-user"/></div>
+        <div className="profile-name">{user.name}</div>
+        <div className="profile-email">{user.email}</div>
+        <div className="profile-emp">{user.empId} · {user.dept} Department</div>
       </div>
-      <div className="auth-tabs">
-        {['login','register'].map(m=><button type="button" key={m} className={`auth-tab btn ${mode===m?'active':''}`} onClick={()=>setMode(m)}>{m==='login'?'Sign In':'Register'}</button>)}
+      <div className="scroll-area">
+        <div className="profile-list">
+          {[
+            {icon:'fa-user-circle',label:'Edit Profile'},
+            {icon:'fa-map-marker-alt',label:'Cafeteria Location'},
+            {icon:'fa-bell',label:'Notification Preferences'},
+            {icon:'fa-utensils',label:'Dietary Preferences',sub:'Veg / Non-Veg / Allergens'},
+            {icon:'fa-headset',label:'Help & Support'},
+            {icon:'fa-star',label:'Rate this App'},
+            {icon:'fa-file-shield',label:'Privacy Policy'},
+          ].map(item=>(
+            <div key={item.label} className="profile-item">
+              <div className="profile-item-icon"><i className={`fas ${item.icon}`}/></div>
+              <div style={{flex:1}}>
+                <div className="profile-item-label">{item.label}</div>
+                {item.sub&&<div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{item.sub}</div>}
+              </div>
+              <i className="fas fa-chevron-right"/>
+            </div>
+          ))}
+          <div style={{background:'#fff',borderRadius:'var(--r-sm)',padding:'14px 16px',boxShadow:'var(--shadow)'}}>
+            <div style={{fontSize:12,color:'var(--muted)',fontWeight:500}}>App Version</div>
+            <div style={{fontSize:13,fontWeight:600,color:'var(--text)',marginTop:2}}>QwikCafe v3.2.1 · Powered by Pine Labs</div>
+          </div>
+        </div>
+        <button className="logout-btn" onClick={onLogout}>
+          <i className="fas fa-right-from-bracket"/>Sign Out
+        </button>
+        <div style={{height:24}}/>
       </div>
-      <form onSubmit={handle}>
-        {mode==='register' && <>
-          <div className="form-g"><label>FULL NAME</label><input placeholder="Your full name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} required/></div>
-          <div className="form-g"><label>PHONE</label><input placeholder="10-digit mobile" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} required/></div>
-        </>}
-        <div className="form-g"><label>EMAIL</label><input type="email" placeholder="work@company.in" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} required/></div>
-        <div className="form-g"><label>PASSWORD</label><input type="password" placeholder="••••••••" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} required/></div>
-        {error && <p className="form-err">{error}</p>}
-        <button type="submit" className="auth-submit btn btn-primary font-display" disabled={loading}>{loading?'Processing…':mode==='login'?'Sign In →':'Create Account →'}</button>
-      </form>
-      <div className="authswitch">{mode==='login'?'New here? ':'Already registered? '}<a onClick={()=>setMode(mode==='login'?'register':'login')}>{mode==='login'?'Create account':'Sign in'}</a></div>
-    </div>
-  </div>;
+    </>
+  );
 }
 
+// ── App Shell ─────────────────────────────────────────────────────
 function App(){
-  const [page,setPage]=useState('menu');
-  const [cart,setCart]=useState([]);
-  const [cartOpen,setCartOpen]=useState(false);
-  const [walletOpen,setWalletOpen]=useState(false);
+  const [phase,setPhase]=useState('splash'); // splash | auth | app
+  const [user,setUser]=useState(null);
+  const [tab,setTab]=useState('home');
+  const [cart,setCart]=useState({});
   const [toast,setToast]=useState(null);
-  const [success,setSuccess]=useState(null);
-  const [user,setUser]=useState(()=>{try{return JSON.parse(localStorage.getItem('qb_user')||'null')}catch{return null}});
-  const [walletBal,setWalletBal]=useState(()=>{const s=Number(localStorage.getItem('qb_wallet'));return(!isNaN(s)&&s>=0)?s:500;});
-  useEffect(()=>{localStorage.setItem('qb_wallet',String(walletBal));},[walletBal]);
-  const tRef=useRef(null);
-  const showToast=useCallback((msg,type='success')=>{setToast({msg,type});clearTimeout(tRef.current);tRef.current=setTimeout(()=>setToast(null),3000);},[]);
-  const logout=()=>{localStorage.clear();setUser(null);setCart([]);};
-  const totalQty=cart.reduce((s,i)=>s+i.qty,0);
-  if(!user)return <AuthScreen onLogin={d=>{setUser(d.user||JSON.parse(localStorage.getItem('qb_user')));}} />;
-  const NAV=[{id:'menu',ico:'🍽️',lbl:'Menu'},{id:'orders',ico:'📋',lbl:'Orders'},{id:'profile',ico:'👤',lbl:'Profile'}];
-  return <>
-    {toast&&<Toast msg={toast.msg} type={toast.type}/>}
-    <nav>
-      <div className="nl">
-        <div className="nm">☕</div>
-        <div className="nname fd"><span>Qwik</span>Brew</div>
-        <div className="nbadge">Live</div>
+  const [latestOrder,setLatestOrder]=useState(null);
+
+  const showToast = msg=>{setToast(msg);};
+
+  function addItem(id){
+    setCart(c=>({...c,[id]:1}));
+    showToast('Added to cart ✓');
+  }
+  function incItem(id){setCart(c=>({...c,[id]:(c[id]||0)+1}));}
+  function decItem(id){setCart(c=>{const n={...c};if(n[id]<=1)delete n[id];else n[id]--;return n;});}
+
+  const cartCount = Object.values(cart).reduce((a,b)=>a+b,0);
+  const cartTotal = MENU_ITEMS.filter(i=>cart[i.id]>0).reduce((s,i)=>s+i.price*(cart[i.id]||0),0);
+
+  function onOrderPlaced(){
+    const id = 'ORD'+Math.floor(2900+Math.random()*99);
+    setLatestOrder({id,items:MENU_ITEMS.filter(i=>cart[i.id]>0)});
+    setCart({});
+    setTab('orders');
+    showToast('Order placed! 🎉');
+  }
+
+  if(phase==='splash') return <div className="app-shell"><SplashScreen onDone={()=>setPhase('auth')}/></div>;
+  if(phase==='auth') return <div className="app-shell"><AuthScreen onLogin={u=>{setUser(u);setPhase('app');}}/></div>;
+
+  const NAV = [
+    {id:'home',icon:'fa-home',label:'Home'},
+    {id:'menu',icon:'fa-utensils',label:'Menu'},
+    {id:'orders',icon:'fa-receipt',label:'Orders'},
+    {id:'wallet',icon:'fa-wallet',label:'Wallet'},
+    {id:'profile',icon:'fa-user',label:'Profile'},
+  ];
+
+  return (
+    <div className="app-shell">
+      <div className="screen">
+        {tab==='home'&&<HomeTab user={user} cart={cart} onAdd={addItem} onInc={incItem} onDec={decItem} setTab={setTab}/>}
+        {tab==='menu'&&<HomeTab user={user} cart={cart} onAdd={addItem} onInc={incItem} onDec={decItem} setTab={setTab}/>}
+        {tab==='cart'&&<CartTab cart={cart} onInc={incItem} onDec={decItem} user={user} onOrderPlaced={onOrderPlaced} setTab={setTab}/>}
+        {tab==='orders'&&<OrdersTab latestOrder={latestOrder}/>}
+        {tab==='wallet'&&<WalletTab/>}
+        {tab==='profile'&&<ProfileTab user={user} onLogout={()=>{setUser(null);setPhase('auth');setCart({});}}/>}
       </div>
-      <div className="nr">
-        <div className="nwallet" onClick={()=>setWalletOpen(true)}><div className="nwdot"/><span className="fd" style={{fontSize:13}}>₹{walletBal.toLocaleString('en-IN')}</span></div>
-        <span className="nhi">Hi, {(user.name||'').split(' ')[0]} 👋</span>
-        <div className="ncart" onClick={()=>setCartOpen(true)}>🛒{totalQty>0&&<span className="ncb" key={totalQty}>{totalQty}</span>}</div>
-      </div>
-    </nav>
-    <div style={{flex:1,position:'relative',zIndex:1}}>
-      {page==='menu'&&<MenuScreen cart={cart} setCart={setCart} showToast={showToast}/>}
-      {page==='orders'&&<OrdersScreen/>}
-      {page==='profile'&&<ProfileScreen user={user} onLogout={logout} showToast={showToast} walletBal={walletBal} setWalletBal={setWalletBal}/>}
-    </div>
-    <Cart cart={cart} setCart={setCart} open={cartOpen} onClose={()=>setCartOpen(false)} showToast={showToast} walletBal={walletBal} setWalletBal={setWalletBal} onOpenWallet={()=>setWalletOpen(true)}/>
-    {walletOpen&&<WalletModal showToast={showToast} onClose={()=>setWalletOpen(false)} onSuccess={amt=>{setWalletBal(b=>b+amt);setWalletOpen(false);setSuccess({type:'recharge',amount:amt,transactionId:`TXN-${Date.now()}`});}}/>}
-    {success&&<SuccessOverlay data={success} onClose={()=>setSuccess(null)}/>}
-    <div className="bnav">
-      <div className="bnavrow">
-        {NAV.map(n=><div key={n.id} className={`bi ${page===n.id?'on':''}`} onClick={()=>setPage(n.id)}><div className="biico">{n.ico}</div><span>{n.lbl}</span></div>)}
-        <div className="bi" onClick={()=>setCartOpen(true)}>
-          <div className="biico" style={{position:'relative'}}>🛒{totalQty>0&&<span style={{position:'absolute',top:-6,right:-6,background:'var(--brand)',color:'#fff',borderRadius:'50%',width:14,height:14,fontSize:8,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,border:'2px solid var(--bg)'}}>{totalQty}</span>}</div>
-          <span>Cart</span>
+
+      {/* Cart FAB — show on home/menu tabs when cart has items */}
+      {cartCount>0 && (tab==='home'||tab==='menu') && (
+        <div className="cart-fab" onClick={()=>setTab('cart')}>
+          <div className="cart-fab-left">
+            <div className="cart-count-badge">{cartCount}</div>
+            <span className="cart-fab-label">{cartCount} item{cartCount>1?'s':''} · View Cart</span>
+          </div>
+          <span className="cart-fab-price">{fmt(cartTotal)}</span>
         </div>
+      )}
+
+      {/* Bottom Nav */}
+      <div className="bottom-nav">
+        {NAV.map(n=>(
+          <button key={n.id} className={`nav-item${tab===n.id?' active':''}`} onClick={()=>setTab(n.id)}>
+            <i className={`fas ${n.icon}`}/>
+            <span>{n.label}</span>
+            <div className="nav-indicator"/>
+          </button>
+        ))}
       </div>
+
+      {toast&&<Toast msg={toast} onDone={()=>setToast(null)}/>}
     </div>
-  </>;
+  );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
 </script>
 </body>
 </html>
