@@ -146,7 +146,6 @@
 <body>
 <div class="build-marker">UI BUILD 2026-04-01-ui-r5</div>
 <div id="root"></div>
-<script type="text/babel">
 
 const { useState, useEffect, useCallback } = React;
 const BUILD_VERSION = '2026-04-01-ui-r5';
@@ -154,542 +153,745 @@ const BUILD_VERSION = '2026-04-01-ui-r5';
 // ── API client ────────────────────────────────────────────────────────────────
 const API = window.location.hostname === 'localhost' ? 'http://localhost:8080' : '';
 
-async function api(path, opts = {}) {
+async function api(path, opts={}){
   const token = localStorage.getItem('token');
-  const res = await fetch(API + path, {
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opts.headers },
+  const res = await fetch(BASE+path,{
+    headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{}),...(opts.headers||{})},
     ...opts
   });
-  if (res.status === 401) { localStorage.clear(); window.location.reload(); }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || 'Something went wrong');
+  if(res.status===401){localStorage.clear();window.location.reload();}
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.message||'Error');
   return data;
 }
 
-// ── Sample data (shown when backend returns empty) ────────────────────────────
-const SAMPLE_MENU = [
-  { id:1, name:'Masala Dosa', category:'South Indian', price:55, description:'Crispy rice crepe with spiced potato filling', emoji:'🫓', isVeg:true, rating:4.5, preparationTime:10, image:'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=900&q=80' },
-  { id:2, name:'Poha', category:'Breakfast', price:35, description:'Flattened rice with veggies and spices', emoji:'🍚', isVeg:true, rating:4.2, preparationTime:8, image:'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=80' },
-  { id:3, name:'Idli Sambar', category:'South Indian', price:45, description:'Soft steamed rice cakes with sambar and chutney', emoji:'⚪', isVeg:true, rating:4.7, preparationTime:5, image:'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=900&q=80' },
-  { id:4, name:'Veg Biryani', category:'Rice', price:95, description:'Fragrant basmati rice cooked with mixed vegetables', emoji:'🍛', isVeg:true, rating:4.4, preparationTime:20, image:'https://images.unsplash.com/photo-1701579231378-372ea3c7ca87?auto=format&fit=crop&w=900&q=80' },
-  { id:5, name:'Chicken Biryani', category:'Rice', price:130, description:'Aromatic basmati with tender chicken pieces', emoji:'🍗', isVeg:false, rating:4.8, preparationTime:25, image:'https://images.unsplash.com/photo-1633945274309-2c16c9682a8b?auto=format&fit=crop&w=900&q=80' },
-  { id:6, name:'Dal Tadka', category:'Dal', price:65, description:'Yellow lentils tempered with ghee and spices', emoji:'🍲', isVeg:true, preparationTime:12, image:'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80' },
-  { id:7, name:'Paneer Butter Masala', category:'Curry', price:110, description:'Soft paneer in rich tomato-butter gravy', emoji:'🧀', isVeg:true, rating:4.6, preparationTime:15, image:'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=900&q=80' },
-  { id:8, name:'Filter Coffee', category:'Beverages', price:25, description:'Freshly brewed South Indian filter coffee', emoji:'☕', isVeg:true, rating:4.9, preparationTime:3, image:'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80' },
-  { id:9, name:'Masala Chai', category:'Beverages', price:20, description:'Ginger spiced milk tea', emoji:'🍵', isVeg:true, rating:4.8, preparationTime:3, image:'https://images.unsplash.com/photo-1597318181409-cf64d0b5d8a2?auto=format&fit=crop&w=900&q=80' },
-  { id:10, name:'Veg Sandwich', category:'Snacks', price:50, description:'Grilled sandwich with seasonal veggies and cheese', emoji:'🥪', isVeg:true, rating:4.3, preparationTime:7, image:'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=900&q=80' },
-  { id:11, name:'Samosa (2 pcs)', category:'Snacks', price:30, description:'Crispy pastry filled with spiced potatoes', emoji:'🥟', isVeg:true, rating:4.5, preparationTime:5, image:'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=80' },
-  { id:12, name:'Gulab Jamun', category:'Desserts', price:40, description:'Soft milk-solid dumplings in sugar syrup', emoji:'🍮', isVeg:true, rating:4.7, preparationTime:5, image:'https://images.unsplash.com/photo-1611293388250-580b08c4a145?auto=format&fit=crop&w=900&q=80' },
+const MENU = [
+  {id:1,name:'Masala Dosa',category:'South Indian',price:55,description:'Crispy rice crepe with spiced potato filling',emoji:'🫓',isVeg:true,rating:4.5,preparationTime:10,image:'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=800&q=80'},
+  {id:2,name:'Poha',category:'Breakfast',price:35,description:'Flattened rice with veggies and spices',emoji:'🍚',isVeg:true,rating:4.2,preparationTime:8,image:'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&q=80'},
+  {id:3,name:'Idli Sambar',category:'South Indian',price:45,description:'Soft steamed rice cakes with sambar',emoji:'⚪',isVeg:true,rating:4.7,preparationTime:5,image:'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=800&q=80'},
+  {id:4,name:'Veg Biryani',category:'Rice',price:95,description:'Fragrant basmati with mixed vegetables',emoji:'🍛',isVeg:true,rating:4.4,preparationTime:20,image:'https://images.unsplash.com/photo-1701579231378-372ea3c7ca87?w=800&q=80'},
+  {id:5,name:'Chicken Biryani',category:'Rice',price:130,description:'Aromatic basmati with tender chicken',emoji:'🍗',isVeg:false,rating:4.8,preparationTime:25,image:'https://images.unsplash.com/photo-1633945274309-2c16c9682a8b?w=800&q=80'},
+  {id:6,name:'Dal Tadka',category:'Dal',price:65,description:'Yellow lentils tempered with ghee',emoji:'🍲',isVeg:true,rating:4.3,preparationTime:12,image:'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&q=80'},
+  {id:7,name:'Paneer Butter Masala',category:'Curry',price:110,description:'Soft paneer in rich tomato-butter gravy',emoji:'🧀',isVeg:true,rating:4.6,preparationTime:15,image:'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&q=80'},
+  {id:8,name:'Filter Coffee',category:'Beverages',price:25,description:'Freshly brewed South Indian coffee',emoji:'☕',isVeg:true,rating:4.9,preparationTime:3,image:'https://images.unsplash.com/photo-1511920170033-f8396924c348?w=800&q=80'},
+  {id:9,name:'Masala Chai',category:'Beverages',price:20,description:'Ginger spiced milk tea',emoji:'🍵',isVeg:true,rating:4.8,preparationTime:3,image:'https://images.unsplash.com/photo-1597318181409-cf64d0b5d8a2?w=800&q=80'},
+  {id:10,name:'Veg Sandwich',category:'Snacks',price:50,description:'Grilled sandwich with seasonal veggies',emoji:'🥪',isVeg:true,rating:4.3,preparationTime:7,image:'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=800&q=80'},
+  {id:11,name:'Samosa (2 pcs)',category:'Snacks',price:30,description:'Crispy pastry with spiced potatoes',emoji:'🥟',isVeg:true,rating:4.5,preparationTime:5,image:'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800&q=80'},
+  {id:12,name:'Gulab Jamun',category:'Desserts',price:40,description:'Soft dumplings in sugar syrup',emoji:'🍮',isVeg:true,rating:4.7,preparationTime:5,image:'https://images.unsplash.com/photo-1611293388250-580b08c4a145?w=800&q=80'},
+  {id:13,name:'Margherita Pizza',category:'Pizza',price:149,description:'Classic thin crust with mozzarella',emoji:'🍕',isVeg:true,rating:4.6,preparationTime:14,image:'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=800&q=80'},
+  {id:14,name:'Test Item',category:'Snacks',price:1,description:'₹1 item for payment verification',emoji:'🧪',isVeg:true,rating:5.0,preparationTime:1,image:'https://images.unsplash.com/photo-1546549032-9571cd6b27df?w=800&q=80'},
 ];
+const CATS = ['All','Breakfast','South Indian','Rice','Curry','Dal','Snacks','Beverages','Desserts','Pizza'];
 
-const CATEGORIES = ['All', 'Breakfast', 'South Indian', 'Rice', 'Curry', 'Dal', 'Snacks', 'Beverages', 'Desserts'];
-const SPECIALS = [
-  { title:'Breakfast Combo', subtitle:'Idli + Filter Coffee', price:'₹59' },
-  { title:'Executive Lunch', subtitle:'Biryani + Dessert', price:'₹149' },
-  { title:'Evening Saver', subtitle:'Chai + Samosa', price:'₹45' },
-];
-
-// ── Toast ─────────────────────────────────────────────────────────────────────
+/* ── Toast ── */
 let toastTimer;
-function Toast({ msg, type }) {
-  return msg ? <div className={`toast toast-${type}`}><i className={`fa ${type==='success'?'fa-check-circle':'fa-exclamation-circle'}`} style={{marginRight:8}}/>{msg}</div> : null;
+function Toast({msg,type}){
+  if(!msg) return null;
+  const cls = type==='success'?'toast-s':type==='error'?'toast-e':'toast-i';
+  const icon = type==='success'?'✓':type==='error'?'✕':'ℹ';
+  return <div className={`toast ${cls}`}><span>{icon}</span>{msg}</div>;
 }
 
-// ── Auth Screen ───────────────────────────────────────────────────────────────
-function AuthScreen({ onLogin }) {
-  const [mode, setMode] = useState('login');
-  const [form, setForm] = useState({ name:'', email:'', password:'', phone:'' });
-  const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState(null);
-  const [error, setError] = useState('');
+/* ── Menu card ── */
+function MCard({item,qty,onAdd,onRemove,delay}){
+  return <div className="mcard" style={{animationDelay:`${delay}ms`}}>
+    <div className="img-wrap">
+      {item.image ? <img className="mcard-img" src={item.image} alt={item.name} loading="lazy"/>
+        : <div className="img-placeholder">{item.emoji}</div>}
+      <div className="img-tags">
+        <span className={`tag ${item.isVeg?'tag-veg':'tag-nonveg'}`}>{item.isVeg?'Veg':'Non-Veg'}</span>
+        {item.rating>=4.7 && <span className="tag tag-hot">Top Pick</span>}
+      </div>
+    </div>
+    <div className="mcard-body">
+      <div className="mcard-top">
+        {item.rating && <span className="mcard-rating">★ {item.rating}</span>}
+        {item.preparationTime && <span className="mcard-time">⏱ {item.preparationTime}m</span>}
+      </div>
+      <div className="mcard-name font-display">{item.name}</div>
+      <div className="mcard-desc">{item.description}</div>
+      <div className="mcard-footer">
+        <div className="mcard-price font-display"><sup>₹</sup>{item.price}</div>
+        {qty===0
+          ? <button className="add-btn" onClick={()=>onAdd(item)}>+</button>
+          : <div className="qty-row">
+              <button className="qty-btn" onClick={()=>onRemove(item.id)}>−</button>
+              <span className="qty-num">{qty}</span>
+              <button className="qty-btn" onClick={()=>onAdd(item)}>+</button>
+            </div>
+        }
+      </div>
+    </div>
+  </div>;
+}
 
-  const showToast = (msg, type='success') => {
-    setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+/* ── Menu Screen ── */
+function MenuScreen({cart,setCart,showToast,walletBal}){
+  const [items,setItems] = useState([]);
+  const [filtered,setFiltered] = useState([]);
+  const [cat,setCat] = useState('All');
+  const [search,setSearch] = useState('');
+  const [loading,setLoading] = useState(true);
+  const [lastTxn] = useState(()=>{try{return JSON.parse(localStorage.getItem('qb_last_txn')||'null')}catch{return null}});
+
+  useEffect(()=>{
+    api('/api/v1/menu').then(d=>{
+      const list = Array.isArray(d)?d:(d.content||d.items||MENU);
+      setItems(list.length?list:MENU);
+    }).catch(()=>setItems(MENU)).finally(()=>setLoading(false));
+  },[]);
+
+  useEffect(()=>{
+    let f = items;
+    if(cat!=='All') f = f.filter(i=>i.category===cat);
+    if(search) f = f.filter(i=>i.name.toLowerCase().includes(search.toLowerCase()));
+    setFiltered(f);
+  },[items,cat,search]);
+
+  const getQty = id=>(cart.find(c=>c.id===id)||{qty:0}).qty;
+  const add = item=>{
+    setCart(c=>{const e=c.find(x=>x.id===item.id);return e?c.map(x=>x.id===item.id?{...x,qty:x.qty+1}:x):[...c,{...item,qty:1}]});
+    showToast(`${item.name} added`,'success');
+  };
+  const remove = id=>setCart(c=>c.map(x=>x.id===id?{...x,qty:x.qty-1}:x).filter(x=>x.qty>0));
+
+  if(loading) return <div className="spinner-wrap"><div className="spinner"/></div>;
+
+  return <div style={{position:'relative',zIndex:1}}>
+    {/* Hero */}
+    <div className="hero">
+      <div className="hero-inner">
+        <div className="hero-badge">
+          <div className="hero-badge-dot"/>
+          <span>Live Counter • 8 AM – 8 PM</span>
+        </div>
+        <h1 className="hero-title font-display">Order fresh,<br/><em>eat brilliant</em></h1>
+        <p className="hero-sub">Cashless café for the modern workplace.</p>
+        <div className="search-bar">
+          <span className="search-icon">🔍</span>
+          <input placeholder="Search biryani, dosa, coffee…" value={search} onChange={e=>setSearch(e.target.value)}/>
+        </div>
+        <div className="hero-stats">
+          <div className="stat"><div className="stat-val">12 min</div><div className="stat-lbl">Avg prep</div></div>
+          <div className="stat"><div className="stat-val">4.8 ★</div><div className="stat-lbl">Rating</div></div>
+          <div className="stat"><div className="stat-val">100%</div><div className="stat-lbl">Cashless</div></div>
+        </div>
+      </div>
+    </div>
+
+    {/* Categories */}
+    <div className="cats">
+      {CATS.map(c=><div key={c} className={`cat ${cat===c?'active':''}`} onClick={()=>setCat(c)}>{c}</div>)}
+    </div>
+
+    {/* Last txn strip */}
+    {lastTxn && <div style={{margin:'14px 20px 0',padding:'10px 14px',borderRadius:'var(--r)',background:'var(--surface2)',border:'1px solid var(--border)',fontSize:12,color:'var(--muted)',display:'flex',alignItems:'center',gap:8}}>
+      <span style={{width:7,height:7,borderRadius:'50%',background:'var(--green)',display:'inline-block'}}/>
+      Last payment: <strong style={{color:'var(--text)'}}>{lastTxn.status}</strong> · Txn {lastTxn.transactionId||'–'} · ₹{lastTxn.amount||0}
+    </div>}
+
+    {/* Grid */}
+    <div className="menu-wrap">
+      <div style={{fontSize:12,color:'var(--hint)',marginBottom:14}}>{filtered.length} items</div>
+      <div className="grid">
+        {filtered.map((item,i)=><MCard key={item.id} item={item} qty={getQty(item.id)} onAdd={add} onRemove={remove} delay={i*35}/>)}
+      </div>
+    </div>
+  </div>;
+}
+
+/* ── Orders Screen ── */
+function OrdersScreen(){
+  const [orders,setOrders] = useState([]);
+  const [loading,setLoading] = useState(true);
+  const SAMPLE = [
+    {id:'QB240001',createdAt:'2024-03-20T09:30:00',status:'DELIVERED',totalAmount:130,items:[{name:'Masala Dosa',qty:2,price:55},{name:'Filter Coffee',qty:2,price:25}]},
+    {id:'QB240002',createdAt:'2024-03-20T13:15:00',status:'PREPARING',totalAmount:95,items:[{name:'Veg Biryani',qty:1,price:95}]},
+    {id:'QB240003',createdAt:'2024-03-19T10:00:00',status:'DELIVERED',totalAmount:185,items:[{name:'Chicken Biryani',qty:1,price:130},{name:'Masala Chai',qty:2,price:20}]},
+  ];
+  useEffect(()=>{
+    api('/api/v1/orders').then(d=>{const l=Array.isArray(d)?d:(d.content||[]);setOrders(l.length?l:SAMPLE)}).catch(()=>setOrders(SAMPLE)).finally(()=>setLoading(false));
+  },[]);
+  const sc = s=>({DELIVERED:'s-delivered',PREPARING:'s-preparing',READY:'s-ready',CANCELLED:'s-cancelled'}[s]||'s-preparing');
+  if(loading) return <div className="spinner-wrap"><div className="spinner"/></div>;
+  return <div className="orders-page">
+    <div className="page-h font-display">My Orders</div>
+    {orders.length===0
+      ? <div style={{textAlign:'center',padding:'60px 20px',color:'var(--hint)'}}>
+          <div style={{fontSize:52,marginBottom:12}}>📋</div>
+          <p style={{fontSize:14}}>No orders yet</p>
+        </div>
+      : orders.map((o,i)=><div key={o.id} className="order-card" style={{animationDelay:`${i*60}ms`}}>
+          <div className="order-hd">
+            <div><div className="order-num font-display">#{o.id}</div><div className="order-date">{new Date(o.createdAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>
+            <span className={`status ${sc(o.status)}`}>{o.status}</span>
+          </div>
+          <div className="order-items">
+            {(o.items||[]).map((it,j)=><div key={j} className="oi-row"><span>{it.name} × {it.qty||it.quantity}</span><span>₹{it.price*(it.qty||it.quantity)}</span></div>)}
+          </div>
+          <div className="order-foot"><span>Total</span><span className="order-tot font-display">₹{o.totalAmount}</span></div>
+        </div>)
+    }
+  </div>;
+}
+
+/* ── Wallet Recharge Modal ── */
+function WalletModal({onClose,onSuccess,showToast}){
+  const PRESETS = [
+    {amount:100,bonus:null},{amount:200,bonus:null},{amount:500,bonus:'+₹25 bonus'},
+    {amount:1000,bonus:'+₹75 bonus'},{amount:2000,bonus:'+₹200 bonus'},{amount:5000,bonus:'+₹600 bonus'},
+  ];
+  const [sel,setSel] = useState(500);
+  const [custom,setCustom] = useState('');
+  const [method,setMethod] = useState('UPI');
+  const [loading,setLoading] = useState(false);
+  const finalAmt = custom ? parseInt(custom)||0 : sel;
+
+  const doRecharge = async()=>{
+    if(finalAmt<10){showToast('Minimum recharge ₹10','error');return;}
+    setLoading(true);
+    try{
+      await api('/api/v1/payments/wallet/topup',{method:'POST',body:JSON.stringify({userId:'demo',amount:finalAmt,paymentMethod:method})});
+    }catch{}
+    await new Promise(r=>setTimeout(r,1200));
+    setLoading(false);
+    onSuccess(finalAmt);
   };
 
-  const handle = async (e) => {
-    e.preventDefault(); setError(''); setLoading(true);
-    try {
+  return <div className="modal-bg" onClick={onClose}>
+    <div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-handle"/>
+      <div className="modal-title-bar">
+        <div>
+          <div className="modal-title font-display">Recharge Wallet</div>
+          <div className="modal-sub">Instant top-up · No transaction fee</div>
+        </div>
+        <button className="close-x" onClick={onClose}>✕</button>
+      </div>
+      <div className="modal-body">
+        {/* Preset amounts */}
+        <div className="recharge-amounts">
+          {PRESETS.map(p=><div key={p.amount} className={`ra-btn ${!custom&&sel===p.amount?'ra-sel':''}`}
+            onClick={()=>{setSel(p.amount);setCustom('');}}>
+            <div className="ra-amount font-display">₹{p.amount}</div>
+            {p.bonus && <div className={`ra-bonus ${p.amount>=500?'hot':''}`}>{p.bonus}</div>}
+          </div>)}
+        </div>
+
+        {/* Custom amount */}
+        <div className="recharge-custom">
+          <label>Or enter custom amount</label>
+          <div className="recharge-input-wrap">
+            <span className="recharge-rupee">₹</span>
+            <input className="recharge-input" type="number" placeholder="0" value={custom}
+              onChange={e=>{setCustom(e.target.value);if(e.target.value) setSel(0);}}/>
+          </div>
+        </div>
+
+        {/* Payment method */}
+        <div style={{marginBottom:8,fontSize:12,color:'var(--muted)',fontWeight:600,letterSpacing:'.3px'}}>PAY VIA</div>
+        <div className="recharge-pay-methods">
+          {[{id:'UPI',icon:'📱',label:'UPI'},{id:'CARD',icon:'💳',label:'Card'},{id:'NET_BANKING',icon:'🏦',label:'NetBanking'}].map(m=><div key={m.id} className={`rpm ${method===m.id?'rpm-sel':''}`} onClick={()=>setMethod(m.id)}>
+            <div className="rpm-icon">{m.icon}</div>
+            <div className="rpm-label">{m.label}</div>
+          </div>)}
+        </div>
+
+        {/* Summary */}
+        <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--r)',padding:'12px 14px',marginBottom:14}}>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:6}}>
+            <span style={{color:'var(--muted)'}}>Recharge amount</span>
+            <span style={{fontWeight:700}}>₹{finalAmt}</span>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:6}}>
+            <span style={{color:'var(--muted)'}}>Transaction fee</span>
+            <span style={{color:'var(--green)',fontWeight:600}}>Free</span>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:14,fontWeight:700,borderTop:'1px solid var(--border)',paddingTop:8,marginTop:8}}>
+            <span>You get</span>
+            <span style={{color:'var(--gold)',fontFamily:"'Syne',sans-serif",fontSize:16}}>
+              ₹{finalAmt}{finalAmt>=500?` + ₹${finalAmt>=5000?600:finalAmt>=2000?200:finalAmt>=1000?75:25} bonus`:''}
+            </span>
+          </div>
+        </div>
+
+        <button className="recharge-btn font-display" onClick={doRecharge} disabled={loading||finalAmt<10}>
+          {loading ? '⏳ Processing…' : `Recharge ₹${finalAmt}`}
+        </button>
+      </div>
+    </div>
+  </div>;
+}
+
+/* ── Payment Gateway Modal ── */
+function PayGateway({total,method,onClose,onSuccess,showToast}){
+  const [cardNum,setCardNum] = useState('');
+  const [cardExp,setCardExp] = useState('');
+  const [cardCvv,setCvv] = useState('');
+  const [cardName,setCardName] = useState('');
+  const [bank,setBank] = useState('');
+  const [upiSent,setUpiSent] = useState(false);
+  const [loading,setLoading] = useState(false);
+  const upiLink = `upi://pay?pa=${encodeURIComponent(MERCHANT_UPI)}&pn=QwikBrew&am=${total}&cu=INR&tn=QwikBrew%20order`;
+
+  const BANKS = [{id:'sbi',icon:'🏛️',name:'SBI'},{id:'hdfc',icon:'🔵',name:'HDFC'},{id:'icici',icon:'🟠',name:'ICICI'},{id:'axis',icon:'🟣',name:'Axis'}];
+
+  const handlePay = async()=>{
+    if(method==='UPI' && !upiSent){
+      try{
+        await api('/api/v1/payments/upi/collect',{method:'POST',body:JSON.stringify({userId:'demo',amount:total,upiId:MERCHANT_UPI,reference:`UPI-${Date.now()}`})});
+      }catch{}
+      setUpiSent(true);
+      window.location.href = upiLink;
+      showToast('Opening UPI app…','info');
+      return;
+    }
+    if(method==='CARD'){
+      if(!cardNum||!cardExp||!cardCvv||!cardName){showToast('Fill all card details','error');return;}
+    }
+    if(method==='NET_BANKING' && !bank){showToast('Select a bank','error');return;}
+
+    setLoading(true);
+    try{
+      await api('/api/v1/payments/charge',{method:'POST',body:JSON.stringify({userId:'demo',amount:total,paymentMethod:method,reference:`REF-${Date.now()}`})});
+    }catch{}
+    await new Promise(r=>setTimeout(r,1400));
+    setLoading(false);
+    onSuccess({method,amount:total,transactionId:`TXN-${Date.now()}`,reference:`REF-${Date.now()}`});
+  };
+
+  const btnCls = {UPI:'upi-col',WALLET:'wallet-col',CARD:'card-col',NET_BANKING:'nb-col'}[method]||'upi-col';
+
+  const cardVisualClass = {UPI:'upi-card',WALLET:'wallet-card-v',CARD:'card-v',NET_BANKING:'nb-card'}[method]||'upi-card';
+
+  return <div className="modal-bg" onClick={onClose}>
+    <div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-handle"/>
+      <div className="modal-title-bar">
+        <div>
+          <div className="modal-title font-display">
+            {method==='UPI'?'UPI Payment':method==='CARD'?'Card Payment':method==='NET_BANKING'?'Net Banking':'Wallet Payment'}
+          </div>
+          <div className="modal-sub">Secured · End-to-end encrypted</div>
+        </div>
+        <button className="close-x" onClick={onClose}>✕</button>
+      </div>
+      <div className="modal-body">
+        {/* Animated payment card visual */}
+        <div className={`pay-card-visual ${cardVisualClass}`}>
+          <div className="card-shine"/>
+          {method==='CARD' && <>
+            <div className="card-chip"/>
+            <div className="card-logo">💳</div>
+            <div className="card-num">{cardNum ? cardNum.replace(/(.{4})/g,'$1 ').trim() : '•••• •••• •••• ••••'}</div>
+            <div className="card-label">CARD NUMBER</div>
+            <div className="card-network">VISA / MC</div>
+          </>}
+          {method==='UPI' && <>
+            <div className="card-amount">
+              <div className="card-amount-label">AMOUNT TO PAY</div>
+              <div className="card-amount-val">₹{total}</div>
+            </div>
+            <div style={{position:'absolute',bottom:16,left:18,fontSize:12,opacity:.5,fontWeight:600}}>UPI · {MERCHANT_UPI.slice(0,14)}…</div>
+            <div style={{position:'absolute',top:16,right:18,fontSize:20,opacity:.6}}>📱</div>
+          </>}
+          {method==='NET_BANKING' && <>
+            <div className="card-amount">
+              <div className="card-amount-label">AMOUNT TO PAY</div>
+              <div className="card-amount-val">₹{total}</div>
+            </div>
+            <div style={{position:'absolute',bottom:16,left:18,fontSize:12,opacity:.5,fontWeight:600}}>NET BANKING</div>
+            <div style={{position:'absolute',top:16,right:18,fontSize:20,opacity:.6}}>🏦</div>
+          </>}
+        </div>
+
+        {/* UPI section */}
+        {method==='UPI' && <>
+          <div className="upi-id-bar">
+            <div>
+              <div style={{fontSize:11,color:'var(--muted)',marginBottom:3}}>PAY TO UPI ID</div>
+              <div className="upi-id-val">{MERCHANT_UPI}</div>
+            </div>
+            <div className="upi-id-copy" onClick={()=>{navigator.clipboard?.writeText(MERCHANT_UPI);showToast('Copied!','success');}}>Copy</div>
+          </div>
+          <div style={{marginBottom:10,fontSize:12,color:'var(--muted)',fontWeight:600,letterSpacing:'.3px'}}>PAY WITH APP</div>
+          <div className="upi-apps">
+            {[{name:'PhonePe',icon:'💜'},{name:'GPay',icon:'🟢'},{name:'Paytm',icon:'🔵'},{name:'BHIM',icon:'🟡'}].map(a=><div key={a.name} className="upi-app" onClick={()=>{window.location.href=upiLink;showToast(`Opening ${a.name}…`,'info');}}>
+              <div className="upi-app-icon">{a.icon}</div>
+              <div className="upi-app-name">{a.name}</div>
+            </div>)}
+          </div>
+          {upiSent && <div className="qr-wrap">
+            <img className="qr-img" src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}&bgcolor=1C1C22&color=FF6B35`} alt="QR"/>
+            <div className="qr-hint">Scan with any UPI app</div>
+          </div>}
+        </>}
+
+        {/* Card section */}
+        {method==='CARD' && <>
+          <div className="card-field">
+            <label>CARD NUMBER</label>
+            <input className="card-input" placeholder="1234 5678 9012 3456" maxLength={19}
+              value={cardNum} onChange={e=>setCardNum(e.target.value.replace(/[^\d]/g,'').replace(/(.{4})/g,'$1 ').trim())}/>
+          </div>
+          <div className="card-field">
+            <label>CARDHOLDER NAME</label>
+            <input className="card-input" placeholder="Name on card" value={cardName} onChange={e=>setCardName(e.target.value)}/>
+          </div>
+          <div className="card-row">
+            <div className="card-field">
+              <label>EXPIRY</label>
+              <input className="card-input" placeholder="MM / YY" maxLength={7}
+                value={cardExp} onChange={e=>{let v=e.target.value.replace(/[^\d]/g,'');if(v.length>=3)v=v.slice(0,2)+' / '+v.slice(2);setCardExp(v);}}/>
+            </div>
+            <div className="card-field">
+              <label>CVV</label>
+              <input className="card-input" placeholder="•••" maxLength={3} type="password"
+                value={cardCvv} onChange={e=>setCvv(e.target.value.replace(/[^\d]/g,''))}/>
+            </div>
+          </div>
+        </>}
+
+        {/* Net Banking */}
+        {method==='NET_BANKING' && <>
+          <div style={{marginBottom:10,fontSize:12,color:'var(--muted)',fontWeight:600,letterSpacing:'.3px'}}>SELECT BANK</div>
+          <div className="bank-grid">
+            {BANKS.map(b=><div key={b.id} className={`bank-btn ${bank===b.id?'sel-bank':''}`} onClick={()=>setBank(b.id)}>
+              <div className="bank-icon">{b.icon}</div>
+              <div className="bank-name">{b.name}</div>
+            </div>)}
+          </div>
+          <div className="card-field">
+            <label>OR ENTER BANK NAME</label>
+            <input className="card-input" placeholder="Enter your bank…" value={bank==='custom'?'':bank} onChange={e=>setBank(e.target.value)}/>
+          </div>
+        </>}
+
+        {/* Amount summary */}
+        <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--r)',padding:'12px 14px',marginBottom:14}}>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:14,fontWeight:700}}>
+            <span style={{color:'var(--muted)'}}>Amount payable</span>
+            <span style={{fontFamily:"'Syne',sans-serif",fontSize:18,color:'var(--brand)'}}>₹{total}</span>
+          </div>
+        </div>
+
+        <button className={`pay-confirm-btn ${btnCls} font-display`} onClick={handlePay} disabled={loading}>
+          {loading ? '⏳ Processing payment…'
+            : method==='UPI' && !upiSent ? `Send ₹${total} via UPI`
+            : method==='UPI' ? `Confirm payment ₹${total}`
+            : `Pay ₹${total}`}
+        </button>
+      </div>
+    </div>
+  </div>;
+}
+
+/* ── Success overlay ── */
+function SuccessOverlay({data,onClose}){
+  return <div className="success-overlay">
+    <div className="success-card">
+      <div className="success-ring"/>
+      <div className="success-ring" style={{animationDelay:'.3s'}}/>
+      <div className="success-icon">✓</div>
+      <div className="success-title font-display">{data.type==='recharge'?'Wallet Recharged!':'Payment Successful!'}</div>
+      <div className="success-sub">{data.type==='recharge'?`₹${data.amount} added to your wallet`:`Order placed successfully`}</div>
+      <div className="success-detail">
+        {data.transactionId && <div className="success-row"><span className="success-row-label">Txn ID</span><span className="success-row-val">{data.transactionId.slice(-12)}</span></div>}
+        <div className="success-row"><span className="success-row-label">Amount</span><span className="success-row-val" style={{color:'var(--brand)'}}>₹{data.amount}</span></div>
+        {data.method && <div className="success-row"><span className="success-row-label">Method</span><span className="success-row-val">{data.method.replace('_',' ')}</span></div>}
+        <div className="success-row"><span className="success-row-label">Status</span><span className="success-row-val" style={{color:'var(--green)'}}>SUCCESS</span></div>
+      </div>
+      <button className="success-close font-display" onClick={onClose}>
+        {data.type==='recharge'?'Back to Wallet':'View Orders'}
+      </button>
+    </div>
+  </div>;
+}
+
+/* ── Cart ── */
+function Cart({cart,setCart,open,onClose,showToast,walletBal,setWalletBal,onOpenWallet}){
+  const [payMethod,setPayMethod] = useState('WALLET');
+  const [gatewayOpen,setGatewayOpen] = useState(false);
+  const [placing,setPlacing] = useState(false);
+  const [success,setSuccess] = useState(null);
+  const total = cart.reduce((s,i)=>s+i.price*i.qty,0);
+
+  const addItem = id=>setCart(c=>c.map(x=>x.id===id?{...x,qty:x.qty+1}:x));
+  const remItem = id=>setCart(c=>c.map(x=>x.id===id?{...x,qty:x.qty-1}:x).filter(x=>x.qty>0));
+
+  const placeOrder = async()=>{
+    if(payMethod==='WALLET'){
+      if(walletBal<total){showToast(`Insufficient balance. Have ₹${walletBal}`,'error');return;}
+      setPlacing(true);
+      try{
+        await api('/api/v1/orders',{method:'POST',body:JSON.stringify({userId:'demo',items:cart.map(i=>({menuItemId:i.id,menuItemName:i.name,quantity:i.qty,unitPrice:i.price})),totalAmount:total,paymentMethod:'WALLET'})});
+      }catch{}
+      const txnId = `TXN-${Date.now()}`;
+      setWalletBal(b=>b-total);
+      localStorage.setItem('qb_last_txn',JSON.stringify({status:'SUCCESS',transactionId:txnId,amount:total,method:'WALLET'}));
+      setPlacing(false);
+      setSuccess({type:'order',amount:total,method:'WALLET',transactionId:txnId});
+      setCart([]);
+    } else {
+      setGatewayOpen(true);
+    }
+  };
+
+  const onGatewaySuccess = (data)=>{
+    setGatewayOpen(false);
+    localStorage.setItem('qb_last_txn',JSON.stringify({status:'SUCCESS',...data}));
+    setSuccess({type:'order',...data});
+    setCart([]);
+  };
+
+  const METHODS = [{id:'WALLET',icon:'👛',label:'Wallet'},{id:'UPI',icon:'📱',label:'UPI'},{id:'CARD',icon:'💳',label:'Card'},{id:'NET_BANKING',icon:'🏦',label:'NetBanking'}];
+
+  return <>
+    {open && <div className="overlay" onClick={onClose}/>}
+    <div className={`cart ${open?'open':''}`}>
+      <div className="cart-head">
+        <h3 className="font-display">Your Cart <span style={{fontWeight:400,fontSize:14,color:'var(--muted)'}}>({cart.length})</span></h3>
+        <button className="close-x" onClick={onClose}>✕</button>
+      </div>
+      <div className="cart-body">
+        {cart.length===0
+          ? <div className="cart-empty-wrap"><span>🛒</span><p>Your cart is empty.<br/>Add something delicious!</p></div>
+          : cart.map(item=><div key={item.id} className="c-item">
+              <div className="c-item-emoji">{item.emoji||'🍽️'}</div>
+              <div className="c-item-info">
+                <div className="c-item-name">{item.name}</div>
+                <div className="c-item-price">₹{item.price} × {item.qty} = ₹{item.price*item.qty}</div>
+              </div>
+              <div className="qty-row">
+                <button className="qty-btn" style={{width:28,height:28,fontSize:14}} onClick={()=>remItem(item.id)}>−</button>
+                <span className="qty-num" style={{fontSize:13}}>{item.qty}</span>
+                <button className="qty-btn" style={{width:28,height:28,fontSize:14}} onClick={()=>addItem(item.id)}>+</button>
+              </div>
+            </div>)
+        }
+      </div>
+      {cart.length>0 && <div className="cart-foot">
+        <div className="wallet-mini">
+          <div>
+            <div className="wallet-mini-left">Wallet Balance</div>
+            <div className="wallet-mini-bal font-display">₹{walletBal.toLocaleString('en-IN')}</div>
+          </div>
+          <div className="wallet-mini-add" onClick={()=>{onClose();onOpenWallet();}}>+ Recharge</div>
+        </div>
+        <div className="cart-total">
+          <span style={{fontSize:14,color:'var(--muted)'}}>Total</span>
+          <span className="cart-total-amt font-display">₹{total}</span>
+        </div>
+        <div className="pay-grid">
+          {METHODS.map(m=><div key={m.id} className={`pay-btn ${payMethod===m.id?'sel':''}`} onClick={()=>setPayMethod(m.id)}>
+            <span className="pay-icon">{m.icon}</span>{m.label}
+          </div>)}
+        </div>
+        <button className="order-btn font-display" onClick={placeOrder} disabled={placing}>
+          {placing?'Placing order…':`Pay & Order · ₹${total}`}
+        </button>
+      </div>}
+    </div>
+
+    {gatewayOpen && <PayGateway total={total} method={payMethod} onClose={()=>setGatewayOpen(false)} onSuccess={onGatewaySuccess} showToast={showToast}/>}
+    {success && <SuccessOverlay data={success} onClose={()=>{setSuccess(null);onClose();}}/>}
+  </>;
+}
+
+/* ── Profile ── */
+function ProfileScreen({user,onLogout,showToast,walletBal,setWalletBal}){
+  const [walletOpen,setWalletOpen] = useState(false);
+  const [success,setSuccess] = useState(null);
+  const initials = (user.name||'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+
+  return <div className="profile-page">
+    <div className="profile-hero-bg">
+      <div className="avatar-wrap">
+        <div className="avatar-ring"/>
+        <div className="avatar-inner font-display">{initials}</div>
+      </div>
+      <div className="p-name font-display">{user.name}</div>
+      <div className="p-email">{user.email}</div>
+    </div>
+
+    {/* Wallet card */}
+    <div className="wallet-big">
+      <div className="wb-top">
+        <div className="wb-label">Café Wallet</div>
+        <div className="wb-bal font-display">₹{walletBal.toLocaleString('en-IN')}</div>
+        <div className="wb-user">{user.name}</div>
+      </div>
+      <div className="wb-bottom">
+        <button className="wb-recharge-btn font-display" onClick={()=>setWalletOpen(true)}>
+          <span>＋</span> Recharge Wallet
+        </button>
+        <div className="wb-txns">
+          <div className="wb-stat"><div className="wb-stat-val font-display">₹500</div><div className="wb-stat-lbl">Total spent</div></div>
+          <div className="wb-stat"><div className="wb-stat-val font-display">12</div><div className="wb-stat-lbl">Orders placed</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div className="profile-list">
+      {[
+        {icon:'👤',label:'Edit Profile',action:()=>showToast('Coming soon!','info')},
+        {icon:'🔔',label:'Notifications',action:()=>showToast('All notifications on','success')},
+        {icon:'📜',label:'Transaction History',action:()=>showToast('Coming soon!','info')},
+        {icon:'⭐',label:'Rate QwikBrew',action:()=>showToast('Thanks for the love! ⭐','success')},
+        {icon:'🎧',label:'Help & Support',action:()=>showToast('support@qwikbrew.in','info')},
+      ].map(item=><div key={item.label} className="pl-item" onClick={item.action}>
+        <div className="pl-icon">{item.icon}</div>
+        <div className="pl-text">{item.label}</div>
+        <div className="pl-arrow">›</div>
+      </div>)}
+    </div>
+
+    <button className="logout-btn font-display" onClick={onLogout}>Sign Out</button>
+    <p style={{textAlign:'center',color:'var(--hint)',fontSize:11,paddingBottom:20}}>QwikBrew · Spring Boot 3.5 + React 18 · {BUILD}</p>
+
+    {walletOpen && <WalletModal showToast={showToast} onClose={()=>setWalletOpen(false)}
+      onSuccess={(amt)=>{setWalletBal(b=>b+amt);setWalletOpen(false);setSuccess({type:'recharge',amount:amt});}}/>}
+    {success && <SuccessOverlay data={success} onClose={()=>setSuccess(null)}/>}
+  </div>;
+}
+
+/* ── Auth ── */
+function AuthScreen({onLogin}){
+  const [mode,setMode] = useState('login');
+  const [form,setForm] = useState({name:'',email:'',password:'',phone:''});
+  const [loading,setLoading] = useState(false);
+  const [error,setError] = useState('');
+  const [toast,setToast] = useState(null);
+  const showT = (m,t='success')=>{setToast({msg:m,type:t});setTimeout(()=>setToast(null),3000);};
+
+  const handle = async(e)=>{
+    e.preventDefault();setError('');setLoading(true);
+    try{
       let data;
-      if (mode === 'login') {
-        data = await api('/api/v1/users/login', { method:'POST', body: JSON.stringify({ email: form.email, password: form.password }) });
-      } else {
-        data = await api('/api/v1/users/register', { method:'POST', body: JSON.stringify(form) });
-        showToast('Account created! Please login.');
-        setMode('login'); setLoading(false); return;
-      }
-      localStorage.setItem('token', data.accessToken || data.token || '');
-      localStorage.setItem('user', JSON.stringify(data.user || { name: form.email.split('@')[0], email: form.email }));
+      if(mode==='login'){data=await api('/api/v1/users/login',{method:'POST',body:JSON.stringify({email:form.email,password:form.password})});}
+      else{data=await api('/api/v1/users/register',{method:'POST',body:JSON.stringify(form)});showT('Account created! Sign in.');setMode('login');setLoading(false);return;}
+      localStorage.setItem('token',data.accessToken||data.token||'');
+      localStorage.setItem('user',JSON.stringify(data.user||{name:form.email.split('@')[0],email:form.email,walletBalance:500}));
       onLogin(data);
-    } catch (err) {
-      // Demo mode — let in anyway
-      if (mode === 'login') {
-        localStorage.setItem('token', 'demo-token');
-        localStorage.setItem('user', JSON.stringify({ name: form.email.split('@')[0] || 'Employee', email: form.email, walletBalance: 500 }));
-        onLogin({ user: { name: form.email.split('@')[0], email: form.email, walletBalance: 500 } });
-      } else {
-        setError(err.message);
-      }
+    }catch(err){
+      if(mode==='login'){
+        localStorage.setItem('token','demo');
+        localStorage.setItem('user',JSON.stringify({name:form.email.split('@')[0]||'Employee',email:form.email,walletBalance:500}));
+        onLogin({user:{name:form.email.split('@')[0],email:form.email,walletBalance:500}});
+      } else setError(err.message);
     }
     setLoading(false);
   };
 
-  return (
-    <div className="auth-container" style={{background:'linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%)'}}>
-      {toast && <Toast msg={toast.msg} type={toast.type}/>}
-      <div className="card auth-card">
-        <div className="auth-logo">
-          <div style={{fontSize:48,marginBottom:8}}>☕</div>
-          <h1><span style={{color:'var(--primary)'}}>Qwik</span>Brew</h1>
-          <p>Corporate Café — Order smart, eat well</p>
-        </div>
-        <div style={{display:'flex',gap:4,marginBottom:24,background:'#f5f5f5',borderRadius:8,padding:4}}>
-          {['login','register'].map(m => (
-            <button key={m} className="btn" onClick={() => setMode(m)} style={{flex:1,background:mode===m?'#fff':'transparent',color:mode===m?'var(--secondary)':'var(--muted)',boxShadow:mode===m?'var(--shadow)':'none',textTransform:'capitalize'}}>
-              {m === 'login' ? 'Sign In' : 'Register'}
-            </button>
-          ))}
-        </div>
-        <form onSubmit={handle}>
-          {mode === 'register' && (
-            <>
-              <div className="form-group">
-                <label className="form-label">Full Name</label>
-                <input placeholder="Your name" value={form.name} onChange={e => setForm({...form, name:e.target.value})} required/>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Phone</label>
-                <input placeholder="10-digit mobile number" value={form.phone} onChange={e => setForm({...form, phone:e.target.value})} required/>
-              </div>
-            </>
-          )}
-          <div className="form-group">
-            <label className="form-label">Email</label>
-            <input type="email" placeholder="work@company.in" value={form.email} onChange={e => setForm({...form, email:e.target.value})} required/>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({...form, password:e.target.value})} required/>
-          </div>
-          {error && <p className="form-error" style={{marginBottom:12}}><i className="fa fa-exclamation-triangle"/> {error}</p>}
-          <button type="submit" className="btn btn-primary" style={{width:'100%',padding:'14px',fontSize:'15px'}} disabled={loading}>
-            {loading ? <><i className="fa fa-spinner fa-spin"/> Processing...</> : mode === 'login' ? 'Sign In' : 'Create Account'}
-          </button>
-        </form>
-        <p style={{textAlign:'center',marginTop:16,color:'var(--muted)',fontSize:13}}>
-          {mode==='login' ? "New here? " : "Already registered? "}
-          <span style={{color:'var(--primary)',cursor:'pointer',fontWeight:700}} onClick={() => setMode(mode==='login'?'register':'login')}>
-            {mode==='login' ? 'Create account' : 'Sign in'}
-          </span>
-        </p>
+  return <div className="auth-page">
+    {toast && <Toast msg={toast.msg} type={toast.type}/>}
+    <div className="auth-blob ab1"/><div className="auth-blob ab2"/>
+    <div className="auth-box">
+      <div className="auth-logo">
+        <div className="auth-logo-big">☕</div>
+        <h1 className="font-display"><span>Qwik</span>Brew</h1>
+        <p>Corporate Café — Order smart, eat well</p>
       </div>
+      <div className="auth-tabs">
+        {['login','register'].map(m=><button key={m} className={`auth-tab ${mode===m?'active':''}`} onClick={()=>setMode(m)}>{m==='login'?'Sign In':'Register'}</button>)}
+      </div>
+      <form onSubmit={handle}>
+        {mode==='register' && <>
+          <div className="form-g"><label>FULL NAME</label><input placeholder="Your full name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} required/></div>
+          <div className="form-g"><label>PHONE</label><input placeholder="10-digit mobile" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} required/></div>
+        </>}
+        <div className="form-g"><label>EMAIL</label><input type="email" placeholder="work@company.in" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} required/></div>
+        <div className="form-g"><label>PASSWORD</label><input type="password" placeholder="••••••••" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} required/></div>
+        {error && <p className="form-err">{error}</p>}
+        <button type="submit" className="auth-submit font-display" disabled={loading}>{loading?'Processing…':mode==='login'?'Sign In →':'Create Account →'}</button>
+      </form>
+      <div className="auth-switch">{mode==='login'?'New here? ':'Already have account? '}<a onClick={()=>setMode(mode==='login'?'register':'login')}>{mode==='login'?'Create account':'Sign in'}</a></div>
     </div>
-  );
+  </div>;
 }
 
-// ── Menu Screen ───────────────────────────────────────────────────────────────
-function MenuScreen({ cart, setCart, showToast }) {
-  const [items, setItems] = useState([]);
-  const [filtered, setFiltered] = useState([]);
-  const [category, setCategory] = useState('All');
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
+/* ── App shell ── */
+function App(){
+  const [page,setPage] = useState('menu');
+  const [cart,setCart] = useState([]);
+  const [cartOpen,setCartOpen] = useState(false);
+  const [walletOpen,setWalletOpen] = useState(false);
+  const [toast,setToast] = useState(null);
+  const [success,setSuccess] = useState(null);
+  const [user,setUser] = useState(()=>{try{return JSON.parse(localStorage.getItem('user')||'null')}catch{return null}});
+  const [walletBal,setWalletBal] = useState(()=>{
+    const s = Number(localStorage.getItem('qb_wallet'));
+    return(!isNaN(s)&&s>=0)?s:500;
+  });
 
-  useEffect(() => {
-    api('/api/v1/menu').then(data => {
-      const list = Array.isArray(data) ? data : (data.content || data.items || SAMPLE_MENU);
-      setItems(list.length ? list : SAMPLE_MENU);
-    }).catch(() => setItems(SAMPLE_MENU)).finally(() => setLoading(false));
-  }, []);
+  useEffect(()=>{localStorage.setItem('qb_wallet',String(walletBal));},[walletBal]);
 
-  useEffect(() => {
-    let f = items;
-    if (category !== 'All') f = f.filter(i => i.category === category);
-    if (search) f = f.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
-    setFiltered(f);
-  }, [items, category, search]);
+  let tTimer;
+  const showToast = useCallback((msg,type='success')=>{
+    setToast({msg,type});clearTimeout(tTimer);tTimer=setTimeout(()=>setToast(null),3000);
+  },[]);
 
-  const getQty = id => (cart.find(c => c.id === id) || {qty:0}).qty;
-  const add = item => {
-    setCart(c => { const e = c.find(x => x.id===item.id); return e ? c.map(x => x.id===item.id ? {...x,qty:x.qty+1} : x) : [...c,{...item,qty:1}]; });
-    showToast(`${item.name} added to cart`, 'success');
-  };
-  const remove = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty-1} : x).filter(x => x.qty > 0));
+  const logout = ()=>{localStorage.clear();setUser(null);setCart([]);};
+  const totalQty = cart.reduce((s,i)=>s+i.qty,0);
 
-  if (loading) return <div className="spinner"/>;
+  if(!user) return <AuthScreen onLogin={d=>{setUser(d.user||JSON.parse(localStorage.getItem('user')));}} />;
 
-  return (
-    <div>
-      <div className="hero">
-        <h1>Good food, faster checkout ☕</h1>
-        <p>Inspired by modern enterprise café experiences for busy teams.</p>
-        <div className="search-box">
-          <i className="fa fa-search"/>
-          <input placeholder="Search dosa, biryani, coffee..." value={search} onChange={e => setSearch(e.target.value)}/>
+  const navItems = [{id:'menu',icon:'🍽️',label:'Menu'},{id:'orders',icon:'📋',label:'Orders'},{id:'profile',icon:'👤',label:'Profile'}];
+
+  return <>
+    {toast && <Toast msg={toast.msg} type={toast.type}/>}
+
+    <nav>
+      <div className="nav-logo">
+        <div className="nav-logo-mark">☕</div>
+        <div className="nav-logo-text font-display"><span>Qwik</span>Brew</div>
+        <div className="nav-pill">NEW</div>
+      </div>
+      <div className="nav-right">
+        <div className="wallet-chip" onClick={()=>setWalletOpen(true)}>
+          <div className="wallet-dot"/>
+          <span className="font-display">₹{walletBal.toLocaleString('en-IN')}</span>
         </div>
-        <div className="hero-kpis">
-          <div className="hero-kpi"><strong>12 min</strong><span>Avg prep time</span></div>
-          <div className="hero-kpi"><strong>4.8 ★</strong><span>Employee rating</span></div>
-          <div className="hero-kpi"><strong>100% cashless</strong><span>Wallet + quick pay</span></div>
+        <div className="nav-greeting">Hi, {(user.name||'').split(' ')[0]} 👋</div>
+        <div className="cart-fab" onClick={()=>setCartOpen(true)}>
+          🛒
+          {totalQty>0 && <span className="cart-badge" key={totalQty}>{totalQty}</span>}
         </div>
       </div>
-      <div className="categories">
-        {CATEGORIES.map(c => (
-          <div key={c} className={`category-chip ${category===c?'active':''}`} onClick={() => setCategory(c)}>{c}</div>
-        ))}
-      </div>
-      <div style={{padding:'0 20px 8px',color:'var(--muted)',fontSize:13,display:'flex',justifyContent:'space-between'}}>
-        <span>{filtered.length} curated items</span>
-        <span style={{fontWeight:600}}>Live counter open • 8:00 AM – 8:00 PM</span>
-      </div>
-      <div className="menu-grid">
-        {filtered.map(item => {
-          const qty = getQty(item.id);
-          return (
-            <div key={item.id} className="card menu-card">
-              <div className="menu-media">
-                {item.image
-                  ? <img className="menu-img" src={item.image} alt={item.name} loading="lazy"/>
-                  : <div className="menu-img-placeholder" style={{background:`linear-gradient(135deg,${item.isVeg?'#e8f5e9,#a5d6a7':'#fce4ec,#ef9a9a'})`}}>
-                      <span style={{fontSize:48}}>{item.emoji || '🍽️'}</span>
-                    </div>
-                }
-              </div>
-              <div className="menu-body">
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:4}}>
-                  <span className={`badge ${item.isVeg?'badge-veg':'badge-nonveg'}`}>
-                    {item.isVeg ? '🟢 Veg' : '🔴 Non-Veg'}
-                  </span>
-                  {item.rating && <span style={{color:'#f59e0b',fontSize:12}}>⭐ {item.rating}</span>}
-                </div>
-                <div className="menu-title">{item.name}</div>
-                <div className="menu-desc">{item.description}</div>
-                {item.preparationTime && <div style={{fontSize:11,color:'var(--muted)',marginBottom:8}}>⏱ {item.preparationTime} mins</div>}
-                <div className="menu-footer">
-                  <span className="price">₹{item.price}</span>
-                  {qty === 0
-                    ? <button className="add-btn" onClick={() => add(item)}>+</button>
-                    : <div className="qty-ctrl">
-                        <button className="qty-btn" onClick={() => remove(item.id)}>−</button>
-                        <span className="qty-num">{qty}</span>
-                        <button className="qty-btn" onClick={() => add(item)}>+</button>
-                      </div>
-                  }
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+    </nav>
+
+    <div style={{flex:1,position:'relative',zIndex:1}}>
+      {page==='menu'    && <MenuScreen cart={cart} setCart={setCart} showToast={showToast} walletBal={walletBal}/>}
+      {page==='orders'  && <OrdersScreen/>}
+      {page==='profile' && <ProfileScreen user={user} onLogout={logout} showToast={showToast} walletBal={walletBal} setWalletBal={setWalletBal}/>}
     </div>
-  );
-}
 
-// ── Orders Screen ─────────────────────────────────────────────────────────────
-function OrdersScreen() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+    <Cart cart={cart} setCart={setCart} open={cartOpen} onClose={()=>setCartOpen(false)}
+      showToast={showToast} walletBal={walletBal} setWalletBal={setWalletBal}
+      onOpenWallet={()=>setWalletOpen(true)}/>
 
-  const SAMPLE_ORDERS = [
-    { id:'QB240001', createdAt:'2024-03-20T09:30:00', status:'DELIVERED', totalAmount:130, items:[{name:'Masala Dosa',qty:2,price:55},{name:'Filter Coffee',qty:2,price:25}] },
-    { id:'QB240002', createdAt:'2024-03-20T13:15:00', status:'PREPARING', totalAmount:95, items:[{name:'Veg Biryani',qty:1,price:95}] },
-    { id:'QB240003', createdAt:'2024-03-19T10:00:00', status:'DELIVERED', totalAmount:185, items:[{name:'Chicken Biryani',qty:1,price:130},{name:'Masala Chai',qty:2,price:20},{name:'Samosa',qty:1,price:30}] },
-  ];
+    {walletOpen && <WalletModal showToast={showToast} onClose={()=>setWalletOpen(false)}
+      onSuccess={(amt)=>{setWalletBal(b=>b+amt);setWalletOpen(false);setSuccess({type:'recharge',amount:amt,transactionId:`TXN-${Date.now()}`});}}/>}
 
-  useEffect(() => {
-    api('/api/v1/orders').then(data => {
-      const list = Array.isArray(data) ? data : (data.content || data.orders || []);
-      setOrders(list.length ? list : SAMPLE_ORDERS);
-    }).catch(() => setOrders(SAMPLE_ORDERS)).finally(() => setLoading(false));
-  }, []);
+    {success && <SuccessOverlay data={success} onClose={()=>setSuccess(null)}/>}
 
-  const statusStyle = s => ({ DELIVERED:'status-delivered', PREPARING:'status-preparing', READY:'status-ready', CANCELLED:'status-cancelled' }[s] || 'status-preparing');
-
-  if (loading) return <div className="spinner"/>;
-
-  return (
-    <div style={{padding:20}}>
-      <h2 style={{marginBottom:20,fontSize:22}}>My Orders</h2>
-      {orders.length === 0
-        ? <div style={{textAlign:'center',padding:'60px 20px',color:'var(--muted)'}}><div style={{fontSize:64,marginBottom:16}}>📋</div><p>No orders yet.<br/>Start ordering from the menu!</p></div>
-        : orders.map(o => (
-          <div key={o.id} className="card order-card">
-            <div className="order-header">
-              <div>
-                <div className="order-id">#{o.id}</div>
-                <div className="order-date">{new Date(o.createdAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
-              </div>
-              <span className={`order-status ${statusStyle(o.status)}`}>{o.status}</span>
-            </div>
-            <div style={{borderTop:'1px solid #f5f5f5',paddingTop:12}}>
-              {(o.items||[]).map((item,i) => (
-                <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:4}}>
-                  <span>{item.name} × {item.qty || item.quantity}</span>
-                  <span style={{color:'var(--muted)'}}>₹{item.price * (item.qty || item.quantity)}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{borderTop:'1px solid #f5f5f5',marginTop:12,paddingTop:12,display:'flex',justifyContent:'space-between',fontWeight:700}}>
-              <span>Total</span>
-              <span style={{color:'var(--primary)'}}>₹{o.totalAmount}</span>
-            </div>
+    {/* Bottom nav */}
+    <div className="bnav">
+      <div className="bnav-row">
+        {navItems.map(n=><div key={n.id} className={`bnav-i ${page===n.id?'active':''}`} onClick={()=>setPage(n.id)}>
+          <div className="bnav-icon">{n.icon}</div>
+          <span>{n.label}</span>
+        </div>)}
+        <div className="bnav-i" onClick={()=>setCartOpen(true)}>
+          <div className="bnav-icon" style={{position:'relative'}}>
+            🛒
+            {totalQty>0 && <span style={{position:'absolute',top:-6,right:-6,background:'var(--brand)',color:'#fff',borderRadius:'50%',width:15,height:15,fontSize:8,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,border:'2px solid var(--bg)'}}>{totalQty}</span>}
           </div>
-        ))
-      }
-    </div>
-  );
-}
-
-// ── Profile Screen ────────────────────────────────────────────────────────────
-function ProfileScreen({ user, onLogout, showToast }) {
-  const [wallet, setWallet] = useState(user.walletBalance || 500);
-  const [topup, setTopup] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleTopup = async () => {
-    if (!topup || isNaN(topup) || Number(topup) < 10) { showToast('Enter valid amount (min ₹10)', 'error'); return; }
-    setLoading(true);
-    try {
-      await api(`/api/v1/users/${user.id}/wallet/topup`, { method:'POST', body: JSON.stringify({ amount: Number(topup) }) });
-      setWallet(w => w + Number(topup));
-      showToast(`₹${topup} added to wallet!`);
-      setTopup('');
-    } catch { setWallet(w => w + Number(topup)); showToast(`₹${topup} added to wallet!`); setTopup(''); }
-    setLoading(false);
-  };
-
-  return (
-    <div>
-      <div className="profile-header">
-        <div className="avatar">{(user.name||'U')[0].toUpperCase()}</div>
-        <h2>{user.name}</h2>
-        <p style={{opacity:.8}}>{user.email}</p>
-        {user.phone && <p style={{opacity:.7,fontSize:13,marginTop:4}}>📱 {user.phone}</p>}
-      </div>
-      <div className="wallet-card">
-        <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between'}}>
-          <div>
-            <div style={{opacity:.8,marginBottom:4,fontSize:14}}>Wallet Balance</div>
-            <div className="wallet-balance">₹{wallet.toLocaleString('en-IN')}</div>
-          </div>
-          <div style={{fontSize:40}}>👛</div>
-        </div>
-        <div style={{marginTop:20,display:'flex',gap:8}}>
-          <input style={{background:'rgba(255,255,255,.2)',border:'2px solid rgba(255,255,255,.5)',color:'#fff',borderRadius:8,padding:'10px 14px',flex:1,fontSize:14}}
-            placeholder="Add amount (₹)" value={topup} onChange={e => setTopup(e.target.value.replace(/\D/,''))} type="number"/>
-          <button className="btn" onClick={handleTopup} disabled={loading} style={{background:'#fff',color:'var(--primary)',fontWeight:700,whiteSpace:'nowrap'}}>
-            {loading ? '...' : '+ Top Up'}
-          </button>
-        </div>
-        <div style={{display:'flex',gap:8,marginTop:8}}>
-          {[100,200,500].map(a => (
-            <button key={a} onClick={() => setTopup(String(a))} style={{flex:1,background:'rgba(255,255,255,.2)',color:'#fff',border:'1px solid rgba(255,255,255,.4)',borderRadius:6,padding:'6px',fontSize:12,cursor:'pointer'}}>+₹{a}</button>
-          ))}
-        </div>
-      </div>
-      <div style={{padding:'0 20px'}}>
-        {[
-          { icon:'fa-user', label:'Edit Profile', action:() => showToast('Profile editing coming soon') },
-          { icon:'fa-bell', label:'Notifications', action:() => showToast('All notifications are on') },
-          { icon:'fa-star', label:'Rate the App', action:() => showToast('Thanks for your feedback! ⭐') },
-          { icon:'fa-headset', label:'Help & Support', action:() => showToast('Email: support@qwikbrew.in') },
-        ].map(item => (
-          <div key={item.label} className="card" style={{padding:'16px 20px',marginBottom:12,display:'flex',alignItems:'center',gap:16,cursor:'pointer'}} onClick={item.action}>
-            <i className={`fa ${item.icon}`} style={{color:'var(--primary)',width:20,textAlign:'center'}}/>
-            <span style={{flex:1,fontWeight:600}}>{item.label}</span>
-            <i className="fa fa-chevron-right" style={{color:'var(--muted)',fontSize:12}}/>
-          </div>
-        ))}
-        <button className="btn btn-outline" onClick={onLogout} style={{width:'100%',marginTop:8}}>
-          <i className="fa fa-sign-out-alt"/> Sign Out
-        </button>
-        <p style={{textAlign:'center',color:'var(--muted)',fontSize:11,marginTop:16}}>QwikBrew v2.0 • Built with Spring Boot 3.5.9 + React</p>
-      </div>
-    </div>
-  );
-}
-
-// ── Cart Sidebar ──────────────────────────────────────────────────────────────
-function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
-  const [placing, setPlacing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('WALLET');
-  const [gatewayOpen, setGatewayOpen] = useState(false);
-  const [gatewayValue, setGatewayValue] = useState('');
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
-
-  const add = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty+1} : x));
-  const rem = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty-1} : x).filter(x => x.qty>0));
-
-  const submitOrder = async (method = paymentMethod, reference = `QB-${Date.now()}`) => {
-    setPlacing(true);
-    const payload = { items: cart.map(i => ({ menuItemId: i.id, menuItemName: i.name, quantity: i.qty, unitPrice: i.price })), totalAmount: total, paymentMethod: method };
-    try {
-      await api('/api/v1/payments/charge', {
-        method:'POST',
-        body: JSON.stringify({ userId: user?.id || user?.email || 'demo-user', amount: total, paymentMethod: method, reference })
-      });
-      await api('/api/v1/orders', { method:'POST', body: JSON.stringify(payload) });
-    } catch(e) { /* demo fallback */ }
-    showToast(`Order placed via ${method.replace('_',' ')}! Total ₹${total} 🎉`);
-    setCart([]); onClose(); setPlacing(false);
-    setGatewayOpen(false); setGatewayValue('');
-  };
-
-  const placeOrder = async () => {
-    if (paymentMethod === 'WALLET') return submitOrder('WALLET');
-    setGatewayOpen(true);
-  };
-
-  const confirmGatewayPayment = async () => {
-    if (!gatewayValue.trim()) { showToast('Please complete payment details', 'error'); return; }
-    submitOrder(paymentMethod, gatewayValue.trim());
-  };
-
-  return (
-    <>
-      {open && <div className="overlay" onClick={onClose}/>}
-      <div className={`cart-sidebar ${open?'open':''}`}>
-        <div className="cart-header">
-          <div>
-            <h3 style={{fontSize:18}}>🛒 Your Cart</h3>
-            <p style={{color:'var(--muted)',fontSize:12}}>{cart.length} item(s)</p>
-          </div>
-          <button className="btn btn-sm btn-outline" onClick={onClose}>✕</button>
-        </div>
-        <div className="cart-items">
-          {cart.length === 0
-            ? <div style={{textAlign:'center',padding:'60px 20px',color:'var(--muted)'}}><div style={{fontSize:48,marginBottom:12}}>🛒</div><p>Your cart is empty</p></div>
-            : cart.map(item => (
-              <div key={item.id} className="cart-item">
-                <span style={{fontSize:28}}>{item.emoji||'🍽️'}</span>
-                <div className="cart-item-info">
-                  <div className="cart-item-name">{item.name}</div>
-                  <div className="cart-item-price">₹{item.price} × {item.qty} = ₹{item.price*item.qty}</div>
-                </div>
-                <div className="qty-ctrl">
-                  <button className="qty-btn" onClick={() => rem(item.id)} style={{width:26,height:26,fontSize:14}}>−</button>
-                  <span className="qty-num" style={{fontSize:14}}>{item.qty}</span>
-                  <button className="qty-btn" onClick={() => add(item.id)} style={{width:26,height:26,fontSize:14}}>+</button>
-                </div>
-              </div>
-            ))
-          }
-        </div>
-        {cart.length > 0 && (
-          <div className="cart-footer">
-            <div className="cart-total"><span>Total</span><span style={{color:'var(--primary)'}}>₹{total}</span></div>
-            <div className="payment-methods">
-              {[{id:'WALLET',label:'Wallet',icon:'fa-wallet'},{id:'UPI',label:'UPI',icon:'fa-mobile-screen'},{id:'CARD',label:'Card',icon:'fa-credit-card'},{id:'NET_BANKING',label:'NetBanking',icon:'fa-building-columns'}].map(m => (
-                <button key={m.id} className={`payment-method ${paymentMethod===m.id?'active':''}`} onClick={() => setPaymentMethod(m.id)}>
-                  <i className={`fa ${m.icon}`}/> {m.label}
-                </button>
-              ))}
-            </div>
-            <div style={{fontSize:12,color:'var(--muted)',marginBottom:12,textAlign:'center'}}>Secure checkout • Free delivery</div>
-            <button className="btn btn-primary" style={{width:'100%',padding:14,fontSize:15}} onClick={placeOrder} disabled={placing}>
-              {placing ? <><i className="fa fa-spinner fa-spin"/> Placing Order...</> : `Pay & Place Order ₹${total}`}
-            </button>
-          </div>
-        )}
-      </div>
-      {gatewayOpen && (
-        <>
-          <div className="overlay" onClick={() => setGatewayOpen(false)}/>
-          <div className="gateway-modal">
-            <div className="gateway-header">
-              <div>
-                <h3 style={{fontSize:16}}>QwikPay Gateway</h3>
-                <p style={{fontSize:11,opacity:.85}}>Method: {paymentMethod.replace('_',' ')}</p>
-              </div>
-              <button className="btn btn-sm btn-outline" onClick={() => setGatewayOpen(false)} style={{color:'#fff',borderColor:'rgba(255,255,255,.5)'}}>✕</button>
-            </div>
-            <div className="gateway-body">
-              <p style={{fontSize:13,color:'var(--muted)',marginBottom:10}}>
-                {paymentMethod === 'UPI' ? 'Enter UPI ID' : paymentMethod === 'CARD' ? 'Enter card last 4 digits' : 'Enter bank reference'}
-              </p>
-              <input
-                placeholder={paymentMethod === 'UPI' ? 'name@bank' : paymentMethod === 'CARD' ? '1234' : 'Transaction reference'}
-                value={gatewayValue}
-                onChange={e => setGatewayValue(e.target.value)}
-                style={{marginBottom:12}}
-              />
-              <button className="btn btn-primary" style={{width:'100%'}} onClick={confirmGatewayPayment} disabled={placing}>
-                {placing ? 'Processing...' : `Confirm payment ₹${total}`}
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </>
-  );
-}
-
-// ── App Shell ─────────────────────────────────────────────────────────────────
-function App() {
-  const [page, setPage] = useState('menu');
-  const [cart, setCart] = useState([]);
-  const [cartOpen, setCartOpen] = useState(false);
-  const [toast, setToast] = useState(null);
-  const [user, setUser] = useState(() => { try { return JSON.parse(localStorage.getItem('user')||'null'); } catch { return null; } });
-
-  const showToast = useCallback((msg, type='success') => {
-    setToast({ msg, type }); clearTimeout(toastTimer); toastTimer = setTimeout(() => setToast(null), 3000);
-  }, []);
-
-  const logout = () => { localStorage.clear(); setUser(null); setCart([]); };
-
-  if (!user) return <AuthScreen onLogin={data => { setUser(data.user || JSON.parse(localStorage.getItem('user'))); }}/>;
-
-  const totalQty = cart.reduce((s,i) => s+i.qty, 0);
-
-  const navItems = [
-    { id:'menu', icon:'fa-utensils', label:'Menu' },
-    { id:'orders', icon:'fa-receipt', label:'Orders' },
-    { id:'profile', icon:'fa-user', label:'Profile' },
-  ];
-
-  return (
-    <div id="root">
-      {toast && <Toast msg={toast.msg} type={toast.type}/>}
-      <nav>
-        <div className="nav-brand">☕ <span>Qwik</span>Brew</div>
-        <div className="nav-right">
-          <div style={{background:'rgba(249,115,22,.2)',color:'#fdba74',fontSize:10,padding:'4px 8px',borderRadius:999,fontWeight:700}}>
-            UI {BUILD_VERSION}
-          </div>
-          <div style={{color:'rgba(255,255,255,.7)',fontSize:13}}>Hi, {(user.name||'').split(' ')[0]} 👋</div>
-          <div className="nav-icon" onClick={() => setCartOpen(true)}>
-            <i className="fa fa-shopping-cart"/>
-            {totalQty > 0 && <span className="nav-badge">{totalQty}</span>}
-          </div>
-        </div>
-      </nav>
-      <div style={{flex:1}}>
-        {page==='menu' && <MenuScreen cart={cart} setCart={setCart} showToast={showToast}/>}
-        {page==='orders' && <OrdersScreen/>}
-        {page==='profile' && <ProfileScreen user={user} onLogout={logout} showToast={showToast}/>}
-      </div>
-      <CartSidebar cart={cart} setCart={setCart} open={cartOpen} onClose={() => setCartOpen(false)} showToast={showToast} user={user}/>
-      <div className="bottom-nav">
-        <div className="bottom-nav-items">
-          {navItems.map(n => (
-            <div key={n.id} className={`bottom-nav-item ${page===n.id?'active':''}`} onClick={() => setPage(n.id)}>
-              <i className={`fa ${n.icon}`}/>
-              <span>{n.label}</span>
-            </div>
-          ))}
-          <div className="bottom-nav-item" onClick={() => setCartOpen(true)}>
-            <div style={{position:'relative',display:'inline-block'}}>
-              <i className="fa fa-shopping-cart"/>
-              {totalQty>0 && <span className="nav-badge" style={{top:-8,right:-8}}>{totalQty}</span>}
-            </div>
-            <span>Cart</span>
-          </div>
+          <span>Cart</span>
         </div>
       </div>
     </div>
-  );
+  </>;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
