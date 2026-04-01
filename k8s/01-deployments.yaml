@@ -88,8 +88,23 @@ spec:
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits:   { cpu: 300m, memory: 512Mi }
-          readinessProbe: { httpGet: { path: /actuator/health/liveness, port: 8080 }, initialDelaySeconds: 60 }
-          livenessProbe:  { httpGet: { path: /actuator/health/liveness,  port: 8080 }, initialDelaySeconds: 120 }
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
       volumes:
         - name: override-config
           configMap:
@@ -410,15 +425,15 @@ spec:
     metadata:
       labels: { app: frontend }
       annotations:
-        qwikbrew/ui-build-version: "2026-04-01-ui-r5"
+        qwikbrew/ui-build-version: "2026-04-01-ui-r16"
     spec:
       containers:
         - name: frontend
-          image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/frontend:latest
+          image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/frontend:2026-04-01-ui-r16
           imagePullPolicy: Always
           env:
             - name: UI_BUILD_VERSION
-              value: "2026-04-01-ui-r5"
+              value: "2026-04-01-ui-r16"
           ports: [{ containerPort: 80 }]
           resources:
             requests: { cpu: 50m, memory: 64Mi }
