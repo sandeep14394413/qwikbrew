@@ -23,7 +23,7 @@
     body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;background:radial-gradient(circle at 15% 10%,#fff7ed 0%,#eef2ff 45%,#f8fafc 100%);color:var(--text);}
     #root{min-height:100vh;display:flex;flex-direction:column;}
     .build-marker{position:fixed;left:10px;bottom:10px;z-index:99999;background:#111827;color:#fff;padding:4px 8px;border-radius:8px;font-size:10px;opacity:.9;}
-    .btn{padding:10px 20px;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;}
+    .btn{padding:10px 20px;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;min-height:40px;}
     .btn-primary{background:var(--primary);color:#fff;}
     .btn-primary:hover{background:var(--primary-dark);}
     .btn-outline{background:transparent;border:2px solid var(--primary);color:var(--primary);}
@@ -33,11 +33,15 @@
     .badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;}
     .badge-veg{background:#e8f5e9;color:#2e7d32;}
     .badge-nonveg{background:#fce4ec;color:#c62828;}
-    input,select{width:100%;padding:12px 16px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;transition:border-color .2s;}
+    input,select{width:100%;padding:12px 16px;border:2px solid #e0e0e0;border-radius:10px;font-size:14px;outline:none;transition:border-color .2s,box-shadow .2s;}
     input:focus,select:focus{border-color:var(--primary);}
-    .toast{position:fixed;top:20px;right:20px;padding:14px 20px;border-radius:8px;color:#fff;font-weight:600;z-index:9999;animation:slideIn .3s ease;}
+    input:focus,select:focus,.btn:focus-visible,.add-btn:focus-visible,.qty-btn:focus-visible,.category-chip:focus-visible{box-shadow:0 0 0 3px rgba(249,115,22,.24);outline:none;}
+    .toast{position:fixed;top:20px;right:20px;padding:14px 20px;border-radius:12px;color:#fff;font-weight:600;z-index:9999;animation:slideIn .3s ease;display:flex;align-items:center;gap:10px;box-shadow:0 12px 28px rgba(17,24,39,.24);}
     .toast-success{background:var(--success);}
     .toast-error{background:var(--danger);}
+    .toast-s{background:linear-gradient(135deg,#16a34a,#15803d);}
+    .toast-e{background:linear-gradient(135deg,#ef4444,#b91c1c);}
+    .toast-i{background:linear-gradient(135deg,#2563eb,#1d4ed8);}
     @keyframes slideIn{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
     .spinner{border:3px solid #f3f3f3;border-top:3px solid var(--primary);border-radius:50%;width:32px;height:32px;animation:spin .8s linear infinite;margin:40px auto;}
     @keyframes spin{to{transform:rotate(360deg);}}
@@ -62,7 +66,7 @@
     .search-box i{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);}
     /* Categories */
     .categories{display:flex;gap:10px;padding:20px;overflow-x:auto;scrollbar-width:none;}
-    .category-chip{padding:10px 18px;border-radius:30px;cursor:pointer;white-space:nowrap;font-weight:600;font-size:12px;transition:all .2s;border:1px solid #e5e7eb;background:#fff;}
+    .category-chip{padding:10px 18px;border-radius:30px;cursor:pointer;white-space:nowrap;font-weight:600;font-size:12px;transition:all .2s;border:1px solid #e5e7eb;background:#fff;user-select:none;}
     .category-chip.active{background:var(--primary);color:#fff;border-color:var(--primary);}
     /* Menu Grid */
     .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;padding:0 20px 20px;}
@@ -77,9 +81,9 @@
     .menu-desc{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;}
     .menu-footer{display:flex;align-items:center;justify-content:space-between;}
     .price{font-size:20px;font-weight:800;color:var(--primary);}
-    .add-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 18px rgba(249,115,22,.35);}
+    .add-btn{width:40px;height:40px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 18px rgba(249,115,22,.35);}
     .qty-ctrl{display:flex;align-items:center;gap:8px;}
-    .qty-btn{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:16px;}
+    .qty-btn{width:34px;height:34px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:16px;}
     .qty-num{font-weight:700;min-width:20px;text-align:center;}
     /* Cart */
     .cart-sidebar{position:fixed;right:0;top:0;width:380px;height:100vh;background:#fff;box-shadow:-4px 0 20px rgba(0,0,0,.15);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s;}
@@ -144,14 +148,19 @@
   </style>
 </head>
 <body>
-<div class="build-marker">UI BUILD 2026-04-01-ui-r5</div>
+<div class="build-marker">UI BUILD 2026-04-01-ui-r15</div>
 <div id="root"></div>
 
+<script type="text/babel">
 const { useState, useEffect, useCallback } = React;
-const BUILD_VERSION = '2026-04-01-ui-r5';
+const BUILD_VERSION = '2026-04-01-ui-r15';
+const BUILD = BUILD_VERSION;
+const MERCHANT_UPI = 'qwikbrew@upi';
 
 // ── API client ────────────────────────────────────────────────────────────────
-const API = window.location.hostname === 'localhost' ? 'http://localhost:8080' : '';
+const LOCAL_HOSTS = new Set(['localhost','127.0.0.1','::1']);
+const API = LOCAL_HOSTS.has(window.location.hostname) ? 'http://localhost:8080' : '';
+const BASE = API;
 
 async function api(path, opts={}){
   const token = localStorage.getItem('token');
