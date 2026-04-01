@@ -88,8 +88,23 @@ spec:
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits:   { cpu: 300m, memory: 512Mi }
-          readinessProbe: { httpGet: { path: /actuator/health/liveness, port: 8080 }, initialDelaySeconds: 60 }
-          livenessProbe:  { httpGet: { path: /actuator/health/liveness,  port: 8080 }, initialDelaySeconds: 120 }
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
       volumes:
         - name: override-config
           configMap:
