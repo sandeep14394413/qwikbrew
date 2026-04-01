@@ -374,18 +374,36 @@ jobs:
       - name: 🔒 Trivy — filesystem scan (informational)
         continue-on-error: true
         run: |
-          /tmp/trivy fs             --severity HIGH,CRITICAL             --ignore-unfixed             --exit-code 0             --format table             "${{ matrix.service }}/" 2>/dev/null || true
+          /tmp/trivy fs \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 0 \
+            --format table \
+            "${{ matrix.service }}/" 2>/dev/null || true
 
       - name: 🔒 Trivy — container image scan (informational)
         continue-on-error: true
         run: |
           IMAGE=$(cat /tmp/image-ref.txt)
-          /tmp/trivy image             --severity HIGH,CRITICAL             --ignore-unfixed             --exit-code 0             --format json             --output "trivy-report-${{ matrix.service }}.json"             --vuln-type os,library             "$IMAGE" 2>/dev/null || true
+          /tmp/trivy image \
+            --severity HIGH,CRITICAL \
+            --ignore-unfixed \
+            --exit-code 0 \
+            --format json \
+            --output "trivy-report-${{ matrix.service }}.json" \
+            --vuln-type os,library \
+            "$IMAGE" 2>/dev/null || true
           echo "Scan complete — CVEs are informational and do not block deployment"
           # Print summary
           if [ -f "trivy-report-${{ matrix.service }}.json" ]; then
-            CRITICAL=$(cat "trivy-report-${{ matrix.service }}.json" |               python3 -c "import sys,json; d=json.load(sys.stdin);               r=[v for res in d.get('Results',[]) for v in res.get('Vulnerabilities',[]) if v.get('Severity')=='CRITICAL'];               print(len(r))" 2>/dev/null || echo "?")
-            HIGH=$(cat "trivy-report-${{ matrix.service }}.json" |               python3 -c "import sys,json; d=json.load(sys.stdin);               r=[v for res in d.get('Results',[]) for v in res.get('Vulnerabilities',[]) if v.get('Severity')=='HIGH'];               print(len(r))" 2>/dev/null || echo "?")
+            CRITICAL=$(cat "trivy-report-${{ matrix.service }}.json" | \
+              python3 -c "import sys,json; d=json.load(sys.stdin); \
+              r=[v for res in d.get('Results',[]) for v in res.get('Vulnerabilities',[]) if v.get('Severity')=='CRITICAL']; \
+              print(len(r))" 2>/dev/null || echo "?")
+            HIGH=$(cat "trivy-report-${{ matrix.service }}.json" | \
+              python3 -c "import sys,json; d=json.load(sys.stdin); \
+              r=[v for res in d.get('Results',[]) for v in res.get('Vulnerabilities',[]) if v.get('Severity')=='HIGH']; \
+              print(len(r))" 2>/dev/null || echo "?")
             echo "Results: CRITICAL=${CRITICAL} HIGH=${HIGH} (unfixed CVEs excluded)"
           fi
 
@@ -619,8 +637,6 @@ jobs:
             exit 1
           fi
 
-
-
       - name: 🚀 Apply Kubernetes manifests
         run: |
           ACCOUNT_ID="${{ secrets.AWS_ACCOUNT_ID }}"
@@ -629,12 +645,10 @@ jobs:
 
           kubectl apply -f k8s/00-namespace-config.yaml || true
 
-          # Always delete + recreate api-gateway service
-          # kubectl apply CANNOT change spec.type — it silently ignores the change
-          # so the service stays NodePort forever unless we force delete+recreate
-          echo "Recreating api-gateway service as LoadBalancer..."
-          kubectl delete svc api-gateway -n qwikbrew --ignore-not-found
-          echo "Recreating frontend service as LoadBalancer..."
+          # api-gateway is ClusterIP — kubectl apply handles ClusterIP safely.
+          # Only the frontend service is LoadBalancer (NLB); force-recreate it
+          # so that kubectl apply does not silently skip a spec.type change.
+          echo "Recreating frontend service to ensure LoadBalancer type is applied..."
           kubectl delete svc frontend -n qwikbrew --ignore-not-found
           sleep 3
 
@@ -648,16 +662,15 @@ jobs:
           fi
 
           # Set correct image explicitly (in case ACCOUNT_ID substitution missed anything)
-          kubectl set image deployment/api-gateway             api-gateway="${GW_IMAGE}" -n qwikbrew 2>/dev/null || true
+          kubectl set image deployment/api-gateway \
+            api-gateway="${GW_IMAGE}" -n qwikbrew 2>/dev/null || true
 
           # Restart api-gateway to pick up latest image + config
           kubectl rollout restart deployment/api-gateway -n qwikbrew
           echo "Manifests applied and api-gateway rollout started"
 
-          # Show what service type was created
-          sleep 3
-          echo "api-gateway service:"
-          kubectl get svc api-gateway -n qwikbrew
+          echo "--- current services ---"
+          kubectl get svc -n qwikbrew
 
       - name: ⏳ Wait for deployments + collect crash logs
         run: |
@@ -694,108 +707,69 @@ jobs:
           echo "━━━━ K8S SECRETS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           kubectl get secrets -n qwikbrew | grep -E "aiven-credentials|app-secrets" || true
 
-      - name: 🌐 Print external URL + full diagnostics
+      - name: 🌐 Print live URLs + full diagnostics
         run: |
-          LB_HOST=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
-          LB_IP=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].ip}" 2>/dev/null || echo "")
-          LB="${LB_HOST:-$LB_IP}"
-          LB_FAILED="false"
+          # ── 1. Frontend NLB URL (React UI — public LoadBalancer) ──────────
+          echo "⏳ Waiting for frontend LoadBalancer hostname (up to 5 min)..."
+          FRONTEND_LB=""
+          for i in $(seq 1 30); do
+            FRONTEND_LB=$(kubectl get svc frontend -n qwikbrew \
+              -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
+            [ -z "$FRONTEND_LB" ] && FRONTEND_LB=$(kubectl get svc frontend -n qwikbrew \
+              -o jsonpath="{.status.loadBalancer.ingress[0].ip}" 2>/dev/null || echo "")
+            [ -n "$FRONTEND_LB" ] && break
+            echo "  [$i/30] frontend LB pending..."
+            sleep 10
+          done
 
-          # ── Wait for LB hostname if not yet assigned ──────────────────────
-          if [ -z "$LB" ]; then
-            echo "⏳ Waiting for LoadBalancer hostname (up to 5 min)..."
-            for i in $(seq 1 30); do
-              LB_HOST=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
-              LB_IP=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].ip}" 2>/dev/null || echo "")
-              LB="${LB_HOST:-$LB_IP}"
-              [ -n "$LB" ] && break
-              echo "  [$i/30] pending..."
-              # If service already reports a hard AWS error, stop waiting and surface it now.
-              LAST_WARN=$(kubectl get events -n qwikbrew \
-                --field-selector involvedObject.kind=Service,involvedObject.name=api-gateway,type=Warning \
-                --sort-by=.lastTimestamp \
-                -o jsonpath="{.items[-1:].message}" 2>/dev/null || echo "")
-              if [ -n "$LAST_WARN" ]; then
-                echo "  ↳ service warning: $LAST_WARN"
-                if echo "$LAST_WARN" | grep -Eiq "failed|error|denied|subnet|permission|quota|unsupported"; then
-                  LB_FAILED="true"
-                  break
-                fi
-              fi
-              sleep 10
-            done
-          fi
+          # ── 2. ALB Ingress URL (API gateway — routes /api internally) ─────
+          echo ""
+          echo "⏳ Checking ALB Ingress hostname..."
+          ALB_HOST=$(kubectl get ingress qwikbrew-ingress -n qwikbrew \
+            -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
 
-          # ── Print live URL ─────────────────────────────────────────────────
-          if [ -n "$LB" ]; then
-            echo ""
-            echo "==========================================="
-            echo "  QWIKBREW IS LIVE"
-            echo "  http://${LB}"
-            echo "==========================================="
-            echo "  GET  http://${LB}/actuator/health"
-            echo "  GET  http://${LB}/api/v1/menu"
-            echo "  POST http://${LB}/api/v1/users/register"
-            echo "  POST http://${LB}/api/v1/users/login"
-            echo "  POST http://${LB}/api/v1/orders"
-            echo "==========================================="
-            echo "## QwikBrew Live URL" >> $GITHUB_STEP_SUMMARY
-            echo "**[http://${LB}](http://${LB})**" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "| Endpoint | URL |" >> $GITHUB_STEP_SUMMARY
-            echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-            echo "| Health     | [/actuator/health](http://${LB}/actuator/health) |" >> $GITHUB_STEP_SUMMARY
-            echo "| Menu       | [/api/v1/menu](http://${LB}/api/v1/menu) |" >> $GITHUB_STEP_SUMMARY
-            echo "| Register   | /api/v1/users/register |" >> $GITHUB_STEP_SUMMARY
-            echo "| Login      | /api/v1/users/login |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "WARNING: LB hostname not assigned after 5 min"
-            if [ "$LB_FAILED" = "true" ]; then
-              echo "LoadBalancer provisioning reported an explicit warning; stopped waiting early."
-            fi
-            echo "Collecting service/controller diagnostics..."
-            echo ""
-            echo ">> api-gateway service details:"
-            kubectl describe svc api-gateway -n qwikbrew || true
-            echo ""
-            echo ">> aws-load-balancer-controller logs (last 120 lines):"
-            kubectl logs -n kube-system deployment/aws-load-balancer-controller --tail=120 2>/dev/null || true
-            echo ""
-            echo ">> events in qwikbrew namespace (latest 50):"
-            kubectl get events -n qwikbrew --sort-by=.lastTimestamp | tail -50 || true
-            echo ""
-            echo "Falling back to NodePort for smoke testing..."
-            kubectl patch svc api-gateway -n qwikbrew -p '{"spec":{"type":"NodePort"}}' || true
-            NODE_PORT=$(kubectl get svc api-gateway -n qwikbrew -o jsonpath="{.spec.ports[0].nodePort}" 2>/dev/null || echo "")
-            NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[?(@.type=='ExternalIP')].address}" 2>/dev/null || echo "")
-            if [ -z "$NODE_IP" ]; then
-              NODE_IP=$(kubectl get nodes -o jsonpath="{.items[0].status.addresses[?(@.type=='InternalIP')].address}" 2>/dev/null || echo "")
-            fi
-            if [ -n "$NODE_IP" ] && [ -n "$NODE_PORT" ]; then
-              echo "Temporary NodePort URL: http://${NODE_IP}:${NODE_PORT}"
-              echo "## QwikBrew Temporary URL (NodePort fallback)" >> $GITHUB_STEP_SUMMARY
-              echo "**http://${NODE_IP}:${NODE_PORT}**" >> $GITHUB_STEP_SUMMARY
-            else
-              echo "NodePort fallback unavailable (missing node IP or nodePort)."
-            fi
-          fi
-
-          # Print frontend URL when frontend Service is public.
-          FRONTEND_LB=$(kubectl get svc frontend -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].hostname}" 2>/dev/null || echo "")
-          if [ -z "$FRONTEND_LB" ]; then
-            FRONTEND_LB=$(kubectl get svc frontend -n qwikbrew -o jsonpath="{.status.loadBalancer.ingress[0].ip}" 2>/dev/null || echo "")
-          fi
+          # ── 3. Print the live URL block ───────────────────────────────────
+          echo ""
+          echo "=========================================="
+          echo "  QWIKBREW LIVE ENDPOINTS"
+          echo "=========================================="
           if [ -n "$FRONTEND_LB" ]; then
-            echo ""
-            echo "Frontend UI: http://${FRONTEND_LB}"
-            echo "## QwikBrew Frontend URL" >> $GITHUB_STEP_SUMMARY
-            echo "**[http://${FRONTEND_LB}](http://${FRONTEND_LB})**" >> $GITHUB_STEP_SUMMARY
+            echo "  🖥️  Frontend UI : http://${FRONTEND_LB}"
           else
-            echo ""
-            echo "Frontend service has no external endpoint yet (type may still be ClusterIP)."
+            echo "  🖥️  Frontend UI : ⏳ LB hostname not yet assigned"
+          fi
+          if [ -n "$ALB_HOST" ]; then
+            echo "  🔌 API (ALB)   : https://${ALB_HOST}/api"
+            echo "  🔌 API (domain): https://api.qwikbrew.in/api"
+          else
+            echo "  🔌 API (ALB)   : ⏳ Ingress ALB not yet assigned"
+          fi
+          echo "=========================================="
+          echo "  Useful curl checks:"
+          echo "  GET  http://${FRONTEND_LB:-<frontend-lb>}/"
+          echo "  GET  https://${ALB_HOST:-api.qwikbrew.in}/api/v1/menu"
+          echo "  POST https://${ALB_HOST:-api.qwikbrew.in}/api/v1/users/register"
+          echo "  POST https://${ALB_HOST:-api.qwikbrew.in}/api/v1/users/login"
+          echo "=========================================="
+
+          # ── 4. GitHub Step Summary ────────────────────────────────────────
+          echo "## 🚀 QwikBrew Live URLs" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$FRONTEND_LB" ]; then
+            echo "| 🖥️ Frontend UI | [http://${FRONTEND_LB}](http://${FRONTEND_LB}) |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| 🖥️ Frontend UI | ⏳ LB pending |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -n "$ALB_HOST" ]; then
+            echo "| 🔌 API (ALB)   | [https://${ALB_HOST}/api](https://${ALB_HOST}/api) |" >> $GITHUB_STEP_SUMMARY
+            echo "| 🔌 API (domain)| [https://api.qwikbrew.in/api](https://api.qwikbrew.in/api) |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| 🔌 API (ALB)   | ⏳ Ingress ALB pending |" >> $GITHUB_STEP_SUMMARY
           fi
 
-          # ── Full diagnostics (always runs) ────────────────────────────────
+          # ── 5. Full diagnostics (always runs) ─────────────────────────────
           echo ""
           echo "━━━━ POD STATUS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           kubectl get pods -n qwikbrew -o wide
@@ -807,43 +781,28 @@ jobs:
           kubectl get endpoints -n qwikbrew
 
           echo ""
-          echo "━━━━ HEALTH CHECK ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          if [ -n "$LB" ]; then
-            sleep 15
-            HTTP=$(curl -s -o /tmp/health.json -w "%{http_code}"               "http://${LB}/actuator/health" --max-time 15 || echo "000")
-            echo "HTTP $HTTP"
-            cat /tmp/health.json 2>/dev/null || true
+          echo "━━━━ INGRESS STATUS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          kubectl get ingress -n qwikbrew
 
-            if [ "$HTTP" != "200" ]; then
-              echo ""
-              echo "━━━━ LB NOT HEALTHY — DIAGNOSING ━━━━━━━━━━━━━━━━━━━━━━━"
-
-              echo ""
-              echo ">> api-gateway pod readiness:"
-              kubectl get pods -n qwikbrew -l app=api-gateway -o wide
-
-              echo ""
-              echo ">> api-gateway pod describe (events):"
-              kubectl describe pods -n qwikbrew -l app=api-gateway                 | grep -A20 "Events:" | head -25
-
-              echo ""
-              echo ">> api-gateway logs (last 60 lines):"
-              GW_POD=$(kubectl get pods -n qwikbrew -l app=api-gateway                 -o jsonpath="{.items[0].metadata.name}" 2>/dev/null || echo "")
-              if [ -n "$GW_POD" ]; then
-                kubectl logs "$GW_POD" -n qwikbrew --tail=60 2>/dev/null ||                 kubectl logs "$GW_POD" -n qwikbrew --tail=60 --previous 2>/dev/null ||                 echo "(no logs)"
-              fi
-
-              echo ""
-              echo ">> LB describe (check target health):"
-              LB_NAME=$(echo "$LB" | cut -d'-' -f1-8 | sed 's/\..*//')
-              aws elb describe-instance-health                 --load-balancer-name "$LB_NAME"                 --region ${{ env.AWS_REGION }} 2>/dev/null || true
-
-              echo ""
-              echo ">> Node security groups:"
-              kubectl get nodes -o jsonpath="{.items[0].spec.providerID}" |                 sed 's|.*/||' |                 xargs -I{} aws ec2 describe-instances                   --instance-ids {}                   --query "Reservations[0].Instances[0].SecurityGroups"                   --output table                   --region ${{ env.AWS_REGION }} 2>/dev/null || true
+          echo ""
+          echo "━━━━ HEALTH CHECK (frontend) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          if [ -n "$FRONTEND_LB" ]; then
+            sleep 10
+            HTTP=$(curl -s -o /dev/null -w "%{http_code}" \
+              "http://${FRONTEND_LB}/" --max-time 15 || echo "000")
+            echo "Frontend HTTP $HTTP"
+            if [ "$HTTP" == "200" ]; then
+              echo "✅ Frontend is up and serving the React UI"
             else
-              echo "Application is healthy and responding"
+              echo "⚠️  Frontend returned HTTP $HTTP"
+              echo ""
+              echo ">> frontend pod logs (last 40 lines):"
+              FE_POD=$(kubectl get pods -n qwikbrew -l app=frontend \
+                -o jsonpath="{.items[0].metadata.name}" 2>/dev/null || echo "")
+              [ -n "$FE_POD" ] && kubectl logs "$FE_POD" -n qwikbrew --tail=40 2>/dev/null || echo "(no logs)"
             fi
+          else
+            echo "Frontend LB not yet assigned — skipping HTTP check"
           fi
 
 # ═══════════════════════════════════════════════════════════════════════════════
