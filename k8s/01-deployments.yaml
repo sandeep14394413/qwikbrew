@@ -119,25 +119,23 @@ spec:
           configMap:
             name: api-gateway-override
 ---
-# api-gateway — internet-facing NLB managed by AWS Load Balancer Controller.
-# This avoids the legacy "classic" mode that often stays in <pending> on modern EKS setups.
+# api-gateway — ClusterIP only.
+# External traffic reaches the gateway exclusively through the ALB Ingress
+# (k8s/03-ingress.yaml) which routes /api → api-gateway:8080 internally.
+# No public NLB is created, saving cost and reducing the attack surface.
+# All downstream microservices (user, menu, order, payment, notification)
+# are also ClusterIP — the gateway calls them via Kubernetes DNS.
 apiVersion: v1
 kind: Service
 metadata:
   name: api-gateway
   namespace: qwikbrew
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "external"
-    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
-    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
-    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
 spec:
-  loadBalancerClass: service.k8s.aws/nlb
-  type: LoadBalancer
+  type: ClusterIP
   selector: { app: api-gateway }
   ports:
     - name: http
-      port: 80
+      port: 8080
       targetPort: 8080
       protocol: TCP
 
@@ -416,7 +414,9 @@ spec: { type: ClusterIP, selector: { app: notification-service }, ports: [{ port
 
 ---
 # ── 7. Frontend (QwikCafe React UI) ───────────────────────────────────────────
-# Nginx serving the React SPA — accessible via the LoadBalancer at /
+# Nginx serving the React SPA.
+# Public access via its own NLB LoadBalancer (direct on port 80).
+# The ALB Ingress also routes / → frontend for HTTPS termination.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -439,8 +439,6 @@ spec:
       containers:
         - name: frontend
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/frontend:latest
-          # Use cached image when available to avoid transient ECR pull/auth failures
-          # causing downtime for the SPA pod.
           imagePullPolicy: IfNotPresent
           env:
             - name: UI_BUILD_VERSION
@@ -456,6 +454,8 @@ spec:
             httpGet: { path: /, port: 80 }
             initialDelaySeconds: 10
 ---
+# frontend — internet-facing NLB (direct public access on port 80).
+# Also reachable via ALB Ingress at / for HTTPS.
 apiVersion: v1
 kind: Service
 metadata:

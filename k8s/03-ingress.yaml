@@ -23,7 +23,10 @@ spec:
           - path: /api
             pathType: Prefix
             backend:
-              service: { name: api-gateway, port: { number: 80 } }
+              service:
+                # api-gateway is now ClusterIP on port 8080
+                name: api-gateway
+                port: { number: 8080 }
           - path: /
             pathType: Prefix
             backend:
@@ -34,7 +37,10 @@ spec:
           - path:     /api
             pathType: Prefix
             backend:
-              service: { name: api-gateway, port: { number: 80 } }
+              service:
+                # api-gateway is now ClusterIP on port 8080
+                name: api-gateway
+                port: { number: 8080 }
           - path:     /
             pathType: Prefix
             backend:
