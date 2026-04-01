@@ -160,7 +160,7 @@ const BASE = API;
 
 async function api(path, opts={}){
   const token = localStorage.getItem('token');
-  const res = await fetch(BASE+path,{
+  const res = await fetch(API+path,{
     headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{}),...(opts.headers||{})},
     ...opts
   });
