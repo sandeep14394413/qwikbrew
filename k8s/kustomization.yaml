@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: qwikbrew
+
+resources:
+  - 00-namespace-config.yaml
+  - 01-deployments.yaml
+  - 02-hpa-pdb.yaml
+  - 03-ingress.yaml
+
+# CI-safe image pinning:
+# - keep defaults deployable locally (`latest`)
+# - override tags in CI/CD with:
+#   kustomize edit set image ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/frontend=ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/frontend:<tag>
+#   kubectl apply -k k8s
+images:
+  - name: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/api-gateway
+    newTag: latest
+  - name: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/frontend
+    newTag: latest
+  - name: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/user-service
+    newTag: latest
+  - name: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/menu-service
+    newTag: latest
+  - name: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/order-service
+    newTag: latest
+  - name: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/payment-service
+    newTag: latest
+  - name: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/notification-service
+    newTag: latest
