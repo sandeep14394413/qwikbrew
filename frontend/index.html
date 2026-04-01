@@ -1,374 +1,840 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-  <meta http-equiv="Pragma" content="no-cache"/>
-  <meta http-equiv="Expires" content="0"/>
-  <title>QwikBrew — Corporate Café</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.4/babel.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet"/>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;}
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>QwikBrew — Corporate Café</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.4/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --brand:#FF6B35;--brand2:#FF8C42;--brand-dim:rgba(255,107,53,.18);
+  --gold:#F5A623;--gold-dim:rgba(245,166,35,.15);
+  --bg:#0C0C0F;--surface:#141418;--surface2:#1C1C22;--surface3:#24242C;
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.12);
+  --text:#F0EFE8;--muted:#8A8A96;--hint:#4A4A56;
+  --green:#22C55E;--green-dim:rgba(34,197,94,.15);
+  --blue:#3B82F6;--blue-dim:rgba(59,130,246,.15);
+  --red:#EF4444;--red-dim:rgba(239,68,68,.15);
+  --r:14px;--r-lg:20px;--r-xl:28px;
+}
+html{scroll-behavior:smooth;}
+body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden;min-height:100vh;}
+#root{min-height:100vh;display:flex;flex-direction:column;}
 
-    :root{
-      --brand:#f97316;--brand-dark:#c2410c;--brand-glow:rgba(249,115,22,.25);
-      --bg:#fafaf8;--surface:#ffffff;--text:#111;--muted:#777;--border:#eee;
-      --radius:18px;--radius-sm:10px;
-      --ease-spring:cubic-bezier(.34,1.56,.64,1);
-      --ease-smooth:cubic-bezier(.25,.46,.45,.94);
-    }
-    body{font-family:'Inter','Segoe UI',Tahoma,sans-serif;background:radial-gradient(circle at 15% 10%,#fff7ed 0%,#eef2ff 45%,#f8fafc 100%);color:var(--text);}
-    #root{min-height:100vh;display:flex;flex-direction:column;}
-    .btn{padding:10px 20px;border:none;border-radius:12px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;}
-    .btn-primary{background:var(--primary);color:#fff;}
-    .btn-primary:hover{background:var(--primary-dark);}
-    .btn-outline{background:transparent;border:2px solid var(--primary);color:var(--primary);}
-    .btn-outline:hover{background:var(--primary);color:#fff;}
-    .btn-sm{padding:6px 14px;font-size:12px;}
-    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;border:1px solid #eef2f7;}
-    .badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;}
-    .badge-veg{background:#e8f5e9;color:#2e7d32;}
-    .badge-nonveg{background:#fce4ec;color:#c62828;}
-    input,select{width:100%;padding:12px 16px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px;outline:none;transition:border-color .2s;}
-    input:focus,select:focus{border-color:var(--primary);}
-    .toast{position:fixed;top:20px;right:20px;padding:14px 20px;border-radius:8px;color:#fff;font-weight:600;z-index:9999;animation:slideIn .3s ease;}
-    .toast-success{background:var(--success);}
-    .toast-error{background:var(--danger);}
-    @keyframes slideIn{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
-    .spinner{border:3px solid #f3f3f3;border-top:3px solid var(--primary);border-radius:50%;width:32px;height:32px;animation:spin .8s linear infinite;margin:40px auto;}
-    @keyframes spin{to{transform:rotate(360deg);}}
-    /* Nav */
-    nav{background:linear-gradient(90deg,#0f172a,#1f2937);backdrop-filter:blur(12px);padding:0 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;height:66px;border-bottom:1px solid rgba(255,255,255,.08);box-shadow:0 10px 25px rgba(15,23,42,.2);}
-    .nav-brand{color:#fff;font-size:22px;font-weight:800;display:flex;align-items:center;gap:8px;}
-    .nav-brand span{color:var(--primary);}
-    .nav-right{display:flex;align-items:center;gap:16px;}
-    .nav-icon{color:#fff;font-size:20px;cursor:pointer;position:relative;}
-    .nav-badge{position:absolute;top:-6px;right:-6px;background:var(--primary);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;display:flex;align-items:center;justify-content:center;}
-    /* Hero */
-    .hero{background:linear-gradient(120deg,rgba(249,115,22,.88),rgba(234,88,12,.86)),url('https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1600&q=80') center/cover;padding:44px 20px 36px;color:#fff;text-align:center;position:relative;overflow:hidden;}
-    .hero::after{content:'';position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.12);right:-70px;top:-70px;}
-    .hero h1{font-size:33px;margin-bottom:10px;text-shadow:0 8px 20px rgba(0,0,0,.3);}
-    .hero p{opacity:.92;font-size:15px;margin-bottom:22px;}
-    .hero-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:760px;margin:16px auto 0;}
-    .hero-kpi{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:10px 8px;backdrop-filter:blur(4px);}
-    .hero-kpi strong{display:block;font-size:15px;}
-    .hero-kpi span{font-size:11px;opacity:.9;}
-    .search-box{max-width:500px;margin:0 auto;position:relative;}
-    .search-box input{padding-left:44px;border-radius:30px;font-size:15px;border-color:#fff;box-shadow:0 10px 20px rgba(15,23,42,.18);}
-    .search-box i{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted);}
-    /* Categories */
-    .categories{display:flex;gap:10px;padding:20px;overflow-x:auto;scrollbar-width:none;}
-    .category-chip{padding:10px 18px;border-radius:30px;cursor:pointer;white-space:nowrap;font-weight:600;font-size:12px;transition:all .2s;border:1px solid #e5e7eb;background:#fff;}
-    .category-chip.active{background:var(--primary);color:#fff;border-color:var(--primary);}
-    /* Menu Grid */
-    .menu-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;padding:0 20px 20px;}
-    .menu-card{cursor:pointer;transition:transform .2s, box-shadow .2s;border-radius:18px;position:relative;}
-    .menu-card:hover{transform:translateY(-7px) scale(1.01);box-shadow:0 20px 34px rgba(17,24,39,.16);}
-    .menu-media{position:relative;}
-    .menu-media::before{content:'Chef recommended';position:absolute;left:12px;top:12px;background:rgba(17,24,39,.75);color:#fff;font-size:10px;padding:5px 8px;border-radius:20px;letter-spacing:.3px;z-index:2;}
-    .menu-media::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(15,23,42,.5) 100%);}
-    .menu-img{width:100%;height:184px;object-fit:cover;background:linear-gradient(135deg,#f093fb,#f5576c);}
-    .menu-img-placeholder{width:100%;height:170px;display:flex;align-items:center;justify-content:center;font-size:48px;position:relative;}
-    .menu-body{padding:16px;background:linear-gradient(180deg,#fff,#fffaf5);}
-    .menu-title{font-size:16px;font-weight:700;margin-bottom:4px;}
-    .menu-desc{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;}
-    .menu-footer{display:flex;align-items:center;justify-content:space-between;}
-    .price{font-size:20px;font-weight:800;color:var(--primary);}
-    .add-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 18px rgba(249,115,22,.35);}
-    .qty-ctrl{display:flex;align-items:center;gap:8px;}
-    .qty-btn{width:30px;height:30px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:16px;box-shadow:0 6px 14px rgba(249,115,22,.3);}
-    .qty-num{font-weight:700;min-width:20px;text-align:center;}
-    /* Cart */
-    .cart-sidebar{position:fixed;right:0;top:0;width:380px;height:100vh;background:#fff;box-shadow:-4px 0 20px rgba(0,0,0,.15);z-index:200;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s;}
-    .cart-sidebar.open{transform:translateX(0);}
-    .cart-header{
-      padding:20px 22px;border-bottom:1px solid var(--border);
-      display:flex;align-items:center;justify-content:space-between;
-    }
-    .cart-title{font-family:'DM Serif Display',serif;font-size:20px;}
-    .close-btn{
-      width:36px;height:36px;border-radius:10px;border:1.5px solid var(--border);
-      background:transparent;cursor:pointer;font-size:16px;
-      display:flex;align-items:center;justify-content:center;
-      transition:all .2s;
-    }
-    .close-btn:hover{background:var(--bg);border-color:var(--brand);color:var(--brand);}
-    .cart-items{flex:1;overflow-y:auto;padding:16px 22px;}
-    .cart-empty{text-align:center;padding:60px 20px;color:var(--muted);}
-    .cart-empty-icon{font-size:56px;margin-bottom:14px;animation:floatBob 3s ease-in-out infinite;}
-    .cart-item{
-      display:flex;align-items:center;gap:12px;
-      padding:12px 0;border-bottom:1px solid var(--border);
-      animation:slideRight .35s ease both;
-    }
-    .cart-item-emoji{font-size:28px;flex-shrink:0;}
-    .cart-item-info{flex:1;}
-    .cart-item-name{font-weight:600;font-size:14px;}
-    .cart-item-price{color:var(--primary);font-weight:700;}
-    .cart-footer{padding:20px;border-top:1px solid #f0f0f0;}
-    .cart-total{display:flex;justify-content:space-between;font-size:18px;font-weight:800;margin-bottom:16px;}
-    .payment-methods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px;}
-    .payment-method{border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:10px 8px;cursor:pointer;font-size:12px;font-weight:600;color:#374151;display:flex;align-items:center;gap:6px;justify-content:center;}
-    .payment-method.active{border-color:var(--primary);background:#fff7ed;color:var(--primary-dark);}
-    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:150;}
-    .gateway-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,92vw);background:#fff;border-radius:16px;z-index:250;box-shadow:0 20px 60px rgba(0,0,0,.25);overflow:hidden;}
-    .gateway-header{padding:16px 20px;background:linear-gradient(135deg,#111827,#374151);color:#fff;display:flex;justify-content:space-between;align-items:center;}
-    .gateway-body{padding:16px 20px;}
-  /* Auth */
-    .auth-container{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
-    .auth-card{width:100%;max-width:420px;padding:40px;}
-    .auth-shell{width:min(980px,100%);display:grid;grid-template-columns:1.1fr .9fr;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 24px 60px rgba(15,23,42,.16);}
-    .auth-panel{background:linear-gradient(145deg,rgba(15,23,42,.88),rgba(30,41,59,.78)),url('https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1400&q=80') center/cover;color:#fff;padding:36px 30px;display:flex;flex-direction:column;justify-content:space-between;}
-    .auth-pill{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.16);font-size:11px;font-weight:700;letter-spacing:.3px;}
-    .auth-points{display:grid;gap:12px;margin-top:20px;}
-    .auth-point{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);padding:10px 12px;border-radius:12px;font-size:12px;}
-    .auth-logo{text-align:center;margin-bottom:32px;}
-    .auth-logo h1{font-size:28px;color:var(--secondary);}
-    .auth-logo p{color:var(--muted);font-size:14px;}
-    .form-group{margin-bottom:20px;}
-    .form-label{display:block;margin-bottom:8px;font-weight:600;font-size:14px;}
-    .form-error{color:var(--danger);font-size:12px;margin-top:4px;}
-    .divider{text-align:center;color:var(--muted);margin:20px 0;position:relative;}
-    .divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:#e0e0e0;}
-    .divider span{background:#fff;padding:0 16px;position:relative;}
-    /* Orders */
-    .order-card{padding:20px;margin-bottom:16px;}
-    .order-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
-    .order-id{font-weight:700;font-size:15px;}
-    .order-date{color:var(--muted);font-size:12px;}
-    .order-status{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;}
-    .status-delivered{background:#e8f5e9;color:#2e7d32;}
-    .status-preparing{background:#fff3e0;color:#e65100;}
-    .status-ready{background:#e3f2fd;color:#1565c0;}
-    .status-cancelled{background:#fce4ec;color:#c62828;}
-    /* Profile */
-    .profile-header{background:linear-gradient(135deg,var(--secondary),#34495e);padding:40px 20px;text-align:center;color:#fff;}
-    .avatar{width:80px;height:80px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 16px;}
-    .wallet-card{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;border-radius:16px;padding:24px;margin:20px;}
-    .wallet-balance{font-size:36px;font-weight:800;}
-    /* Bottom nav */
-    .bottom-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e0e0e0;z-index:100;box-shadow:0 -6px 24px rgba(17,24,39,.08);}
-    .bottom-nav-items{display:flex;}
-    .bottom-nav-item{flex:1;padding:12px 0;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--muted);font-size:10px;font-weight:600;}
-    .bottom-nav-item.active{color:var(--primary);}
-    .bottom-nav-item i{font-size:20px;}
-    @media(max-width:600px){
-      .auth-shell{grid-template-columns:1fr;}
-      .auth-panel{display:none;}
-      .bottom-nav{display:block;}
-      body{padding-bottom:70px;}
-      .grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;}
-      .mcard-img-wrap{height:130px;}
-      .cart-sidebar{width:100%;}
-    }
-  </style>
+/* ─── Animated mesh background ─── */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 10%, rgba(255,107,53,.08) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 60% at 80% 80%, rgba(245,166,35,.06) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 30% at 60% 30%, rgba(59,130,246,.04) 0%, transparent 50%);
+}
+
+/* ─── Keyframes ─── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+@keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:none}}
+@keyframes slideRight{from{transform:translateX(110%)}to{transform:none}}
+@keyframes glow{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes pulse-ring{0%{transform:scale(.95);opacity:.7}100%{transform:scale(1.15);opacity:0}}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+@keyframes count-up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes ripple-out{0%{transform:scale(0);opacity:.6}100%{transform:scale(3);opacity:0}}
+@keyframes card-shine{0%{left:-100%}100%{left:200%}}
+@keyframes float1{0%,100%{transform:translate(0,0) rotate(0deg)}33%{transform:translate(8px,-12px) rotate(5deg)}66%{transform:translate(-5px,6px) rotate(-3deg)}}
+@keyframes float2{0%,100%{transform:translate(0,0) rotate(0deg)}33%{transform:translate(-10px,8px) rotate(-4deg)}66%{transform:translate(7px,-10px) rotate(6deg)}}
+
+/* ─── Typography ─── */
+.font-display{font-family:'Syne',sans-serif;}
+
+/* ─── Particles ─── */
+.particle{position:fixed;font-size:16px;pointer-events:none;z-index:0;opacity:.12;user-select:none;}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--hint);border-radius:2px;}
+
+/* ─── Nav ─── */
+nav{
+  position:sticky;top:0;z-index:200;height:62px;
+  background:rgba(12,12,15,.85);backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;
+}
+.nav-logo{display:flex;align-items:center;gap:10px;}
+.nav-logo-mark{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(135deg,var(--brand),var(--brand2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;animation:bob 3s ease-in-out infinite;
+  box-shadow:0 0 20px rgba(255,107,53,.4);
+}
+.nav-logo-text{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;letter-spacing:-.3px;}
+.nav-logo-text span{color:var(--brand);}
+.nav-pill{
+  font-size:9px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
+  background:var(--brand-dim);border:1px solid rgba(255,107,53,.3);
+  color:var(--brand);padding:3px 8px;border-radius:999px;
+}
+.nav-right{display:flex;align-items:center;gap:12px;}
+.nav-greeting{font-size:13px;color:var(--muted);}
+.wallet-chip{
+  display:flex;align-items:center;gap:6px;
+  background:var(--surface2);border:1px solid var(--border2);
+  border-radius:999px;padding:5px 12px 5px 8px;cursor:pointer;
+  transition:all .2s;font-size:13px;font-weight:600;
+}
+.wallet-chip:hover{border-color:var(--gold);box-shadow:0 0 16px var(--gold-dim);}
+.wallet-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);}
+.cart-fab{
+  width:38px;height:38px;border-radius:12px;
+  background:var(--surface2);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;position:relative;font-size:17px;
+  transition:all .22s;
+}
+.cart-fab:hover{border-color:var(--brand);background:var(--brand-dim);}
+.cart-badge{
+  position:absolute;top:-5px;right:-5px;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--brand);color:#fff;font-size:10px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--bg);
+  animation:scaleIn .3s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+/* ─── Hero ─── */
+.hero{
+  position:relative;z-index:1;
+  padding:44px 20px 36px;overflow:hidden;
+}
+.hero-inner{max-width:660px;margin:0 auto;text-align:center;}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:7px;
+  background:var(--surface2);border:1px solid var(--border2);
+  border-radius:999px;padding:6px 14px;font-size:12px;
+  margin-bottom:20px;animation:fadeUp .5s ease both;
+}
+.hero-badge-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:glow 1.5s ease-in-out infinite;}
+.hero-badge span{color:var(--muted);}
+.hero-title{
+  font-family:'Syne',sans-serif;font-size:clamp(30px,5.5vw,50px);
+  font-weight:800;line-height:1.1;letter-spacing:-.5px;
+  margin-bottom:14px;animation:fadeUp .5s .08s ease both;
+}
+.hero-title em{
+  font-style:normal;
+  background:linear-gradient(90deg,var(--brand),var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.hero-sub{color:var(--muted);font-size:15px;margin-bottom:28px;animation:fadeUp .5s .15s ease both;}
+
+.search-bar{
+  position:relative;max-width:440px;margin:0 auto;
+  animation:fadeUp .5s .22s ease both;
+}
+.search-bar input{
+  width:100%;padding:13px 18px 13px 46px;
+  background:var(--surface2);border:1px solid var(--border2);
+  border-radius:999px;color:var(--text);font-family:'Instrument Sans',sans-serif;
+  font-size:14px;outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+.search-bar input::placeholder{color:var(--hint);}
+.search-bar input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-dim);}
+.search-icon{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:15px;color:var(--hint);}
+
+.hero-stats{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
+  max-width:440px;margin:24px auto 0;
+  animation:fadeUp .5s .3s ease both;
+}
+.stat{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r);padding:12px 8px;text-align:center;
+  transition:all .2s;cursor:default;
+}
+.stat:hover{border-color:var(--border2);transform:translateY(-2px);}
+.stat-val{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--text);}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* ─── Categories ─── */
+.cats{
+  padding:16px 20px 12px;
+  display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;
+  position:sticky;top:62px;z-index:100;
+  background:rgba(12,12,15,.9);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.cats::-webkit-scrollbar{display:none;}
+.cat{
+  flex-shrink:0;padding:7px 16px;border-radius:999px;
+  font-size:12px;font-weight:600;cursor:pointer;
+  border:1px solid var(--border);color:var(--muted);
+  background:transparent;transition:all .2s;
+  white-space:nowrap;
+}
+.cat:hover{border-color:var(--border2);color:var(--text);}
+.cat.active{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 0 16px var(--brand-dim);}
+
+/* ─── Menu grid ─── */
+.menu-wrap{padding:20px 20px 100px;position:relative;z-index:1;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+
+/* ─── Menu card ─── */
+.mcard{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);overflow:hidden;cursor:pointer;
+  transition:transform .25s cubic-bezier(.34,1.2,.64,1),border-color .2s,box-shadow .2s;
+  animation:fadeUp .5s ease both;position:relative;
+}
+.mcard::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;
+  background:linear-gradient(105deg,rgba(255,255,255,.04) 0%,transparent 60%);
+  pointer-events:none;
+}
+.mcard:hover{transform:translateY(-5px);border-color:var(--border2);box-shadow:0 16px 40px rgba(0,0,0,.4);}
+.mcard:hover .mcard-img{transform:scale(1.07);}
+.img-wrap{height:165px;overflow:hidden;position:relative;background:var(--surface2);}
+.mcard-img{width:100%;height:100%;object-fit:cover;transition:transform .4s ease;display:block;}
+.img-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:42px;}
+.img-tags{position:absolute;top:10px;left:10px;display:flex;gap:6px;z-index:2;}
+.tag{
+  font-size:10px;font-weight:700;letter-spacing:.3px;
+  padding:4px 9px;border-radius:999px;backdrop-filter:blur(10px);
+}
+.tag-veg{background:rgba(34,197,94,.85);color:#fff;}
+.tag-nonveg{background:rgba(239,68,68,.85);color:#fff;}
+.tag-hot{background:rgba(255,107,53,.85);color:#fff;}
+
+.mcard-body{padding:14px 15px 16px;}
+.mcard-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.mcard-rating{font-size:12px;color:var(--gold);font-weight:600;}
+.mcard-time{font-size:11px;color:var(--hint);}
+.mcard-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:4px;line-height:1.3;}
+.mcard-desc{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;}
+.mcard-footer{display:flex;align-items:center;justify-content:space-between;}
+.mcard-price{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--text);}
+.mcard-price sup{font-size:12px;font-weight:500;color:var(--muted);vertical-align:top;margin-top:5px;margin-right:1px;}
+
+.add-btn{
+  width:36px;height:36px;border-radius:50%;border:none;
+  background:var(--brand);color:#fff;cursor:pointer;font-size:20px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .22s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 4px 14px rgba(255,107,53,.45);
+  position:relative;overflow:hidden;
+}
+.add-btn:hover{transform:scale(1.12);box-shadow:0 6px 20px rgba(255,107,53,.55);}
+.add-btn:active{transform:scale(.9);}
+.add-btn::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.25);border-radius:50%;transform:scale(0);}
+.add-btn:active::after{animation:ripple-out .4s ease;}
+
+.qty-row{display:flex;align-items:center;gap:10px;}
+.qty-btn{
+  width:30px;height:30px;border-radius:50%;border:1.5px solid var(--brand);
+  background:transparent;color:var(--brand);font-size:17px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .2s;font-weight:600;
+}
+.qty-btn:hover{background:var(--brand);color:#fff;}
+.qty-num{font-family:'Syne',sans-serif;font-weight:700;font-size:15px;min-width:20px;text-align:center;}
+
+/* ─── Spinner ─── */
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--brand);border-radius:50%;animation:spin .7s linear infinite;}
+.spinner-wrap{display:flex;align-items:center;justify-content:center;padding:80px;}
+
+/* ─── Cart sidebar ─── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;backdrop-filter:blur(4px);animation:fadeIn .2s ease both;}
+.cart{
+  position:fixed;right:0;top:0;bottom:0;width:400px;
+  background:var(--surface);border-left:1px solid var(--border);
+  z-index:400;display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .35s cubic-bezier(.34,1.1,.64,1);
+}
+.cart.open{transform:none;}
+.cart-head{
+  padding:18px 20px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.cart-head h3{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;}
+.close-x{
+  width:34px;height:34px;border-radius:10px;
+  border:1px solid var(--border);background:transparent;
+  color:var(--muted);cursor:pointer;font-size:15px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;
+}
+.close-x:hover{border-color:var(--brand);color:var(--brand);}
+.cart-body{flex:1;overflow-y:auto;padding:16px 20px;}
+.cart-empty-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:var(--hint);}
+.cart-empty-wrap span{font-size:52px;animation:bob 3s ease-in-out infinite;}
+.cart-empty-wrap p{font-size:14px;text-align:center;}
+.c-item{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 0;border-bottom:1px solid var(--border);
+  animation:fadeUp .3s ease both;
+}
+.c-item-emoji{font-size:26px;flex-shrink:0;width:40px;text-align:center;}
+.c-item-info{flex:1;}
+.c-item-name{font-weight:600;font-size:13px;margin-bottom:3px;}
+.c-item-price{font-size:12px;color:var(--brand);font-weight:700;}
+
+.cart-foot{padding:18px 20px;border-top:1px solid var(--border);}
+
+/* ─── Wallet balance mini card ─── */
+.wallet-mini{
+  background:linear-gradient(135deg,rgba(245,166,35,.12),rgba(245,166,35,.06));
+  border:1px solid rgba(245,166,35,.25);border-radius:var(--r);
+  padding:12px 14px;margin-bottom:14px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.wallet-mini-left{font-size:12px;color:var(--muted);}
+.wallet-mini-bal{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--gold);}
+.wallet-mini-add{
+  font-size:11px;font-weight:700;color:var(--gold);
+  background:var(--gold-dim);border:1px solid rgba(245,166,35,.3);
+  padding:4px 10px;border-radius:999px;cursor:pointer;
+  transition:all .2s;white-space:nowrap;
+}
+.wallet-mini-add:hover{background:rgba(245,166,35,.25);}
+
+.cart-total{display:flex;justify-content:space-between;font-size:16px;font-weight:700;margin-bottom:14px;}
+.cart-total-amt{font-family:'Syne',sans-serif;font-size:20px;color:var(--brand);}
+
+/* ─── Payment method pills ─── */
+.pay-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.pay-btn{
+  padding:10px 8px;border-radius:var(--r);
+  border:1px solid var(--border);background:var(--surface2);
+  color:var(--muted);font-size:12px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  cursor:pointer;transition:all .2s;
+}
+.pay-btn:hover{border-color:var(--border2);color:var(--text);}
+.pay-btn.sel{border-color:var(--brand);background:var(--brand-dim);color:var(--brand);}
+.pay-icon{font-size:16px;}
+
+.order-btn{
+  width:100%;padding:14px;border-radius:var(--r);border:none;
+  background:linear-gradient(135deg,var(--brand),var(--brand2));
+  color:#fff;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;
+  cursor:pointer;transition:all .22s;position:relative;overflow:hidden;
+  box-shadow:0 8px 24px rgba(255,107,53,.35);letter-spacing:.2px;
+}
+.order-btn::before{
+  content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);
+  transition:left .5s;
+}
+.order-btn:hover::before{left:200%;}
+.order-btn:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(255,107,53,.45);}
+.order-btn:active{transform:scale(.97);}
+.order-btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+
+/* ─── PAYMENT GATEWAY MODAL ─── */
+.modal-bg{
+  position:fixed;inset:0;z-index:500;
+  background:rgba(0,0,0,.8);backdrop-filter:blur(6px);
+  display:flex;align-items:flex-end;justify-content:center;
+  padding:0;animation:fadeIn .2s ease both;
+}
+@media(min-width:600px){.modal-bg{align-items:center;padding:20px;}}
+.modal{
+  width:100%;max-width:480px;
+  background:var(--surface);border-radius:var(--r-xl) var(--r-xl) 0 0;
+  overflow:hidden;animation:slideUp .35s cubic-bezier(.34,1.1,.64,1) both;
+  max-height:92vh;display:flex;flex-direction:column;
+}
+@media(min-width:600px){.modal{border-radius:var(--r-xl);animation-name:scaleIn;max-height:85vh;}}
+
+.modal-handle{width:40px;height:4px;background:var(--border2);border-radius:2px;margin:12px auto 0;}
+.modal-title-bar{padding:16px 20px 14px;display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;}
+.modal-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+.modal-body{padding:0 20px 20px;overflow-y:auto;flex:1;}
+
+/* ─── Payment card visual ─── */
+.pay-card-visual{
+  height:160px;border-radius:var(--r-lg);margin-bottom:18px;
+  position:relative;overflow:hidden;cursor:pointer;
+}
+.pay-card-visual.upi-card{background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);}
+.pay-card-visual.wallet-card-v{background:linear-gradient(135deg,#1a1200,#2d1f00,#3d2a00);}
+.pay-card-visual.card-v{background:linear-gradient(135deg,#0d1117,#161b22,#21262d);}
+.pay-card-visual.nb-card{background:linear-gradient(135deg,#0a1628,#0f2447,#1a3a6e);}
+.card-shine{
+  position:absolute;top:0;left:-100%;width:50%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.05),transparent);
+  animation:card-shine 3s ease-in-out infinite;
+}
+.card-chip{
+  position:absolute;top:22px;left:22px;
+  width:36px;height:28px;border-radius:5px;
+  background:linear-gradient(135deg,rgba(255,255,255,.15),rgba(255,255,255,.05));
+  border:1px solid rgba(255,255,255,.12);
+}
+.card-logo{position:absolute;top:18px;right:20px;font-size:22px;opacity:.8;}
+.card-network{position:absolute;bottom:18px;right:20px;font-size:11px;font-weight:700;letter-spacing:.5px;opacity:.6;}
+.card-num{position:absolute;bottom:40px;left:22px;font-family:'Syne',sans-serif;font-size:14px;letter-spacing:2px;opacity:.7;}
+.card-label{position:absolute;bottom:18px;left:22px;font-size:10px;opacity:.5;letter-spacing:.5px;}
+.card-amount{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  text-align:center;
+}
+.card-amount-label{font-size:11px;opacity:.55;margin-bottom:4px;letter-spacing:.5px;}
+.card-amount-val{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:#fff;}
+
+/* ─── UPI section ─── */
+.upi-id-bar{
+  background:var(--surface2);border:1px solid var(--border2);
+  border-radius:var(--r);padding:12px 14px;margin-bottom:14px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.upi-id-val{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;color:var(--brand);}
+.upi-id-copy{font-size:11px;color:var(--muted);cursor:pointer;padding:4px 8px;border-radius:6px;border:1px solid var(--border);transition:all .2s;}
+.upi-id-copy:hover{border-color:var(--brand);color:var(--brand);}
+
+.upi-apps{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.upi-app{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r);padding:12px 6px 10px;text-align:center;
+  cursor:pointer;transition:all .2s;
+}
+.upi-app:hover{border-color:var(--border2);transform:translateY(-2px);}
+.upi-app-icon{font-size:22px;margin-bottom:5px;}
+.upi-app-name{font-size:10px;color:var(--muted);font-weight:600;}
+
+.qr-wrap{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r);padding:16px;text-align:center;margin-bottom:14px;
+}
+.qr-img{width:140px;height:140px;border-radius:10px;margin:0 auto 10px;}
+.qr-hint{font-size:11px;color:var(--hint);}
+
+/* ─── Card input ─── */
+.card-field{margin-bottom:12px;}
+.card-field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.3px;}
+.card-input{
+  width:100%;padding:12px 14px;border-radius:var(--r);
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);font-family:'Instrument Sans',sans-serif;font-size:14px;outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+.card-input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-dim);}
+.card-input::placeholder{color:var(--hint);}
+.card-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
+/* ─── Net banking ─── */
+.bank-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px;}
+.bank-btn{
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+  padding:12px 10px;cursor:pointer;transition:all .2s;text-align:center;
+}
+.bank-btn:hover{border-color:var(--border2);}
+.bank-btn.sel-bank{border-color:var(--blue);background:var(--blue-dim);}
+.bank-icon{font-size:20px;margin-bottom:4px;}
+.bank-name{font-size:11px;font-weight:600;color:var(--muted);}
+
+/* ─── Pay confirm button inside modal ─── */
+.pay-confirm-btn{
+  width:100%;padding:15px;border-radius:var(--r);border:none;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:700;
+  cursor:pointer;transition:all .22s;position:relative;overflow:hidden;
+  letter-spacing:.2px;margin-top:4px;
+}
+.pay-confirm-btn.upi-col{background:linear-gradient(135deg,#0d47a1,#1565c0);color:#fff;box-shadow:0 8px 24px rgba(59,130,246,.35);}
+.pay-confirm-btn.wallet-col{background:linear-gradient(135deg,#92400e,var(--gold));color:#fff;box-shadow:0 8px 24px rgba(245,166,35,.35);}
+.pay-confirm-btn.card-col{background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;border:1px solid rgba(255,255,255,.1);}
+.pay-confirm-btn.nb-col{background:linear-gradient(135deg,#0a1628,#1a3a6e);color:#fff;box-shadow:0 8px 24px rgba(26,58,110,.4);}
+.pay-confirm-btn:hover{transform:translateY(-2px);filter:brightness(1.1);}
+.pay-confirm-btn:active{transform:scale(.97);}
+.pay-confirm-btn:disabled{opacity:.6;cursor:not-allowed;transform:none;filter:none;}
+
+/* ─── Wallet recharge modal ─── */
+.recharge-amounts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+.ra-btn{
+  background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--r);
+  padding:14px 8px;text-align:center;cursor:pointer;transition:all .2s;
+}
+.ra-btn:hover{border-color:var(--gold);transform:translateY(-2px);}
+.ra-btn.ra-sel{border-color:var(--gold);background:var(--gold-dim);}
+.ra-amount{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--gold);}
+.ra-bonus{font-size:10px;color:var(--muted);margin-top:2px;}
+.ra-bonus.hot{color:var(--green);}
+
+.recharge-custom{margin-bottom:16px;}
+.recharge-custom label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;}
+.recharge-input-wrap{position:relative;}
+.recharge-rupee{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--gold);}
+.recharge-input{
+  width:100%;padding:12px 14px 12px 32px;
+  background:var(--surface2);border:1px solid var(--border2);
+  border-radius:var(--r);color:var(--text);font-family:'Syne',sans-serif;
+  font-size:18px;font-weight:700;outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+.recharge-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-dim);}
+
+.recharge-pay-methods{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px;}
+.rpm{
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+  padding:10px 6px;text-align:center;cursor:pointer;transition:all .2s;
+}
+.rpm:hover{border-color:var(--border2);}
+.rpm.rpm-sel{border-color:var(--gold);background:var(--gold-dim);}
+.rpm-icon{font-size:18px;margin-bottom:3px;}
+.rpm-label{font-size:10px;font-weight:600;color:var(--muted);}
+
+.recharge-btn{
+  width:100%;padding:15px;border-radius:var(--r);border:none;
+  background:linear-gradient(135deg,#92400e,var(--gold));color:#fff;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:700;
+  cursor:pointer;transition:all .22s;
+  box-shadow:0 8px 24px rgba(245,166,35,.35);letter-spacing:.2px;
+}
+.recharge-btn:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(245,166,35,.45);}
+.recharge-btn:active{transform:scale(.97);}
+
+/* ─── Success overlay ─── */
+.success-overlay{
+  position:fixed;inset:0;z-index:600;
+  background:rgba(0,0,0,.85);backdrop-filter:blur(8px);
+  display:flex;align-items:center;justify-content:center;
+  animation:fadeIn .2s ease both;
+}
+.success-card{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:var(--r-xl);padding:36px 32px;text-align:center;
+  max-width:360px;width:90%;animation:scaleIn .4s cubic-bezier(.34,1.56,.64,1) both;
+  position:relative;overflow:hidden;
+}
+.success-ring{
+  position:absolute;top:50%;left:50%;width:200px;height:200px;
+  border-radius:50%;border:2px solid rgba(34,197,94,.2);
+  transform:translate(-50%,-50%);
+  animation:pulse-ring 1.5s ease-out infinite;
+}
+.success-icon{
+  width:70px;height:70px;border-radius:50%;
+  background:var(--green-dim);border:2px solid rgba(34,197,94,.4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;margin:0 auto 18px;position:relative;z-index:1;
+}
+.success-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:6px;}
+.success-sub{font-size:13px;color:var(--muted);margin-bottom:20px;}
+.success-detail{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r);padding:14px;margin-bottom:20px;text-align:left;
+}
+.success-row{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;}
+.success-row-label{color:var(--muted);}
+.success-row-val{font-weight:600;}
+.success-close{
+  width:100%;padding:13px;border-radius:var(--r);border:none;
+  background:var(--green);color:#fff;
+  font-family:'Syne',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;transition:all .2s;
+}
+.success-close:hover{filter:brightness(1.1);transform:translateY(-1px);}
+
+/* ─── Toast ─── */
+.toast{
+  position:fixed;top:20px;right:20px;z-index:9999;
+  padding:12px 18px;border-radius:var(--r);
+  font-size:13px;font-weight:600;color:#fff;
+  display:flex;align-items:center;gap:10px;
+  animation:slideRight .4s cubic-bezier(.34,1.56,.64,1) both;
+  box-shadow:0 8px 30px rgba(0,0,0,.4);max-width:320px;
+  border:1px solid rgba(255,255,255,.08);
+}
+.toast-s{background:linear-gradient(135deg,#15803d,#16a34a);}
+.toast-e{background:linear-gradient(135deg,#991b1b,#dc2626);}
+.toast-i{background:linear-gradient(135deg,#1e40af,#2563eb);}
+
+/* ─── Auth ─── */
+.auth-page{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:20px;position:relative;overflow:hidden;
+}
+.auth-blob{
+  position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none;
+}
+.ab1{width:400px;height:400px;background:rgba(255,107,53,.08);top:-100px;right:-100px;animation:float1 10s ease-in-out infinite;}
+.ab2{width:300px;height:300px;background:rgba(245,166,35,.06);bottom:-80px;left:-80px;animation:float2 12s ease-in-out infinite;}
+
+.auth-box{
+  width:100%;max-width:420px;
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:var(--r-xl);padding:36px 32px;
+  position:relative;z-index:2;
+  animation:scaleIn .5s cubic-bezier(.34,1.2,.64,1) both;
+}
+.auth-logo{text-align:center;margin-bottom:28px;}
+.auth-logo-big{
+  width:56px;height:56px;border-radius:16px;
+  background:linear-gradient(135deg,var(--brand),var(--brand2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;margin:0 auto 14px;
+  box-shadow:0 0 30px rgba(255,107,53,.4);animation:bob 3s ease-in-out infinite;
+}
+.auth-logo h1{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;letter-spacing:-.3px;}
+.auth-logo h1 span{color:var(--brand);}
+.auth-logo p{font-size:13px;color:var(--muted);margin-top:4px;}
+
+.auth-tabs{display:flex;background:var(--surface2);border-radius:var(--r);padding:4px;gap:4px;margin-bottom:24px;}
+.auth-tab{
+  flex:1;padding:9px;border-radius:calc(var(--r) - 2px);text-align:center;
+  font-size:13px;font-weight:600;cursor:pointer;
+  border:none;background:transparent;color:var(--muted);
+  transition:all .2s;font-family:'Instrument Sans',sans-serif;
+}
+.auth-tab.active{background:var(--surface3);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.3);}
+
+.form-g{margin-bottom:16px;}
+.form-g label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600;letter-spacing:.3px;}
+.form-g input{
+  width:100%;padding:12px 14px;border-radius:var(--r);
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);font-family:'Instrument Sans',sans-serif;font-size:14px;outline:none;
+  transition:border-color .2s,box-shadow .2s;
+}
+.form-g input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-dim);}
+.form-g input::placeholder{color:var(--hint);}
+.form-err{font-size:12px;color:var(--red);margin-top:5px;}
+.auth-submit{
+  width:100%;padding:13px;border-radius:var(--r);border:none;
+  background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;
+  font-family:'Syne',sans-serif;font-size:15px;font-weight:700;
+  cursor:pointer;transition:all .22s;
+  box-shadow:0 8px 24px rgba(255,107,53,.35);
+}
+.auth-submit:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(255,107,53,.45);}
+.auth-submit:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+.auth-switch{text-align:center;font-size:13px;color:var(--muted);margin-top:16px;}
+.auth-switch a{color:var(--brand);cursor:pointer;font-weight:700;}
+
+/* ─── Profile ─── */
+.profile-page{padding-bottom:100px;}
+.profile-hero-bg{
+  background:linear-gradient(160deg,var(--surface2),var(--surface3));
+  padding:32px 20px 24px;text-align:center;
+  border-bottom:1px solid var(--border);position:relative;overflow:hidden;
+}
+.profile-hero-bg::before{
+  content:'';position:absolute;width:250px;height:250px;
+  background:rgba(255,107,53,.06);border-radius:50%;filter:blur(60px);
+  top:-50px;right:-50px;
+}
+.avatar-wrap{position:relative;width:68px;height:68px;margin:0 auto 12px;}
+.avatar-ring{
+  position:absolute;inset:-3px;border-radius:50%;
+  background:linear-gradient(135deg,var(--brand),var(--gold));padding:2px;
+}
+.avatar-inner{
+  width:100%;height:100%;border-radius:50%;
+  background:var(--surface);display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--brand);
+}
+.p-name{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;}
+.p-email{font-size:13px;color:var(--muted);margin-top:3px;}
+
+/* ─── Wallet card (profile) ─── */
+.wallet-big{
+  margin:16px 16px 0;border-radius:var(--r-lg);overflow:hidden;
+  background:linear-gradient(135deg,#1a1200 0%,#2d2000 50%,#1a1200 100%);
+  border:1px solid rgba(245,166,35,.2);position:relative;
+}
+.wallet-big::before{
+  content:'';position:absolute;width:200px;height:200px;
+  background:rgba(245,166,35,.06);border-radius:50%;filter:blur(40px);
+  top:-40px;right:-40px;
+}
+.wb-top{padding:20px 20px 14px;position:relative;z-index:1;}
+.wb-label{font-size:11px;color:rgba(245,166,35,.6);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;}
+.wb-bal{font-family:'Syne',sans-serif;font-size:36px;font-weight:800;color:var(--gold);line-height:1;}
+.wb-user{font-size:12px;color:rgba(245,166,35,.4);margin-top:4px;}
+.wb-bottom{padding:14px 20px 16px;border-top:1px solid rgba(245,166,35,.1);position:relative;z-index:1;}
+.wb-recharge-btn{
+  display:inline-flex;align-items:center;gap:7px;
+  background:linear-gradient(135deg,rgba(245,166,35,.2),rgba(245,166,35,.12));
+  border:1px solid rgba(245,166,35,.3);
+  color:var(--gold);font-size:13px;font-weight:700;
+  padding:9px 18px;border-radius:999px;cursor:pointer;
+  transition:all .2s;width:100%;justify-content:center;
+}
+.wb-recharge-btn:hover{background:rgba(245,166,35,.25);box-shadow:0 0 20px var(--gold-dim);}
+.wb-txns{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;
+}
+.wb-stat{
+  background:rgba(245,166,35,.06);border:1px solid rgba(245,166,35,.1);
+  border-radius:var(--r);padding:10px 12px;
+}
+.wb-stat-val{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:var(--gold);}
+.wb-stat-lbl{font-size:11px;color:rgba(245,166,35,.5);margin-top:2px;}
+
+.profile-list{padding:16px 16px 0;}
+.pl-item{
+  display:flex;align-items:center;gap:14px;padding:14px 0;
+  border-bottom:1px solid var(--border);cursor:pointer;
+  transition:all .15s;
+}
+.pl-item:last-child{border:none;}
+.pl-item:hover .pl-text{color:var(--brand);}
+.pl-icon{
+  width:38px;height:38px;border-radius:12px;
+  background:var(--surface2);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;transition:transform .2s;
+}
+.pl-item:hover .pl-icon{transform:scale(1.08);}
+.pl-text{flex:1;font-size:14px;font-weight:600;}
+.pl-arrow{color:var(--hint);font-size:12px;}
+.logout-btn{
+  display:block;width:calc(100% - 32px);margin:14px 16px;
+  padding:13px;border-radius:var(--r);
+  border:1px solid rgba(239,68,68,.3);background:var(--red-dim);
+  color:var(--red);font-family:'Syne',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;transition:all .2s;
+}
+.logout-btn:hover{background:rgba(239,68,68,.2);border-color:var(--red);}
+
+/* ─── Orders ─── */
+.orders-page{padding:20px 16px 100px;}
+.page-h{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;margin-bottom:18px;}
+.order-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:18px;margin-bottom:12px;
+  animation:fadeUp .4s ease both;transition:border-color .2s;
+}
+.order-card:hover{border-color:var(--border2);}
+.order-hd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;}
+.order-num{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
+.order-date{font-size:11px;color:var(--muted);margin-top:3px;}
+.status{padding:4px 11px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:.3px;}
+.s-delivered{background:var(--green-dim);color:var(--green);}
+.s-preparing{background:var(--brand-dim);color:var(--brand);}
+.s-ready{background:var(--blue-dim);color:var(--blue);}
+.s-cancelled{background:var(--red-dim);color:var(--red);}
+.order-items{border-top:1px solid var(--border);padding-top:10px;margin-bottom:10px;}
+.oi-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;color:var(--muted);}
+.order-foot{display:flex;justify-content:space-between;font-size:14px;font-weight:700;border-top:1px solid var(--border);padding-top:10px;}
+.order-tot{font-family:'Syne',sans-serif;color:var(--brand);}
+
+/* ─── Bottom nav ─── */
+.bnav{
+  display:none;position:fixed;bottom:0;left:0;right:0;
+  background:rgba(12,12,15,.95);backdrop-filter:blur(20px);
+  border-top:1px solid var(--border);z-index:100;
+}
+.bnav-row{display:flex;}
+.bnav-i{
+  flex:1;padding:10px 0;display:flex;flex-direction:column;
+  align-items:center;gap:3px;cursor:pointer;
+  color:var(--hint);font-size:10px;font-weight:600;
+  transition:color .2s;position:relative;
+}
+.bnav-i.active{color:var(--brand);}
+.bnav-i.active::after{
+  content:'';position:absolute;bottom:0;left:50%;transform:translateX(-50%);
+  width:20px;height:2px;background:var(--brand);border-radius:999px;
+}
+.bnav-icon{font-size:20px;transition:transform .2s cubic-bezier(.34,1.56,.64,1);}
+.bnav-i.active .bnav-icon{transform:scale(1.15);}
+.bnav-i:active .bnav-icon{transform:scale(.88);}
+
+/* ─── Responsive ─── */
+@media(max-width:620px){
+  .auth-box{padding:28px 20px;}
+  .grid{grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:12px;}
+  .img-wrap{height:130px;}
+  .cart{width:100%;}
+  .bnav{display:block;}
+  body{padding-bottom:64px;}
+}
+</style>
 </head>
 <body>
-<canvas id="particles"></canvas>
 <div id="root"></div>
 
-const { useState, useEffect, useCallback } = React;
-const BUILD_VERSION = '2026-03-31-ui-r3';
-
 <script type="text/babel">
-const { useState, useEffect, useCallback, useRef } = React;
-const BUILD = '2026-03-31-ui-r14';
+const {useState,useEffect,useCallback,useRef} = React;
+const BUILD = '2026-04-01';
 const MERCHANT_UPI = 'sandeep.sandy1594@okaxis';
-
-/* ── API ───────────────────────────────────────────────── */
 const BASE = window.location.hostname==='localhost' ? 'http://localhost:8080' : '';
+
 async function api(path, opts={}){
-  const token=localStorage.getItem('token');
-  const res=await fetch(BASE+path,{
+  const token = localStorage.getItem('token');
+  const res = await fetch(BASE+path,{
     headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{}),...(opts.headers||{})},
     ...opts
   });
   if(res.status===401){localStorage.clear();window.location.reload();}
-  const data=await res.json().catch(()=>({}));
-  if(!res.ok)throw new Error(data.message||'Something went wrong');
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.message||'Error');
   return data;
 }
 
-// ── Sample data (shown when backend returns empty) ────────────────────────────
-const SAMPLE_MENU = [
-  { id:1, name:'Masala Dosa', category:'South Indian', price:55, description:'Crispy rice crepe with spiced potato filling', emoji:'🫓', isVeg:true, rating:4.5, preparationTime:10, image:'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=900&q=80' },
-  { id:2, name:'Poha', category:'Breakfast', price:35, description:'Flattened rice with veggies and spices', emoji:'🍚', isVeg:true, rating:4.2, preparationTime:8, image:'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=80' },
-  { id:3, name:'Idli Sambar', category:'South Indian', price:45, description:'Soft steamed rice cakes with sambar and chutney', emoji:'⚪', isVeg:true, rating:4.7, preparationTime:5, image:'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=900&q=80' },
-  { id:4, name:'Veg Biryani', category:'Rice', price:95, description:'Fragrant basmati rice cooked with mixed vegetables', emoji:'🍛', isVeg:true, rating:4.4, preparationTime:20, image:'https://images.unsplash.com/photo-1642821373181-696a54913e93?auto=format&fit=crop&w=900&q=80' },
-  { id:5, name:'Chicken Biryani', category:'Rice', price:130, description:'Aromatic basmati with tender chicken pieces', emoji:'🍗', isVeg:false, rating:4.8, preparationTime:25, image:'https://images.unsplash.com/photo-1563379091339-03246963d29c?auto=format&fit=crop&w=900&q=80' },
-  { id:6, name:'Dal Tadka', category:'Dal', price:65, description:'Yellow lentils tempered with ghee and spices', emoji:'🍲', isVeg:true, preparationTime:12, image:'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80' },
-  { id:7, name:'Paneer Butter Masala', category:'Curry', price:110, description:'Soft paneer in rich tomato-butter gravy', emoji:'🧀', isVeg:true, rating:4.6, preparationTime:15, image:'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=900&q=80' },
-  { id:8, name:'Filter Coffee', category:'Beverages', price:25, description:'Freshly brewed South Indian filter coffee', emoji:'☕', isVeg:true, rating:4.9, preparationTime:3, image:'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80' },
-  { id:9, name:'Masala Chai', category:'Beverages', price:20, description:'Ginger spiced milk tea', emoji:'🍵', isVeg:true, rating:4.8, preparationTime:3, image:'https://images.unsplash.com/photo-1597318181409-cf64d0b5d8a2?auto=format&fit=crop&w=900&q=80' },
-  { id:10, name:'Veg Sandwich', category:'Snacks', price:50, description:'Grilled sandwich with seasonal veggies and cheese', emoji:'🥪', isVeg:true, rating:4.3, preparationTime:7, image:'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=900&q=80' },
-  { id:11, name:'Samosa (2 pcs)', category:'Snacks', price:30, description:'Crispy pastry filled with spiced potatoes', emoji:'🥟', isVeg:true, rating:4.5, preparationTime:5, image:'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=80' },
-  { id:12, name:'Gulab Jamun', category:'Desserts', price:40, description:'Soft milk-solid dumplings in sugar syrup', emoji:'🍮', isVeg:true, rating:4.7, preparationTime:5, image:'https://images.unsplash.com/photo-1611293388250-580b08c4a145?auto=format&fit=crop&w=900&q=80' },
-  { id:13, name:'Margherita Pizza', category:'Pizza', price:149, description:'Classic thin crust pizza with basil, mozzarella and tomato', emoji:'🍕', isVeg:true, rating:4.6, preparationTime:14, image:'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?auto=format&fit=crop&w=900&q=80' },
-  { id:14, name:'Farmhouse Pizza', category:'Pizza', price:189, description:'Loaded pizza with capsicum, onion, tomato and sweet corn', emoji:'🍕', isVeg:true, rating:4.7, preparationTime:16, image:'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80' },
-  { id:15, name:'Test Item (Verification)', category:'Snacks', price:1, description:'₹1 test item for payment verification transactions', emoji:'🧪', isVeg:true, rating:4.9, preparationTime:1, image:'https://images.unsplash.com/photo-1546549032-9571cd6b27df?auto=format&fit=crop&w=900&q=80' },
+const MENU = [
+  {id:1,name:'Masala Dosa',category:'South Indian',price:55,description:'Crispy rice crepe with spiced potato filling',emoji:'🫓',isVeg:true,rating:4.5,preparationTime:10,image:'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=800&q=80'},
+  {id:2,name:'Poha',category:'Breakfast',price:35,description:'Flattened rice with veggies and spices',emoji:'🍚',isVeg:true,rating:4.2,preparationTime:8,image:'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&q=80'},
+  {id:3,name:'Idli Sambar',category:'South Indian',price:45,description:'Soft steamed rice cakes with sambar',emoji:'⚪',isVeg:true,rating:4.7,preparationTime:5,image:'https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=800&q=80'},
+  {id:4,name:'Veg Biryani',category:'Rice',price:95,description:'Fragrant basmati with mixed vegetables',emoji:'🍛',isVeg:true,rating:4.4,preparationTime:20,image:'https://images.unsplash.com/photo-1701579231378-372ea3c7ca87?w=800&q=80'},
+  {id:5,name:'Chicken Biryani',category:'Rice',price:130,description:'Aromatic basmati with tender chicken',emoji:'🍗',isVeg:false,rating:4.8,preparationTime:25,image:'https://images.unsplash.com/photo-1633945274309-2c16c9682a8b?w=800&q=80'},
+  {id:6,name:'Dal Tadka',category:'Dal',price:65,description:'Yellow lentils tempered with ghee',emoji:'🍲',isVeg:true,rating:4.3,preparationTime:12,image:'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&q=80'},
+  {id:7,name:'Paneer Butter Masala',category:'Curry',price:110,description:'Soft paneer in rich tomato-butter gravy',emoji:'🧀',isVeg:true,rating:4.6,preparationTime:15,image:'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&q=80'},
+  {id:8,name:'Filter Coffee',category:'Beverages',price:25,description:'Freshly brewed South Indian coffee',emoji:'☕',isVeg:true,rating:4.9,preparationTime:3,image:'https://images.unsplash.com/photo-1511920170033-f8396924c348?w=800&q=80'},
+  {id:9,name:'Masala Chai',category:'Beverages',price:20,description:'Ginger spiced milk tea',emoji:'🍵',isVeg:true,rating:4.8,preparationTime:3,image:'https://images.unsplash.com/photo-1597318181409-cf64d0b5d8a2?w=800&q=80'},
+  {id:10,name:'Veg Sandwich',category:'Snacks',price:50,description:'Grilled sandwich with seasonal veggies',emoji:'🥪',isVeg:true,rating:4.3,preparationTime:7,image:'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?w=800&q=80'},
+  {id:11,name:'Samosa (2 pcs)',category:'Snacks',price:30,description:'Crispy pastry with spiced potatoes',emoji:'🥟',isVeg:true,rating:4.5,preparationTime:5,image:'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=800&q=80'},
+  {id:12,name:'Gulab Jamun',category:'Desserts',price:40,description:'Soft dumplings in sugar syrup',emoji:'🍮',isVeg:true,rating:4.7,preparationTime:5,image:'https://images.unsplash.com/photo-1611293388250-580b08c4a145?w=800&q=80'},
+  {id:13,name:'Margherita Pizza',category:'Pizza',price:149,description:'Classic thin crust with mozzarella',emoji:'🍕',isVeg:true,rating:4.6,preparationTime:14,image:'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?w=800&q=80'},
+  {id:14,name:'Test Item',category:'Snacks',price:1,description:'₹1 item for payment verification',emoji:'🧪',isVeg:true,rating:5.0,preparationTime:1,image:'https://images.unsplash.com/photo-1546549032-9571cd6b27df?w=800&q=80'},
 ];
-const CATS=['All','Breakfast','South Indian','Rice','Curry','Dal','Snacks','Beverages','Desserts','Pizza'];
+const CATS = ['All','Breakfast','South Indian','Rice','Curry','Dal','Snacks','Beverages','Desserts','Pizza'];
 
-const CATEGORIES = ['All', 'Breakfast', 'South Indian', 'Rice', 'Curry', 'Dal', 'Snacks', 'Beverages', 'Desserts', 'Pizza'];
-const SPECIALS = [
-  { title:'Breakfast Combo', subtitle:'Idli + Filter Coffee', price:'₹59' },
-  { title:'Executive Lunch', subtitle:'Biryani + Dessert', price:'₹149' },
-  { title:'Evening Saver', subtitle:'Chai + Samosa', price:'₹45' },
-];
-
-const FOOD_IMAGE_MAP = {
-  'masala dosa':'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?auto=format&fit=crop&w=900&q=80',
-  poha:'https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=900&q=80',
-  'idli sambar':'https://images.unsplash.com/photo-1589302168068-964664d93dc0?auto=format&fit=crop&w=900&q=80',
-  'veg biryani':'https://images.unsplash.com/photo-1642821373181-696a54913e93?auto=format&fit=crop&w=900&q=80',
-  'chicken biryani':'https://images.unsplash.com/photo-1563379091339-03246963d29c?auto=format&fit=crop&w=900&q=80',
-  'dal tadka':'https://images.unsplash.com/photo-1547592180-85f173990554?auto=format&fit=crop&w=900&q=80',
-  'paneer butter masala':'https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=900&q=80',
-  'filter coffee':'https://images.unsplash.com/photo-1511920170033-f8396924c348?auto=format&fit=crop&w=900&q=80',
-  'masala chai':'https://images.unsplash.com/photo-1597318181409-cf64d0b5d8a2?auto=format&fit=crop&w=900&q=80',
-  'veg sandwich':'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=900&q=80',
-  'margherita pizza':'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?auto=format&fit=crop&w=900&q=80',
-  'farmhouse pizza':'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80',
-  pizza:'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=900&q=80',
-  samosa:'https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=900&q=80',
-  'gulab jamun':'https://images.unsplash.com/photo-1611293388250-580b08c4a145?auto=format&fit=crop&w=900&q=80'
-};
-
-function resolveFoodImage(item) {
-  if (item.image) return item.image;
-  const normalized = (item.name || '').toLowerCase().trim();
-  if (FOOD_IMAGE_MAP[normalized]) return FOOD_IMAGE_MAP[normalized];
-  const partialMatch = Object.keys(FOOD_IMAGE_MAP).find(key => normalized.includes(key) || key.includes(normalized));
-  if (partialMatch) return FOOD_IMAGE_MAP[partialMatch];
-  const query = encodeURIComponent(`${item.name || item.category || 'indian food'} plated food`);
-  return `https://source.unsplash.com/900x600/?${query}`;
-}
-
-function decorateMenuItems(list) {
-  return list.map((item, index) => ({
-    ...item,
-    id: item.id ?? index + 1,
-    rating: item.rating ?? (4.2 + (index % 6) * 0.1).toFixed(1),
-    preparationTime: item.preparationTime ?? (8 + (index % 5) * 3),
-    image: resolveFoodImage(item)
-  }));
-}
-
-function mergeWithFeaturedDishes(list) {
-  const byName = new Map(list.map(item => [(item.name || '').toLowerCase(), item]));
-  SAMPLE_MENU.forEach(item => {
-    const key = (item.name || '').toLowerCase();
-    if (!byName.has(key)) byName.set(key, item);
-  });
-  return Array.from(byName.values());
-}
-
-// ── Toast ─────────────────────────────────────────────────────────────────────
+/* ── Toast ── */
 let toastTimer;
 function Toast({msg,type}){
-  if(!msg)return null;
-  return <div className={`toast toast-${type}`}>
-    <div className="toast-icon">{type==='success'?'✓':'!'}</div>
-    {msg}
-  </div>;
+  if(!msg) return null;
+  const cls = type==='success'?'toast-s':type==='error'?'toast-e':'toast-i';
+  const icon = type==='success'?'✓':type==='error'?'✕':'ℹ';
+  return <div className={`toast ${cls}`}><span>{icon}</span>{msg}</div>;
 }
 
-/* ── Menu card ─────────────────────────────────────────── */
-function MenuCard({item,qty,onAdd,onRemove,delay=0}){
-  return <div className="mcard animate-fadeUp" style={{animationDelay:`${delay}ms`}}>
-    <div className="mcard-img-wrap">
-      {item.image
-        ? <img className="card-img" src={item.image} alt={item.name} loading="lazy"/>
-        : <div className="card-img-placeholder">{item.emoji||'🍽️'}</div>
-      }
-    }
-    setLoading(false);
-  };
-
-  return (
-    <div className="auth-container" style={{background:'linear-gradient(135deg,#fff7ed 0%,#fde68a 45%,#c4b5fd 100%)'}}>
-      {toast && <Toast msg={toast.msg} type={toast.type}/>}
-      <div className="auth-shell">
-        <div className="auth-panel">
-          <div>
-            <span className="auth-pill">QwikBrew Workspace Edition</span>
-            <h2 style={{fontSize:36,lineHeight:1.15,marginTop:14}}>A smarter café experience for busy teams.</h2>
-            <p style={{opacity:.92,marginTop:12,fontSize:14}}>Order in seconds, pay securely, and track every transaction in real time.</p>
-            <div className="auth-points">
-              <div className="auth-point">🍽️ Real-food visual menu with curated favorites</div>
-              <div className="auth-point">⚡ UPI / Card / Wallet checkout with transaction status</div>
-              <div className="auth-point">🏢 Built for office cafeterias and enterprise campuses</div>
-            </div>
-          </div>
-          <div style={{fontSize:12,opacity:.85}}>UI Build • {BUILD_VERSION}</div>
-        </div>
-        <div className="card auth-card" style={{borderRadius:0,boxShadow:'none',border:'none'}}>
-          <div className="auth-logo">
-            <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'#111827',color:'#fff',padding:'4px 10px',borderRadius:999,fontSize:11,fontWeight:700,marginBottom:12}}>
-              UI Refresh Active • {BUILD_VERSION}
-            </div>
-            <div style={{fontSize:48,marginBottom:8}}>☕</div>
-            <h1><span style={{color:'var(--primary)'}}>Qwik</span>Brew</h1>
-            <p>Corporate Café — Order smart, eat well</p>
-          </div>
-          <div style={{display:'flex',gap:4,marginBottom:24,background:'#f5f5f5',borderRadius:8,padding:4}}>
-            {['login','register'].map(m => (
-              <button key={m} className="btn" onClick={() => setMode(m)} style={{flex:1,background:mode===m?'#fff':'transparent',color:mode===m?'var(--secondary)':'var(--muted)',boxShadow:mode===m?'var(--shadow)':'none',textTransform:'capitalize'}}>
-                {m === 'login' ? 'Sign In' : 'Register'}
-              </button>
-            ))}
-          </div>
-          <form onSubmit={handle}>
-          {mode === 'register' && (
-            <>
-              <div className="form-group">
-                <label className="form-label">Full Name</label>
-                <input placeholder="Your name" value={form.name} onChange={e => setForm({...form, name:e.target.value})} required/>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Phone</label>
-                <input placeholder="10-digit mobile number" value={form.phone} onChange={e => setForm({...form, phone:e.target.value})} required/>
-              </div>
-            </>
-          )}
-          <div className="form-group">
-            <label className="form-label">Email</label>
-            <input type="email" placeholder="work@company.in" value={form.email} onChange={e => setForm({...form, email:e.target.value})} required/>
-          </div>
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input type="password" placeholder="••••••••" value={form.password} onChange={e => setForm({...form, password:e.target.value})} required/>
-          </div>
-          {error && <p className="form-error" style={{marginBottom:12}}><i className="fa fa-exclamation-triangle"/> {error}</p>}
-          <button type="submit" className="btn btn-primary" style={{width:'100%',padding:'14px',fontSize:'15px'}} disabled={loading}>
-            {loading ? <><i className="fa fa-spinner fa-spin"/> Processing...</> : mode === 'login' ? 'Sign In' : 'Create Account'}
-          </button>
-          </form>
-          <p style={{textAlign:'center',marginTop:16,color:'var(--muted)',fontSize:13}}>
-            {mode==='login' ? "New here? " : "Already registered? "}
-            <span style={{color:'var(--primary)',cursor:'pointer',fontWeight:700}} onClick={() => setMode(mode==='login'?'register':'login')}>
-              {mode==='login' ? 'Create account' : 'Sign in'}
-            </span>
-          </p>
-        </div>
+/* ── Menu card ── */
+function MCard({item,qty,onAdd,onRemove,delay}){
+  return <div className="mcard" style={{animationDelay:`${delay}ms`}}>
+    <div className="img-wrap">
+      {item.image ? <img className="mcard-img" src={item.image} alt={item.name} loading="lazy"/>
+        : <div className="img-placeholder">{item.emoji}</div>}
+      <div className="img-tags">
+        <span className={`tag ${item.isVeg?'tag-veg':'tag-nonveg'}`}>{item.isVeg?'Veg':'Non-Veg'}</span>
+        {item.rating>=4.7 && <span className="tag tag-hot">Top Pick</span>}
       </div>
     </div>
     <div className="mcard-body">
-      <div className="mcard-meta">
-        {item.rating && <span className="rating">★ {item.rating}</span>}
-        {item.preparationTime && <span className="prep-time">⏱ {item.preparationTime} min</span>}
+      <div className="mcard-top">
+        {item.rating && <span className="mcard-rating">★ {item.rating}</span>}
+        {item.preparationTime && <span className="mcard-time">⏱ {item.preparationTime}m</span>}
       </div>
-      <div className="mcard-name">{item.name}</div>
+      <div className="mcard-name font-display">{item.name}</div>
       <div className="mcard-desc">{item.description}</div>
       <div className="mcard-footer">
-        <div className="price">₹{item.price} <span>per serving</span></div>
+        <div className="mcard-price font-display"><sup>₹</sup>{item.price}</div>
         {qty===0
           ? <button className="add-btn" onClick={()=>onAdd(item)}>+</button>
-          : <div className="qty-ctrl">
+          : <div className="qty-row">
               <button className="qty-btn" onClick={()=>onRemove(item.id)}>−</button>
               <span className="qty-num">{qty}</span>
               <button className="qty-btn" onClick={()=>onAdd(item)}>+</button>
@@ -379,311 +845,444 @@ function MenuCard({item,qty,onAdd,onRemove,delay=0}){
   </div>;
 }
 
-// ── Menu Screen ───────────────────────────────────────────────────────────────
-function MenuScreen({ cart, setCart, showToast }) {
-  const [items, setItems] = useState([]);
-  const [filtered, setFiltered] = useState([]);
-  const [category, setCategory] = useState('All');
-  const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [lastTxn, setLastTxn] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('qb_last_txn') || 'null'); } catch { return null; }
-  });
+/* ── Menu Screen ── */
+function MenuScreen({cart,setCart,showToast,walletBal}){
+  const [items,setItems] = useState([]);
+  const [filtered,setFiltered] = useState([]);
+  const [cat,setCat] = useState('All');
+  const [search,setSearch] = useState('');
+  const [loading,setLoading] = useState(true);
+  const [lastTxn] = useState(()=>{try{return JSON.parse(localStorage.getItem('qb_last_txn')||'null')}catch{return null}});
 
-  useEffect(() => {
-    api('/api/v1/menu').then(data => {
-      const list = Array.isArray(data) ? data : (data.content || data.items || SAMPLE_MENU);
-      setItems(decorateMenuItems(mergeWithFeaturedDishes(list.length ? list : SAMPLE_MENU)));
-    }).catch(() => setItems(decorateMenuItems(mergeWithFeaturedDishes(SAMPLE_MENU)))).finally(() => setLoading(false));
-  }, []);
+  useEffect(()=>{
+    api('/api/v1/menu').then(d=>{
+      const list = Array.isArray(d)?d:(d.content||d.items||MENU);
+      setItems(list.length?list:MENU);
+    }).catch(()=>setItems(MENU)).finally(()=>setLoading(false));
+  },[]);
 
-  useEffect(() => {
+  useEffect(()=>{
     let f = items;
-    if (category !== 'All') f = f.filter(i => i.category === category);
-    if (search) f = f.filter(i => i.name.toLowerCase().includes(search.toLowerCase()));
+    if(cat!=='All') f = f.filter(i=>i.category===cat);
+    if(search) f = f.filter(i=>i.name.toLowerCase().includes(search.toLowerCase()));
     setFiltered(f);
   },[items,cat,search]);
 
-  const getQty=id=>(cart.find(c=>c.id===id)||{qty:0}).qty;
-  const add=item=>{
+  const getQty = id=>(cart.find(c=>c.id===id)||{qty:0}).qty;
+  const add = item=>{
     setCart(c=>{const e=c.find(x=>x.id===item.id);return e?c.map(x=>x.id===item.id?{...x,qty:x.qty+1}:x):[...c,{...item,qty:1}]});
-    showToast(`${item.name} added!`,'success');
+    showToast(`${item.name} added`,'success');
   };
-  const remove = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty-1} : x).filter(x => x.qty > 0));
+  const remove = id=>setCart(c=>c.map(x=>x.id===id?{...x,qty:x.qty-1}:x).filter(x=>x.qty>0));
 
-  if (loading) return <div className="spinner"/>;
+  if(loading) return <div className="spinner-wrap"><div className="spinner"/></div>;
 
-  return (
-    <div>
-      <div style={{margin:'14px 20px 0',padding:'10px 14px',borderRadius:12,background:'linear-gradient(90deg,#111827,#374151)',color:'#fff',display:'flex',justifyContent:'space-between',alignItems:'center',boxShadow:'0 10px 26px rgba(17,24,39,.22)'}}>
-        <strong style={{fontSize:12,letterSpacing:'.3px'}}>🎉 UI REFRESH IS LIVE</strong>
-        <span style={{fontSize:11,opacity:.9}}>Released: 31 Mar 2026 • {BUILD_VERSION}</span>
-      </div>
-      <div className="hero">
-        <h1>Fresh Look, Real Food Photos 🍽️</h1>
-        <p>Redesigned QwikBrew experience with richer visuals and photo-first menu cards.</p>
-        <div className="search-box">
-          <i className="fa fa-search"/>
-          <input placeholder="Search dosa, biryani, coffee..." value={search} onChange={e => setSearch(e.target.value)}/>
+  return <div style={{position:'relative',zIndex:1}}>
+    {/* Hero */}
+    <div className="hero">
+      <div className="hero-inner">
+        <div className="hero-badge">
+          <div className="hero-badge-dot"/>
+          <span>Live Counter • 8 AM – 8 PM</span>
+        </div>
+        <h1 className="hero-title font-display">Order fresh,<br/><em>eat brilliant</em></h1>
+        <p className="hero-sub">Cashless café for the modern workplace.</p>
+        <div className="search-bar">
+          <span className="search-icon">🔍</span>
+          <input placeholder="Search biryani, dosa, coffee…" value={search} onChange={e=>setSearch(e.target.value)}/>
         </div>
         <div className="hero-stats">
-          <div className="stat-card"><div className="stat-num">12 min</div><div className="stat-label">Avg prep time</div></div>
-          <div className="stat-card"><div className="stat-num">4.8 ★</div><div className="stat-label">Rating</div></div>
-          <div className="stat-card"><div className="stat-num">100%</div><div className="stat-label">Cashless</div></div>
+          <div className="stat"><div className="stat-val">12 min</div><div className="stat-lbl">Avg prep</div></div>
+          <div className="stat"><div className="stat-val">4.8 ★</div><div className="stat-lbl">Rating</div></div>
+          <div className="stat"><div className="stat-val">100%</div><div className="stat-lbl">Cashless</div></div>
         </div>
       </div>
-      <div className="categories">
-        {CATEGORIES.map(c => (
-          <div key={c} className={`category-chip ${category===c?'active':''}`} onClick={() => setCategory(c)}>{c}</div>
-        ))}
-      </div>
-      <div style={{margin:'0 20px 16px',background:'linear-gradient(135deg,#fff7ed,#ffedd5)',border:'1px solid #fed7aa',padding:'12px 14px',borderRadius:14,display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
-        <div style={{fontSize:12,color:'#9a3412',fontWeight:600}}>
-          ✨ New UI pack live: richer visuals + real food photography now enabled.
-        </div>
-        <div style={{fontSize:11,fontWeight:800,color:'#c2410c',background:'#fff',border:'1px solid #fdba74',borderRadius:999,padding:'4px 8px'}}>
-          {BUILD_VERSION}
-        </div>
-      </div>
-      <div style={{margin:'0 20px 14px',background:'#ecfeff',border:'1px solid #a5f3fc',padding:'10px 12px',borderRadius:12,color:'#155e75',fontSize:12,fontWeight:600}}>
-        🧪 Payment test ready: add <strong>Test Item (Verification)</strong> (₹1) and pay via Wallet / UPI / Card.
-      </div>
-      {lastTxn && (
-        <div style={{margin:'0 20px 14px',background:'#f8fafc',border:'1px solid #cbd5e1',padding:'10px 12px',borderRadius:12,color:'#0f172a',fontSize:12}}>
-          Last payment: <strong>{lastTxn.status}</strong> • Txn {lastTxn.transactionId || 'N/A'} • Ref {lastTxn.reference || 'N/A'} • ₹{lastTxn.amount || 0}
-        </div>
-      )}
-      <div style={{padding:'0 20px 8px',color:'var(--muted)',fontSize:13,display:'flex',justifyContent:'space-between'}}>
-        <span>{filtered.length} curated items</span>
-        <span style={{fontWeight:600}}>Live counter open • 8:00 AM – 8:00 PM</span>
-      </div>
+    </div>
+
+    {/* Categories */}
+    <div className="cats">
+      {CATS.map(c=><div key={c} className={`cat ${cat===c?'active':''}`} onClick={()=>setCat(c)}>{c}</div>)}
+    </div>
+
+    {/* Last txn strip */}
+    {lastTxn && <div style={{margin:'14px 20px 0',padding:'10px 14px',borderRadius:'var(--r)',background:'var(--surface2)',border:'1px solid var(--border)',fontSize:12,color:'var(--muted)',display:'flex',alignItems:'center',gap:8}}>
+      <span style={{width:7,height:7,borderRadius:'50%',background:'var(--green)',display:'inline-block'}}/>
+      Last payment: <strong style={{color:'var(--text)'}}>{lastTxn.status}</strong> · Txn {lastTxn.transactionId||'–'} · ₹{lastTxn.amount||0}
+    </div>}
+
+    {/* Grid */}
+    <div className="menu-wrap">
+      <div style={{fontSize:12,color:'var(--hint)',marginBottom:14}}>{filtered.length} items</div>
       <div className="grid">
-        {filtered.map((item,i)=><MenuCard key={item.id} item={item} qty={getQty(item.id)} onAdd={add} onRemove={remove} delay={i*40}/>)}
+        {filtered.map((item,i)=><MCard key={item.id} item={item} qty={getQty(item.id)} onAdd={add} onRemove={remove} delay={i*35}/>)}
       </div>
     </div>
   </div>;
 }
 
-/* ── Orders screen ─────────────────────────────────────── */
+/* ── Orders Screen ── */
 function OrdersScreen(){
-  const [orders,setOrders]=useState([]);
-  const [loading,setLoading]=useState(true);
-  const SAMPLE_ORDERS=[
+  const [orders,setOrders] = useState([]);
+  const [loading,setLoading] = useState(true);
+  const SAMPLE = [
     {id:'QB240001',createdAt:'2024-03-20T09:30:00',status:'DELIVERED',totalAmount:130,items:[{name:'Masala Dosa',qty:2,price:55},{name:'Filter Coffee',qty:2,price:25}]},
     {id:'QB240002',createdAt:'2024-03-20T13:15:00',status:'PREPARING',totalAmount:95,items:[{name:'Veg Biryani',qty:1,price:95}]},
-    {id:'QB240003',createdAt:'2024-03-19T10:00:00',status:'DELIVERED',totalAmount:185,items:[{name:'Chicken Biryani',qty:1,price:130},{name:'Masala Chai',qty:2,price:20},{name:'Samosa',qty:1,price:30}]},
+    {id:'QB240003',createdAt:'2024-03-19T10:00:00',status:'DELIVERED',totalAmount:185,items:[{name:'Chicken Biryani',qty:1,price:130},{name:'Masala Chai',qty:2,price:20}]},
   ];
   useEffect(()=>{
-    api('/api/v1/orders').then(d=>{const l=Array.isArray(d)?d:(d.content||d.orders||[]);setOrders(l.length?l:SAMPLE_ORDERS)}).catch(()=>setOrders(SAMPLE_ORDERS)).finally(()=>setLoading(false));
+    api('/api/v1/orders').then(d=>{const l=Array.isArray(d)?d:(d.content||[]);setOrders(l.length?l:SAMPLE)}).catch(()=>setOrders(SAMPLE)).finally(()=>setLoading(false));
   },[]);
-  const sc=s=>({DELIVERED:'delivered',PREPARING:'preparing',READY:'ready',CANCELLED:'cancelled'}[s]||'preparing');
-  if(loading)return <div className="spinner-wrap"><div className="spinner"/></div>;
+  const sc = s=>({DELIVERED:'s-delivered',PREPARING:'s-preparing',READY:'s-ready',CANCELLED:'s-cancelled'}[s]||'s-preparing');
+  if(loading) return <div className="spinner-wrap"><div className="spinner"/></div>;
   return <div className="orders-page">
-    <div className="page-title">My Orders</div>
+    <div className="page-h font-display">My Orders</div>
     {orders.length===0
-      ? <div className="empty"><div className="empty-icon">📋</div><div className="empty-title">No orders yet</div><p>Start ordering from the menu!</p></div>
+      ? <div style={{textAlign:'center',padding:'60px 20px',color:'var(--hint)'}}>
+          <div style={{fontSize:52,marginBottom:12}}>📋</div>
+          <p style={{fontSize:14}}>No orders yet</p>
+        </div>
       : orders.map((o,i)=><div key={o.id} className="order-card" style={{animationDelay:`${i*60}ms`}}>
           <div className="order-hd">
-            <div><div className="order-num">#{o.id}</div><div className="order-date">{new Date(o.createdAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>
-            <span className={`status-pill ${sc(o.status)}`}>{o.status}</span>
+            <div><div className="order-num font-display">#{o.id}</div><div className="order-date">{new Date(o.createdAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div></div>
+            <span className={`status ${sc(o.status)}`}>{o.status}</span>
           </div>
           <div className="order-items">
-            {(o.items||[]).map((item,j)=><div key={j} className="order-item-row"><span>{item.name} × {item.qty||item.quantity}</span><span>₹{item.price*(item.qty||item.quantity)}</span></div>)}
+            {(o.items||[]).map((it,j)=><div key={j} className="oi-row"><span>{it.name} × {it.qty||it.quantity}</span><span>₹{it.price*(it.qty||it.quantity)}</span></div>)}
           </div>
-          <div className="order-total"><span>Total</span><span className="order-total-amt">₹{o.totalAmount}</span></div>
+          <div className="order-foot"><span>Total</span><span className="order-tot font-display">₹{o.totalAmount}</span></div>
         </div>)
     }
   </div>;
 }
 
-/* ── Profile screen ────────────────────────────────────── */
-function ProfileScreen({user,onLogout,showToast}){
-  const [wallet,setWallet]=useState(user.walletBalance||500);
-  const [topup,setTopup]=useState('');
-  const [loading,setLoading]=useState(false);
-  const handleTopup=async()=>{
-    if(!topup||isNaN(topup)||Number(topup)<10){showToast('Enter valid amount (min ₹10)','error');return;}
+/* ── Wallet Recharge Modal ── */
+function WalletModal({onClose,onSuccess,showToast}){
+  const PRESETS = [
+    {amount:100,bonus:null},{amount:200,bonus:null},{amount:500,bonus:'+₹25 bonus'},
+    {amount:1000,bonus:'+₹75 bonus'},{amount:2000,bonus:'+₹200 bonus'},{amount:5000,bonus:'+₹600 bonus'},
+  ];
+  const [sel,setSel] = useState(500);
+  const [custom,setCustom] = useState('');
+  const [method,setMethod] = useState('UPI');
+  const [loading,setLoading] = useState(false);
+  const finalAmt = custom ? parseInt(custom)||0 : sel;
+
+  const doRecharge = async()=>{
+    if(finalAmt<10){showToast('Minimum recharge ₹10','error');return;}
     setLoading(true);
-    try{await api(`/api/v1/users/${user.id}/wallet/topup`,{method:'POST',body:JSON.stringify({amount:Number(topup)})})}catch{}
-    setWallet(w=>w+Number(topup));showToast(`₹${topup} added!`,'success');setTopup('');setLoading(false);
+    try{
+      await api('/api/v1/payments/wallet/topup',{method:'POST',body:JSON.stringify({userId:'demo',amount:finalAmt,paymentMethod:method})});
+    }catch{}
+    await new Promise(r=>setTimeout(r,1200));
+    setLoading(false);
+    onSuccess(finalAmt);
   };
-  const initials=(user.name||'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  return <div className="profile-page">
-    <div className="profile-hero">
-      <div className="avatar">{initials}</div>
-      <div className="profile-name">{user.name}</div>
-      <div className="profile-email">{user.email}</div>
-    </div>
-    <div className="wallet-card">
-      <div className="wallet-label">Café Wallet Balance</div>
-      <div className="wallet-balance">₹{wallet.toLocaleString('en-IN')}</div>
-      <div className="wallet-topup-row">
-        <input className="topup-input" placeholder="Add amount (₹)" value={topup} onChange={e=>setTopup(e.target.value.replace(/\D/,''))} type="number"/>
-        <button className="topup-btn" onClick={handleTopup} disabled={loading}>{loading?'…':'+ Top Up'}</button>
+
+  return <div className="modal-bg" onClick={onClose}>
+    <div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-handle"/>
+      <div className="modal-title-bar">
+        <div>
+          <div className="modal-title font-display">Recharge Wallet</div>
+          <div className="modal-sub">Instant top-up · No transaction fee</div>
+        </div>
+        <button className="close-x" onClick={onClose}>✕</button>
       </div>
-      <div className="quick-topups">
-        {[100,200,500].map(a=><div key={a} className="quick-amt" onClick={()=>setTopup(String(a))}>+₹{a}</div>)}
+      <div className="modal-body">
+        {/* Preset amounts */}
+        <div className="recharge-amounts">
+          {PRESETS.map(p=><div key={p.amount} className={`ra-btn ${!custom&&sel===p.amount?'ra-sel':''}`}
+            onClick={()=>{setSel(p.amount);setCustom('');}}>
+            <div className="ra-amount font-display">₹{p.amount}</div>
+            {p.bonus && <div className={`ra-bonus ${p.amount>=500?'hot':''}`}>{p.bonus}</div>}
+          </div>)}
+        </div>
+
+        {/* Custom amount */}
+        <div className="recharge-custom">
+          <label>Or enter custom amount</label>
+          <div className="recharge-input-wrap">
+            <span className="recharge-rupee">₹</span>
+            <input className="recharge-input" type="number" placeholder="0" value={custom}
+              onChange={e=>{setCustom(e.target.value);if(e.target.value) setSel(0);}}/>
+          </div>
+        </div>
+
+        {/* Payment method */}
+        <div style={{marginBottom:8,fontSize:12,color:'var(--muted)',fontWeight:600,letterSpacing:'.3px'}}>PAY VIA</div>
+        <div className="recharge-pay-methods">
+          {[{id:'UPI',icon:'📱',label:'UPI'},{id:'CARD',icon:'💳',label:'Card'},{id:'NET_BANKING',icon:'🏦',label:'NetBanking'}].map(m=><div key={m.id} className={`rpm ${method===m.id?'rpm-sel':''}`} onClick={()=>setMethod(m.id)}>
+            <div className="rpm-icon">{m.icon}</div>
+            <div className="rpm-label">{m.label}</div>
+          </div>)}
+        </div>
+
+        {/* Summary */}
+        <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--r)',padding:'12px 14px',marginBottom:14}}>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:6}}>
+            <span style={{color:'var(--muted)'}}>Recharge amount</span>
+            <span style={{fontWeight:700}}>₹{finalAmt}</span>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:6}}>
+            <span style={{color:'var(--muted)'}}>Transaction fee</span>
+            <span style={{color:'var(--green)',fontWeight:600}}>Free</span>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:14,fontWeight:700,borderTop:'1px solid var(--border)',paddingTop:8,marginTop:8}}>
+            <span>You get</span>
+            <span style={{color:'var(--gold)',fontFamily:"'Syne',sans-serif",fontSize:16}}>
+              ₹{finalAmt}{finalAmt>=500?` + ₹${finalAmt>=5000?600:finalAmt>=2000?200:finalAmt>=1000?75:25} bonus`:''}
+            </span>
+          </div>
+        </div>
+
+        <button className="recharge-btn font-display" onClick={doRecharge} disabled={loading||finalAmt<10}>
+          {loading ? '⏳ Processing…' : `Recharge ₹${finalAmt}`}
+        </button>
       </div>
     </div>
-    <div className="profile-menu">
-      {[
-        {icon:'👤',label:'Edit Profile',action:()=>showToast('Coming soon!','success')},
-        {icon:'🔔',label:'Notifications',action:()=>showToast('All notifications are on','success')},
-        {icon:'⭐',label:'Rate the App',action:()=>showToast('Thanks! ⭐','success')},
-        {icon:'🎧',label:'Help & Support',action:()=>showToast('Email: support@qwikbrew.in','success')},
-      ].map(item=><div key={item.label} className="profile-item" onClick={item.action}>
-        <div className="profile-item-icon">{item.icon}</div>
-        <div className="profile-item-text">{item.label}</div>
-        <div className="profile-item-arrow">›</div>
-      </div>)}
-    </div>
-    <button className="logout-btn" onClick={onLogout}>Sign Out</button>
-    <p style={{textAlign:'center',color:'var(--muted)',fontSize:11,padding:'0 0 20px'}}>QwikBrew · Spring Boot 3.5 + React 18</p>
   </div>;
 }
 
-// ── Cart Sidebar ──────────────────────────────────────────────────────────────
-function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
-  const [placing, setPlacing] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('WALLET');
-  const [gatewayOpen, setGatewayOpen] = useState(false);
-  const [gatewayValue, setGatewayValue] = useState('');
-  const [upiCollectSent, setUpiCollectSent] = useState(false);
-  const [upiCollectReference, setUpiCollectReference] = useState('');
-  const [upiIntentLink, setUpiIntentLink] = useState('');
-  const [gpayIntentLink, setGpayIntentLink] = useState('');
-  const [rechargeAmount, setRechargeAmount] = useState('');
-  const [rechargeMethod, setRechargeMethod] = useState('CARD');
-  const [recharging, setRecharging] = useState(false);
-  const [cardDetails, setCardDetails] = useState({ number:'', expiry:'', cvv:'' });
-  const [walletBalance, setWalletBalance] = useState(() => {
-    const stored = Number(localStorage.getItem('qb_wallet_balance'));
-    if (!Number.isNaN(stored) && stored >= 0) return stored;
-    return Number(user?.walletBalance || 500);
-  });
-  const total = cart.reduce((s, i) => s + i.price * i.qty, 0);
+/* ── Payment Gateway Modal ── */
+function PayGateway({total,method,onClose,onSuccess,showToast}){
+  const [cardNum,setCardNum] = useState('');
+  const [cardExp,setCardExp] = useState('');
+  const [cardCvv,setCvv] = useState('');
+  const [cardName,setCardName] = useState('');
+  const [bank,setBank] = useState('');
+  const [upiSent,setUpiSent] = useState(false);
+  const [loading,setLoading] = useState(false);
+  const upiLink = `upi://pay?pa=${encodeURIComponent(MERCHANT_UPI)}&pn=QwikBrew&am=${total}&cu=INR&tn=QwikBrew%20order`;
 
-  useEffect(() => {
-    localStorage.setItem('qb_wallet_balance', String(walletBalance));
-  }, [walletBalance]);
+  const BANKS = [{id:'sbi',icon:'🏛️',name:'SBI'},{id:'hdfc',icon:'🔵',name:'HDFC'},{id:'icici',icon:'🟠',name:'ICICI'},{id:'axis',icon:'🟣',name:'Axis'}];
 
-  useEffect(() => {
-    if (paymentMethod === 'UPI') setGatewayValue(MERCHANT_UPI_ID);
-  }, [paymentMethod]);
-
-  const add = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty+1} : x));
-  const rem = id => setCart(c => c.map(x => x.id===id ? {...x,qty:x.qty-1} : x).filter(x => x.qty>0));
-
-  const submit=async(method=payMethod,ref=`QB-${Date.now()}`)=>{
-    setPlacing(true);
-    const txnId = `TXN-${Date.now()}`;
-    const payload = { items: cart.map(i => ({ menuItemId: i.id, menuItemName: i.name, quantity: i.qty, unitPrice: i.price })), totalAmount: total, paymentMethod: method };
-    let paymentRes = null;
-    let txnStatus = null;
-    try {
-      paymentRes = await api('/api/v1/payments/charge', {
-        method:'POST',
-        body: JSON.stringify({ userId: user?.id || user?.email || 'demo-user', amount: total, paymentMethod: method, reference, transactionId: txnId })
-      });
-      txnStatus = await api(`/api/v1/payments/transactions/status?transactionId=${encodeURIComponent(paymentRes.transactionId || '')}&reference=${encodeURIComponent(reference)}`);
-      await api('/api/v1/orders', { method:'POST', body: JSON.stringify(payload) });
-    } catch(e) { /* demo fallback */ }
-    if (method === 'WALLET') setWalletBalance(b => Math.max(0, b - total));
-    const statusObj = txnStatus || { transactionId: paymentRes?.transactionId || txnId, reference, status:'SUCCESS', amount: total };
-    localStorage.setItem('qb_last_txn', JSON.stringify(statusObj));
-    showToast(`Paid via ${method.replace('_',' ')} • ${statusObj.status} • ₹${total}`, 'success');
-    setCart([]); onClose(); setPlacing(false);
-    setGatewayOpen(false); setGatewayValue(''); setUpiCollectSent(false); setUpiCollectReference(''); setUpiIntentLink(''); setGpayIntentLink('');
-  };
-
-  const placeOrder = async () => {
-    if (paymentMethod === 'WALLET') {
-      if (walletBalance < total) { showToast(`Insufficient wallet balance. Available ₹${walletBalance}`, 'error'); return; }
-      return submitOrder('WALLET');
-    }
-    setGatewayOpen(true);
-  };
-
-  const confirmGatewayPayment = async () => {
-    if (!gatewayValue.trim()) { showToast('Please complete payment details', 'error'); return; }
-    if (paymentMethod === 'CARD') {
-      if (!/^\d{16}$/.test(cardDetails.number.replace(/\s+/g,''))) { showToast('Enter valid 16-digit card number', 'error'); return; }
-      if (!/^\d{2}\/\d{2}$/.test(cardDetails.expiry)) { showToast('Enter expiry as MM/YY', 'error'); return; }
-      if (!/^\d{3}$/.test(cardDetails.cvv)) { showToast('Enter 3-digit CVV', 'error'); return; }
-      setGatewayValue(cardDetails.number.slice(-4));
-    }
-    if (paymentMethod === 'UPI' && !upiCollectSent) {
-      try {
-        const res = await api('/api/v1/payments/upi/collect', {
-          method:'POST',
-          body: JSON.stringify({
-            userId: user?.id || user?.email || 'demo-user',
-            amount: total,
-            upiId: MERCHANT_UPI_ID,
-            reference: `UPI-${Date.now()}`
-          })
-        });
-        setUpiCollectReference(res.reference || MERCHANT_UPI_ID);
-      } catch {
-        setUpiCollectReference(MERCHANT_UPI_ID);
-      }
-      const intent = `upi://pay?pa=${encodeURIComponent(MERCHANT_UPI_ID)}&pn=${encodeURIComponent('QwikBrew')}&am=${encodeURIComponent(total)}&cu=INR&tn=${encodeURIComponent('QwikBrew order payment')}`;
-      const gpayIntent = `tez://upi/pay?pa=${encodeURIComponent(MERCHANT_UPI_ID)}&pn=${encodeURIComponent('QwikBrew')}&am=${encodeURIComponent(total)}&cu=INR&tn=${encodeURIComponent('QwikBrew order payment')}`;
-      setUpiIntentLink(intent);
-      setGpayIntentLink(gpayIntent);
-      setUpiCollectSent(true);
-      window.location.href = gpayIntent;
-      showToast(`Opening Google Pay request for ${MERCHANT_UPI_ID}. Complete payment, then click confirm.`, 'success');
+  const handlePay = async()=>{
+    if(method==='UPI' && !upiSent){
+      try{
+        await api('/api/v1/payments/upi/collect',{method:'POST',body:JSON.stringify({userId:'demo',amount:total,upiId:MERCHANT_UPI,reference:`UPI-${Date.now()}`})});
+      }catch{}
+      setUpiSent(true);
+      window.location.href = upiLink;
+      showToast('Opening UPI app…','info');
       return;
     }
-    submitOrder(paymentMethod, upiCollectReference || gatewayValue.trim());
+    if(method==='CARD'){
+      if(!cardNum||!cardExp||!cardCvv||!cardName){showToast('Fill all card details','error');return;}
+    }
+    if(method==='NET_BANKING' && !bank){showToast('Select a bank','error');return;}
+
+    setLoading(true);
+    try{
+      await api('/api/v1/payments/charge',{method:'POST',body:JSON.stringify({userId:'demo',amount:total,paymentMethod:method,reference:`REF-${Date.now()}`})});
+    }catch{}
+    await new Promise(r=>setTimeout(r,1400));
+    setLoading(false);
+    onSuccess({method,amount:total,transactionId:`TXN-${Date.now()}`,reference:`REF-${Date.now()}`});
   };
 
-  const rechargeWallet = async () => {
-    const amount = Number(rechargeAmount);
-    if (!amount || amount < 1) { showToast('Enter valid recharge amount', 'error'); return; }
-    setRecharging(true);
-    try {
-      const res = await api('/api/v1/payments/wallet/topup', {
-        method:'POST',
-        body: JSON.stringify({
-          userId: user?.id || user?.email || 'demo-user',
-          amount,
-          paymentMethod: rechargeMethod
-        })
-      });
-      const newBalance = Number(res?.balance ?? (walletBalance + amount));
-      setWalletBalance(newBalance);
-      setRechargeAmount('');
-      showToast(`Wallet recharged ₹${amount} via ${rechargeMethod}`, 'success');
-    } catch {
-      setWalletBalance(b => b + amount);
-      setRechargeAmount('');
-      showToast(`Wallet recharged ₹${amount} (demo mode)`, 'success');
-    } finally {
-      setRecharging(false);
+  const btnCls = {UPI:'upi-col',WALLET:'wallet-col',CARD:'card-col',NET_BANKING:'nb-col'}[method]||'upi-col';
+
+  const cardVisualClass = {UPI:'upi-card',WALLET:'wallet-card-v',CARD:'card-v',NET_BANKING:'nb-card'}[method]||'upi-card';
+
+  return <div className="modal-bg" onClick={onClose}>
+    <div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal-handle"/>
+      <div className="modal-title-bar">
+        <div>
+          <div className="modal-title font-display">
+            {method==='UPI'?'UPI Payment':method==='CARD'?'Card Payment':method==='NET_BANKING'?'Net Banking':'Wallet Payment'}
+          </div>
+          <div className="modal-sub">Secured · End-to-end encrypted</div>
+        </div>
+        <button className="close-x" onClick={onClose}>✕</button>
+      </div>
+      <div className="modal-body">
+        {/* Animated payment card visual */}
+        <div className={`pay-card-visual ${cardVisualClass}`}>
+          <div className="card-shine"/>
+          {method==='CARD' && <>
+            <div className="card-chip"/>
+            <div className="card-logo">💳</div>
+            <div className="card-num">{cardNum ? cardNum.replace(/(.{4})/g,'$1 ').trim() : '•••• •••• •••• ••••'}</div>
+            <div className="card-label">CARD NUMBER</div>
+            <div className="card-network">VISA / MC</div>
+          </>}
+          {method==='UPI' && <>
+            <div className="card-amount">
+              <div className="card-amount-label">AMOUNT TO PAY</div>
+              <div className="card-amount-val">₹{total}</div>
+            </div>
+            <div style={{position:'absolute',bottom:16,left:18,fontSize:12,opacity:.5,fontWeight:600}}>UPI · {MERCHANT_UPI.slice(0,14)}…</div>
+            <div style={{position:'absolute',top:16,right:18,fontSize:20,opacity:.6}}>📱</div>
+          </>}
+          {method==='NET_BANKING' && <>
+            <div className="card-amount">
+              <div className="card-amount-label">AMOUNT TO PAY</div>
+              <div className="card-amount-val">₹{total}</div>
+            </div>
+            <div style={{position:'absolute',bottom:16,left:18,fontSize:12,opacity:.5,fontWeight:600}}>NET BANKING</div>
+            <div style={{position:'absolute',top:16,right:18,fontSize:20,opacity:.6}}>🏦</div>
+          </>}
+        </div>
+
+        {/* UPI section */}
+        {method==='UPI' && <>
+          <div className="upi-id-bar">
+            <div>
+              <div style={{fontSize:11,color:'var(--muted)',marginBottom:3}}>PAY TO UPI ID</div>
+              <div className="upi-id-val">{MERCHANT_UPI}</div>
+            </div>
+            <div className="upi-id-copy" onClick={()=>{navigator.clipboard?.writeText(MERCHANT_UPI);showToast('Copied!','success');}}>Copy</div>
+          </div>
+          <div style={{marginBottom:10,fontSize:12,color:'var(--muted)',fontWeight:600,letterSpacing:'.3px'}}>PAY WITH APP</div>
+          <div className="upi-apps">
+            {[{name:'PhonePe',icon:'💜'},{name:'GPay',icon:'🟢'},{name:'Paytm',icon:'🔵'},{name:'BHIM',icon:'🟡'}].map(a=><div key={a.name} className="upi-app" onClick={()=>{window.location.href=upiLink;showToast(`Opening ${a.name}…`,'info');}}>
+              <div className="upi-app-icon">{a.icon}</div>
+              <div className="upi-app-name">{a.name}</div>
+            </div>)}
+          </div>
+          {upiSent && <div className="qr-wrap">
+            <img className="qr-img" src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiLink)}&bgcolor=1C1C22&color=FF6B35`} alt="QR"/>
+            <div className="qr-hint">Scan with any UPI app</div>
+          </div>}
+        </>}
+
+        {/* Card section */}
+        {method==='CARD' && <>
+          <div className="card-field">
+            <label>CARD NUMBER</label>
+            <input className="card-input" placeholder="1234 5678 9012 3456" maxLength={19}
+              value={cardNum} onChange={e=>setCardNum(e.target.value.replace(/[^\d]/g,'').replace(/(.{4})/g,'$1 ').trim())}/>
+          </div>
+          <div className="card-field">
+            <label>CARDHOLDER NAME</label>
+            <input className="card-input" placeholder="Name on card" value={cardName} onChange={e=>setCardName(e.target.value)}/>
+          </div>
+          <div className="card-row">
+            <div className="card-field">
+              <label>EXPIRY</label>
+              <input className="card-input" placeholder="MM / YY" maxLength={7}
+                value={cardExp} onChange={e=>{let v=e.target.value.replace(/[^\d]/g,'');if(v.length>=3)v=v.slice(0,2)+' / '+v.slice(2);setCardExp(v);}}/>
+            </div>
+            <div className="card-field">
+              <label>CVV</label>
+              <input className="card-input" placeholder="•••" maxLength={3} type="password"
+                value={cardCvv} onChange={e=>setCvv(e.target.value.replace(/[^\d]/g,''))}/>
+            </div>
+          </div>
+        </>}
+
+        {/* Net Banking */}
+        {method==='NET_BANKING' && <>
+          <div style={{marginBottom:10,fontSize:12,color:'var(--muted)',fontWeight:600,letterSpacing:'.3px'}}>SELECT BANK</div>
+          <div className="bank-grid">
+            {BANKS.map(b=><div key={b.id} className={`bank-btn ${bank===b.id?'sel-bank':''}`} onClick={()=>setBank(b.id)}>
+              <div className="bank-icon">{b.icon}</div>
+              <div className="bank-name">{b.name}</div>
+            </div>)}
+          </div>
+          <div className="card-field">
+            <label>OR ENTER BANK NAME</label>
+            <input className="card-input" placeholder="Enter your bank…" value={bank==='custom'?'':bank} onChange={e=>setBank(e.target.value)}/>
+          </div>
+        </>}
+
+        {/* Amount summary */}
+        <div style={{background:'var(--surface2)',border:'1px solid var(--border)',borderRadius:'var(--r)',padding:'12px 14px',marginBottom:14}}>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:14,fontWeight:700}}>
+            <span style={{color:'var(--muted)'}}>Amount payable</span>
+            <span style={{fontFamily:"'Syne',sans-serif",fontSize:18,color:'var(--brand)'}}>₹{total}</span>
+          </div>
+        </div>
+
+        <button className={`pay-confirm-btn ${btnCls} font-display`} onClick={handlePay} disabled={loading}>
+          {loading ? '⏳ Processing payment…'
+            : method==='UPI' && !upiSent ? `Send ₹${total} via UPI`
+            : method==='UPI' ? `Confirm payment ₹${total}`
+            : `Pay ₹${total}`}
+        </button>
+      </div>
+    </div>
+  </div>;
+}
+
+/* ── Success overlay ── */
+function SuccessOverlay({data,onClose}){
+  return <div className="success-overlay">
+    <div className="success-card">
+      <div className="success-ring"/>
+      <div className="success-ring" style={{animationDelay:'.3s'}}/>
+      <div className="success-icon">✓</div>
+      <div className="success-title font-display">{data.type==='recharge'?'Wallet Recharged!':'Payment Successful!'}</div>
+      <div className="success-sub">{data.type==='recharge'?`₹${data.amount} added to your wallet`:`Order placed successfully`}</div>
+      <div className="success-detail">
+        {data.transactionId && <div className="success-row"><span className="success-row-label">Txn ID</span><span className="success-row-val">{data.transactionId.slice(-12)}</span></div>}
+        <div className="success-row"><span className="success-row-label">Amount</span><span className="success-row-val" style={{color:'var(--brand)'}}>₹{data.amount}</span></div>
+        {data.method && <div className="success-row"><span className="success-row-label">Method</span><span className="success-row-val">{data.method.replace('_',' ')}</span></div>}
+        <div className="success-row"><span className="success-row-label">Status</span><span className="success-row-val" style={{color:'var(--green)'}}>SUCCESS</span></div>
+      </div>
+      <button className="success-close font-display" onClick={onClose}>
+        {data.type==='recharge'?'Back to Wallet':'View Orders'}
+      </button>
+    </div>
+  </div>;
+}
+
+/* ── Cart ── */
+function Cart({cart,setCart,open,onClose,showToast,walletBal,setWalletBal,onOpenWallet}){
+  const [payMethod,setPayMethod] = useState('WALLET');
+  const [gatewayOpen,setGatewayOpen] = useState(false);
+  const [placing,setPlacing] = useState(false);
+  const [success,setSuccess] = useState(null);
+  const total = cart.reduce((s,i)=>s+i.price*i.qty,0);
+
+  const addItem = id=>setCart(c=>c.map(x=>x.id===id?{...x,qty:x.qty+1}:x));
+  const remItem = id=>setCart(c=>c.map(x=>x.id===id?{...x,qty:x.qty-1}:x).filter(x=>x.qty>0));
+
+  const placeOrder = async()=>{
+    if(payMethod==='WALLET'){
+      if(walletBal<total){showToast(`Insufficient balance. Have ₹${walletBal}`,'error');return;}
+      setPlacing(true);
+      try{
+        await api('/api/v1/orders',{method:'POST',body:JSON.stringify({userId:'demo',items:cart.map(i=>({menuItemId:i.id,menuItemName:i.name,quantity:i.qty,unitPrice:i.price})),totalAmount:total,paymentMethod:'WALLET'})});
+      }catch{}
+      const txnId = `TXN-${Date.now()}`;
+      setWalletBal(b=>b-total);
+      localStorage.setItem('qb_last_txn',JSON.stringify({status:'SUCCESS',transactionId:txnId,amount:total,method:'WALLET'}));
+      setPlacing(false);
+      setSuccess({type:'order',amount:total,method:'WALLET',transactionId:txnId});
+      setCart([]);
+    } else {
+      setGatewayOpen(true);
     }
   };
 
-  const METHODS=[{id:'WALLET',icon:'👛',label:'Wallet'},{id:'UPI',icon:'📱',label:'UPI'},{id:'CARD',icon:'💳',label:'Card'},{id:'NET_BANKING',icon:'🏦',label:'NetBanking'}];
+  const onGatewaySuccess = (data)=>{
+    setGatewayOpen(false);
+    localStorage.setItem('qb_last_txn',JSON.stringify({status:'SUCCESS',...data}));
+    setSuccess({type:'order',...data});
+    setCart([]);
+  };
+
+  const METHODS = [{id:'WALLET',icon:'👛',label:'Wallet'},{id:'UPI',icon:'📱',label:'UPI'},{id:'CARD',icon:'💳',label:'Card'},{id:'NET_BANKING',icon:'🏦',label:'NetBanking'}];
 
   return <>
     {open && <div className="overlay" onClick={onClose}/>}
-    <div className={`cart-sidebar ${open?'open':''}`}>
-      <div className="cart-header">
-        <div className="cart-title">Your Cart ({cart.length})</div>
-        <button className="close-btn" onClick={onClose}>✕</button>
+    <div className={`cart ${open?'open':''}`}>
+      <div className="cart-head">
+        <h3 className="font-display">Your Cart <span style={{fontWeight:400,fontSize:14,color:'var(--muted)'}}>({cart.length})</span></h3>
+        <button className="close-x" onClick={onClose}>✕</button>
       </div>
-      <div className="cart-items">
+      <div className="cart-body">
         {cart.length===0
-          ? <div className="cart-empty"><div className="cart-empty-icon">🛒</div><p>Your cart is empty</p></div>
-          : cart.map(item=><div key={item.id} className="cart-item">
-              <div className="cart-item-emoji">{item.emoji||'🍽️'}</div>
-              <div className="cart-item-info">
-                <div className="cart-item-name">{item.name}</div>
-                <div className="cart-item-price">₹{item.price} × {item.qty} = ₹{item.price*item.qty}</div>
+          ? <div className="cart-empty-wrap"><span>🛒</span><p>Your cart is empty.<br/>Add something delicious!</p></div>
+          : cart.map(item=><div key={item.id} className="c-item">
+              <div className="c-item-emoji">{item.emoji||'🍽️'}</div>
+              <div className="c-item-info">
+                <div className="c-item-name">{item.name}</div>
+                <div className="c-item-price">₹{item.price} × {item.qty} = ₹{item.price*item.qty}</div>
               </div>
-              <div className="qty-ctrl">
+              <div className="qty-row">
                 <button className="qty-btn" style={{width:28,height:28,fontSize:14}} onClick={()=>remItem(item.id)}>−</button>
                 <span className="qty-num" style={{fontSize:13}}>{item.qty}</span>
                 <button className="qty-btn" style={{width:28,height:28,fontSize:14}} onClick={()=>addItem(item.id)}>+</button>
@@ -691,232 +1290,222 @@ function CartSidebar({ cart, setCart, open, onClose, showToast, user }) {
             </div>)
         }
       </div>
-      {cart.length>0 && <div className="cart-footer">
-        <div className="wallet-badge">💰 Wallet Balance: ₹{walletBal}</div>
-        <div className="total-row"><span>Total</span><span className="total-amount">₹{total}</span></div>
-        <div className="pay-methods">
-          {METHODS.map(m=><div key={m.id} className={`pay-method ${payMethod===m.id?'active':''}`} onClick={()=>setPayMethod(m.id)}>
-            <span className="pay-method-icon">{m.icon}</span>{m.label}
+      {cart.length>0 && <div className="cart-foot">
+        <div className="wallet-mini">
+          <div>
+            <div className="wallet-mini-left">Wallet Balance</div>
+            <div className="wallet-mini-bal font-display">₹{walletBal.toLocaleString('en-IN')}</div>
+          </div>
+          <div className="wallet-mini-add" onClick={()=>{onClose();onOpenWallet();}}>+ Recharge</div>
+        </div>
+        <div className="cart-total">
+          <span style={{fontSize:14,color:'var(--muted)'}}>Total</span>
+          <span className="cart-total-amt font-display">₹{total}</span>
+        </div>
+        <div className="pay-grid">
+          {METHODS.map(m=><div key={m.id} className={`pay-btn ${payMethod===m.id?'sel':''}`} onClick={()=>setPayMethod(m.id)}>
+            <span className="pay-icon">{m.icon}</span>{m.label}
           </div>)}
         </div>
-        {cart.length > 0 && (
-          <div className="cart-footer">
-            <div className="cart-total"><span>Total</span><span style={{color:'var(--primary)'}}>₹{total}</span></div>
-            <div style={{fontSize:12,background:'#f0fdf4',border:'1px solid #bbf7d0',color:'#166534',padding:'8px 10px',borderRadius:10,marginBottom:10,fontWeight:600}}>
-              Wallet Balance: ₹{walletBalance}
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'1fr auto auto',gap:8,marginBottom:10}}>
-              <input
-                placeholder="Recharge wallet amount"
-                type="number"
-                min="1"
-                value={rechargeAmount}
-                onChange={e => setRechargeAmount(e.target.value)}
-              />
-              <select value={rechargeMethod} onChange={e => setRechargeMethod(e.target.value)} style={{width:120}}>
-                <option value="CARD">Card</option>
-                <option value="UPI">UPI</option>
-              </select>
-              <button className="btn btn-outline btn-sm" onClick={rechargeWallet} disabled={recharging}>
-                {recharging ? '...' : 'Recharge'}
-              </button>
-            </div>
-            <div className="payment-methods">
-              {[{id:'WALLET',label:'Wallet',icon:'fa-wallet'},{id:'UPI',label:'UPI',icon:'fa-mobile-screen'},{id:'CARD',label:'Card',icon:'fa-credit-card'},{id:'NET_BANKING',label:'NetBanking',icon:'fa-building-columns'}].map(m => (
-                <button key={m.id} className={`payment-method ${paymentMethod===m.id?'active':''}`} onClick={() => setPaymentMethod(m.id)}>
-                  <i className={`fa ${m.icon}`}/> {m.label}
-                </button>
-              ))}
-            </div>
-            <button className="close-btn" style={{color:'#fff',borderColor:'rgba(255,255,255,.3)',background:'rgba(255,255,255,.08)'}} onClick={()=>{setGatewayOpen(false);setUpiSent(false);}}>✕</button>
-          </div>
-          <div className="modal-body">
-            <p style={{fontSize:13,color:'var(--muted)',marginBottom:10}}>
-              {payMethod==='UPI'?`Pay to: ${MERCHANT_UPI}`:payMethod==='CARD'?'Enter card last 4 digits':'Enter transaction reference'}
-            </p>
-            <input className="modal-input" placeholder={payMethod==='UPI'?MERCHANT_UPI:payMethod==='CARD'?'1234':'Reference'} value={gwVal} onChange={e=>setGwVal(e.target.value)} readOnly={payMethod==='UPI'}/>
-            {payMethod==='UPI'&&upiSent&&<>
-              <div className="collect-info">Collect request sent. Approve in your UPI app, then confirm.</div>
-              <div className="upi-qr"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiLink||`upi://pay?pa=${MERCHANT_UPI}&am=${total}&cu=INR`)}`} alt="QR Code"/></div>
-              {upiLink&&<a href={upiLink} className="upi-open-btn" style={{display:'block',textAlign:'center',textDecoration:'none',lineHeight:'1.6'}}>Open UPI App</a>}
-            </>}
-            <button className="place-btn" onClick={confirmGateway} disabled={placing}>
-              {placing?'Processing…':payMethod==='UPI'&&!upiSent?`Send collect request · ₹${total}`:`Confirm payment · ₹${total}`}
-            </button>
-          </div>
+        <button className="order-btn font-display" onClick={placeOrder} disabled={placing}>
+          {placing?'Placing order…':`Pay & Order · ₹${total}`}
+        </button>
+      </div>}
+    </div>
+
+    {gatewayOpen && <PayGateway total={total} method={payMethod} onClose={()=>setGatewayOpen(false)} onSuccess={onGatewaySuccess} showToast={showToast}/>}
+    {success && <SuccessOverlay data={success} onClose={()=>{setSuccess(null);onClose();}}/>}
+  </>;
+}
+
+/* ── Profile ── */
+function ProfileScreen({user,onLogout,showToast,walletBal,setWalletBal}){
+  const [walletOpen,setWalletOpen] = useState(false);
+  const [success,setSuccess] = useState(null);
+  const initials = (user.name||'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+
+  return <div className="profile-page">
+    <div className="profile-hero-bg">
+      <div className="avatar-wrap">
+        <div className="avatar-ring"/>
+        <div className="avatar-inner font-display">{initials}</div>
+      </div>
+      <div className="p-name font-display">{user.name}</div>
+      <div className="p-email">{user.email}</div>
+    </div>
+
+    {/* Wallet card */}
+    <div className="wallet-big">
+      <div className="wb-top">
+        <div className="wb-label">Café Wallet</div>
+        <div className="wb-bal font-display">₹{walletBal.toLocaleString('en-IN')}</div>
+        <div className="wb-user">{user.name}</div>
+      </div>
+      <div className="wb-bottom">
+        <button className="wb-recharge-btn font-display" onClick={()=>setWalletOpen(true)}>
+          <span>＋</span> Recharge Wallet
+        </button>
+        <div className="wb-txns">
+          <div className="wb-stat"><div className="wb-stat-val font-display">₹500</div><div className="wb-stat-lbl">Total spent</div></div>
+          <div className="wb-stat"><div className="wb-stat-val font-display">12</div><div className="wb-stat-lbl">Orders placed</div></div>
         </div>
       </div>
-      {gatewayOpen && (
-        <>
-          <div className="overlay" onClick={() => { setGatewayOpen(false); setUpiCollectSent(false); setUpiCollectReference(''); setUpiIntentLink(''); setGpayIntentLink(''); }}/>
-          <div className="gateway-modal">
-            <div className="gateway-header">
-              <div>
-                <h3 style={{fontSize:16}}>QwikPay Gateway</h3>
-                <p style={{fontSize:11,opacity:.85}}>Method: {paymentMethod.replace('_',' ')}</p>
-              </div>
-              <button className="btn btn-sm btn-outline" onClick={() => { setGatewayOpen(false); setUpiCollectSent(false); setUpiCollectReference(''); setUpiIntentLink(''); setGpayIntentLink(''); }} style={{color:'#fff',borderColor:'rgba(255,255,255,.5)'}}>✕</button>
-            </div>
-            <div className="gateway-body">
-              <p style={{fontSize:13,color:'var(--muted)',marginBottom:10}}>
-                {paymentMethod === 'UPI' ? `Pay to merchant UPI ID: ${MERCHANT_UPI_ID}` : paymentMethod === 'CARD' ? 'Enter card last 4 digits' : 'Enter bank reference'}
-              </p>
-              <input
-                placeholder={paymentMethod === 'UPI' ? MERCHANT_UPI_ID : paymentMethod === 'CARD' ? '1234' : 'Transaction reference'}
-                value={gatewayValue}
-                onChange={e => setGatewayValue(e.target.value)}
-                readOnly={paymentMethod === 'UPI'}
-                style={{marginBottom:12}}
-              />
-              {paymentMethod === 'CARD' && (
-                <div style={{display:'grid',gap:8,marginBottom:10}}>
-                  <input placeholder="Card number (16 digits)" value={cardDetails.number} onChange={e => setCardDetails({...cardDetails, number:e.target.value.replace(/\D/g,'').slice(0,16)})}/>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-                    <input placeholder="MM/YY" value={cardDetails.expiry} onChange={e => setCardDetails({...cardDetails, expiry:e.target.value.replace(/[^\d/]/g,'').slice(0,5)})}/>
-                    <input placeholder="CVV" type="password" value={cardDetails.cvv} onChange={e => setCardDetails({...cardDetails, cvv:e.target.value.replace(/\D/g,'').slice(0,3)})}/>
-                  </div>
-                </div>
-              )}
-              {paymentMethod === 'UPI' && upiCollectSent && (
-                <div style={{fontSize:12,marginBottom:10,padding:'8px 10px',borderRadius:8,background:'#eff6ff',color:'#1d4ed8',border:'1px solid #bfdbfe'}}>
-                  Collect request sent. Open your UPI app and approve, then click confirm.
-                </div>
-              )}
-              {paymentMethod === 'UPI' && upiCollectSent && (
-                <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiIntentLink || `upi://pay?pa=${MERCHANT_UPI_ID}&am=${total}&cu=INR`)}`}
-                    alt="Scan to pay using UPI"
-                    style={{width:150,height:150,borderRadius:10,border:'1px solid #e5e7eb'}}
-                  />
-                </div>
-              )}
-              {paymentMethod === 'UPI' && upiCollectSent && upiIntentLink && (
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:10}}>
-                  <a href={gpayIntentLink || upiIntentLink} className="btn btn-primary" style={{textAlign:'center',display:'block'}}>Open Google Pay</a>
-                  <a href={upiIntentLink} className="btn btn-outline" style={{textAlign:'center',display:'block'}}>Other UPI Apps</a>
-                </div>
-              )}
-              <button className="btn btn-primary" style={{width:'100%'}} onClick={confirmGatewayPayment} disabled={placing}>
-                {placing ? 'Processing...' : paymentMethod === 'UPI' && !upiCollectSent ? `Send collect request ₹${total}` : `Confirm payment ₹${total}`}
-              </button>
-            </div>
-          </div>
-        </div>
-        <div className="auth-version">Build {BUILD}</div>
+    </div>
+
+    <div className="profile-list">
+      {[
+        {icon:'👤',label:'Edit Profile',action:()=>showToast('Coming soon!','info')},
+        {icon:'🔔',label:'Notifications',action:()=>showToast('All notifications on','success')},
+        {icon:'📜',label:'Transaction History',action:()=>showToast('Coming soon!','info')},
+        {icon:'⭐',label:'Rate QwikBrew',action:()=>showToast('Thanks for the love! ⭐','success')},
+        {icon:'🎧',label:'Help & Support',action:()=>showToast('support@qwikbrew.in','info')},
+      ].map(item=><div key={item.label} className="pl-item" onClick={item.action}>
+        <div className="pl-icon">{item.icon}</div>
+        <div className="pl-text">{item.label}</div>
+        <div className="pl-arrow">›</div>
+      </div>)}
+    </div>
+
+    <button className="logout-btn font-display" onClick={onLogout}>Sign Out</button>
+    <p style={{textAlign:'center',color:'var(--hint)',fontSize:11,paddingBottom:20}}>QwikBrew · Spring Boot 3.5 + React 18 · {BUILD}</p>
+
+    {walletOpen && <WalletModal showToast={showToast} onClose={()=>setWalletOpen(false)}
+      onSuccess={(amt)=>{setWalletBal(b=>b+amt);setWalletOpen(false);setSuccess({type:'recharge',amount:amt});}}/>}
+    {success && <SuccessOverlay data={success} onClose={()=>setSuccess(null)}/>}
+  </div>;
+}
+
+/* ── Auth ── */
+function AuthScreen({onLogin}){
+  const [mode,setMode] = useState('login');
+  const [form,setForm] = useState({name:'',email:'',password:'',phone:''});
+  const [loading,setLoading] = useState(false);
+  const [error,setError] = useState('');
+  const [toast,setToast] = useState(null);
+  const showT = (m,t='success')=>{setToast({msg:m,type:t});setTimeout(()=>setToast(null),3000);};
+
+  const handle = async(e)=>{
+    e.preventDefault();setError('');setLoading(true);
+    try{
+      let data;
+      if(mode==='login'){data=await api('/api/v1/users/login',{method:'POST',body:JSON.stringify({email:form.email,password:form.password})});}
+      else{data=await api('/api/v1/users/register',{method:'POST',body:JSON.stringify(form)});showT('Account created! Sign in.');setMode('login');setLoading(false);return;}
+      localStorage.setItem('token',data.accessToken||data.token||'');
+      localStorage.setItem('user',JSON.stringify(data.user||{name:form.email.split('@')[0],email:form.email,walletBalance:500}));
+      onLogin(data);
+    }catch(err){
+      if(mode==='login'){
+        localStorage.setItem('token','demo');
+        localStorage.setItem('user',JSON.stringify({name:form.email.split('@')[0]||'Employee',email:form.email,walletBalance:500}));
+        onLogin({user:{name:form.email.split('@')[0],email:form.email,walletBalance:500}});
+      } else setError(err.message);
+    }
+    setLoading(false);
+  };
+
+  return <div className="auth-page">
+    {toast && <Toast msg={toast.msg} type={toast.type}/>}
+    <div className="auth-blob ab1"/><div className="auth-blob ab2"/>
+    <div className="auth-box">
+      <div className="auth-logo">
+        <div className="auth-logo-big">☕</div>
+        <h1 className="font-display"><span>Qwik</span>Brew</h1>
+        <p>Corporate Café — Order smart, eat well</p>
       </div>
-      <div className="auth-form-side">
-        <div className="auth-logo">
-          <div className="auth-logo-cup">☕</div>
-          <h1><em>Qwik</em>Brew</h1>
-          <p>Corporate Café — Order smart, eat well</p>
-        </div>
-        <div className="tab-row">
-          {['login','register'].map(m=><button key={m} className={`tab ${mode===m?'active':''}`} onClick={()=>setMode(m)}>{m==='login'?'Sign In':'Register'}</button>)}
-        </div>
-        <form onSubmit={handle}>
-          {mode==='register'&&<>
-            <div className="form-group"><label className="form-label">Full Name</label><input className="form-input" placeholder="Your name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} required/></div>
-            <div className="form-group"><label className="form-label">Phone</label><input className="form-input" placeholder="10-digit mobile" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} required/></div>
-          </>}
-          <div className="form-group"><label className="form-label">Email</label><input className="form-input" type="email" placeholder="work@company.in" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} required/></div>
-          <div className="form-group"><label className="form-label">Password</label><input className="form-input" type="password" placeholder="••••••••" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} required/></div>
-          {error&&<p className="form-error">{error}</p>}
-          <button type="submit" className="place-btn" disabled={loading}>{loading?'Processing…':mode==='login'?'Sign In →':'Create Account →'}</button>
-        </form>
-        <div className="auth-switch">
-          {mode==='login'?'New here? ':'Already registered? '}
-          <span onClick={()=>setMode(mode==='login'?'register':'login')}>{mode==='login'?'Create account':'Sign in'}</span>
-        </div>
+      <div className="auth-tabs">
+        {['login','register'].map(m=><button key={m} className={`auth-tab ${mode===m?'active':''}`} onClick={()=>setMode(m)}>{m==='login'?'Sign In':'Register'}</button>)}
       </div>
+      <form onSubmit={handle}>
+        {mode==='register' && <>
+          <div className="form-g"><label>FULL NAME</label><input placeholder="Your full name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} required/></div>
+          <div className="form-g"><label>PHONE</label><input placeholder="10-digit mobile" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} required/></div>
+        </>}
+        <div className="form-g"><label>EMAIL</label><input type="email" placeholder="work@company.in" value={form.email} onChange={e=>setForm({...form,email:e.target.value})} required/></div>
+        <div className="form-g"><label>PASSWORD</label><input type="password" placeholder="••••••••" value={form.password} onChange={e=>setForm({...form,password:e.target.value})} required/></div>
+        {error && <p className="form-err">{error}</p>}
+        <button type="submit" className="auth-submit font-display" disabled={loading}>{loading?'Processing…':mode==='login'?'Sign In →':'Create Account →'}</button>
+      </form>
+      <div className="auth-switch">{mode==='login'?'New here? ':'Already have account? '}<a onClick={()=>setMode(mode==='login'?'register':'login')}>{mode==='login'?'Create account':'Sign in'}</a></div>
     </div>
   </div>;
 }
 
-/* ── App ───────────────────────────────────────────────── */
+/* ── App shell ── */
 function App(){
-  const [page,setPage]=useState('menu');
-  const [cart,setCart]=useState([]);
-  const [cartOpen,setCartOpen]=useState(false);
-  const [toast,setToast]=useState(null);
-  const [user,setUser]=useState(()=>{try{return JSON.parse(localStorage.getItem('user')||'null')}catch{return null}});
+  const [page,setPage] = useState('menu');
+  const [cart,setCart] = useState([]);
+  const [cartOpen,setCartOpen] = useState(false);
+  const [walletOpen,setWalletOpen] = useState(false);
+  const [toast,setToast] = useState(null);
+  const [success,setSuccess] = useState(null);
+  const [user,setUser] = useState(()=>{try{return JSON.parse(localStorage.getItem('user')||'null')}catch{return null}});
+  const [walletBal,setWalletBal] = useState(()=>{
+    const s = Number(localStorage.getItem('qb_wallet'));
+    return(!isNaN(s)&&s>=0)?s:500;
+  });
 
-  useEffect(() => {
-    const previousVersion = localStorage.getItem('qb_ui_version');
-    if (previousVersion !== BUILD_VERSION) {
-      localStorage.setItem('qb_ui_version', BUILD_VERSION);
-      if (!sessionStorage.getItem('qb_ui_reloaded')) {
-        sessionStorage.setItem('qb_ui_reloaded', '1');
-        window.location.reload();
-      }
-    }
-  }, []);
+  useEffect(()=>{localStorage.setItem('qb_wallet',String(walletBal));},[walletBal]);
 
-  useEffect(() => {
-    document.title = `QwikBrew — Corporate Café (${BUILD_VERSION})`;
-  }, []);
+  let tTimer;
+  const showToast = useCallback((msg,type='success')=>{
+    setToast({msg,type});clearTimeout(tTimer);tTimer=setTimeout(()=>setToast(null),3000);
+  },[]);
 
-  const showToast = useCallback((msg, type='success') => {
-    setToast({ msg, type }); clearTimeout(toastTimer); toastTimer = setTimeout(() => setToast(null), 3000);
-  }, []);
+  const logout = ()=>{localStorage.clear();setUser(null);setCart([]);};
+  const totalQty = cart.reduce((s,i)=>s+i.qty,0);
 
-  const logout=()=>{localStorage.clear();setUser(null);setCart([]);};
-  const totalQty=cart.reduce((s,i)=>s+i.qty,0);
+  if(!user) return <AuthScreen onLogin={d=>{setUser(d.user||JSON.parse(localStorage.getItem('user')));}} />;
 
-  useEffect(()=>{document.title=`QwikBrew — Corporate Café`;},[]);
+  const navItems = [{id:'menu',icon:'🍽️',label:'Menu'},{id:'orders',icon:'📋',label:'Orders'},{id:'profile',icon:'👤',label:'Profile'}];
 
-  if(!user)return <AuthScreen onLogin={d=>{setUser(d.user||JSON.parse(localStorage.getItem('user')));} }/>;
+  return <>
+    {toast && <Toast msg={toast.msg} type={toast.type}/>}
 
-  const navItems=[{id:'menu',icon:'🍽️',label:'Menu'},{id:'orders',icon:'📋',label:'Orders'},{id:'profile',icon:'👤',label:'Profile'}];
-
-  return (
-    <div id="root">
-      {toast && <Toast msg={toast.msg} type={toast.type}/>}
-      <nav>
-        <div className="nav-brand">☕ <span>Qwik</span>Brew <span style={{fontSize:11,fontWeight:700,background:'rgba(249,115,22,.22)',padding:'2px 8px',borderRadius:999}}>NEW UI</span></div>
-        <div className="nav-right">
-          <div style={{background:'rgba(249,115,22,.2)',color:'#fdba74',fontSize:10,padding:'4px 8px',borderRadius:999,fontWeight:700}}>
-            UI {BUILD_VERSION}
-          </div>
-          <div style={{color:'rgba(255,255,255,.7)',fontSize:13}}>Hi, {(user.name||'').split(' ')[0]} 👋</div>
-          <div className="nav-icon" onClick={() => setCartOpen(true)}>
-            <i className="fa fa-shopping-cart"/>
-            {totalQty > 0 && <span className="nav-badge">{totalQty}</span>}
-          </div>
-        </div>
-      </nav>
-      <div style={{flex:1}}>
-        {page==='menu' && <MenuScreen cart={cart} setCart={setCart} showToast={showToast}/>}
-        {page==='orders' && <OrdersScreen/>}
-        {page==='profile' && <ProfileScreen user={user} onLogout={logout} showToast={showToast}/>}
+    <nav>
+      <div className="nav-logo">
+        <div className="nav-logo-mark">☕</div>
+        <div className="nav-logo-text font-display"><span>Qwik</span>Brew</div>
+        <div className="nav-pill">NEW</div>
       </div>
       <div className="nav-right">
-        <span className="nav-greeting">Hi, {(user.name||'').split(' ')[0]} 👋</span>
-        <button className="cart-btn" onClick={()=>setCartOpen(true)}>
+        <div className="wallet-chip" onClick={()=>setWalletOpen(true)}>
+          <div className="wallet-dot"/>
+          <span className="font-display">₹{walletBal.toLocaleString('en-IN')}</span>
+        </div>
+        <div className="nav-greeting">Hi, {(user.name||'').split(' ')[0]} 👋</div>
+        <div className="cart-fab" onClick={()=>setCartOpen(true)}>
           🛒
           {totalQty>0 && <span className="cart-badge" key={totalQty}>{totalQty}</span>}
-        </button>
+        </div>
       </div>
     </nav>
 
     <div style={{flex:1,position:'relative',zIndex:1}}>
-      {page==='menu' && <MenuScreen cart={cart} setCart={setCart} showToast={showToast}/>}
-      {page==='orders' && <OrdersScreen/>}
-      {page==='profile' && <ProfileScreen user={user} onLogout={logout} showToast={showToast}/>}
+      {page==='menu'    && <MenuScreen cart={cart} setCart={setCart} showToast={showToast} walletBal={walletBal}/>}
+      {page==='orders'  && <OrdersScreen/>}
+      {page==='profile' && <ProfileScreen user={user} onLogout={logout} showToast={showToast} walletBal={walletBal} setWalletBal={setWalletBal}/>}
     </div>
 
-    <CartSidebar cart={cart} setCart={setCart} open={cartOpen} onClose={()=>setCartOpen(false)} showToast={showToast} user={user}/>
+    <Cart cart={cart} setCart={setCart} open={cartOpen} onClose={()=>setCartOpen(false)}
+      showToast={showToast} walletBal={walletBal} setWalletBal={setWalletBal}
+      onOpenWallet={()=>setWalletOpen(true)}/>
 
-    <div className="bottom-nav">
-      <div className="bnav-inner">
-        {navItems.map(n=><div key={n.id} className={`bnav-item ${page===n.id?'active':''}`} onClick={()=>setPage(n.id)}>
+    {walletOpen && <WalletModal showToast={showToast} onClose={()=>setWalletOpen(false)}
+      onSuccess={(amt)=>{setWalletBal(b=>b+amt);setWalletOpen(false);setSuccess({type:'recharge',amount:amt,transactionId:`TXN-${Date.now()}`});}}/>}
+
+    {success && <SuccessOverlay data={success} onClose={()=>setSuccess(null)}/>}
+
+    {/* Bottom nav */}
+    <div className="bnav">
+      <div className="bnav-row">
+        {navItems.map(n=><div key={n.id} className={`bnav-i ${page===n.id?'active':''}`} onClick={()=>setPage(n.id)}>
           <div className="bnav-icon">{n.icon}</div>
           <span>{n.label}</span>
         </div>)}
-        <div className="bnav-item" onClick={()=>setCartOpen(true)}>
+        <div className="bnav-i" onClick={()=>setCartOpen(true)}>
           <div className="bnav-icon" style={{position:'relative'}}>
             🛒
-            {totalQty>0&&<span style={{position:'absolute',top:-6,right:-6,background:'var(--brand)',color:'#fff',borderRadius:'50%',width:16,height:16,fontSize:9,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700}}>{totalQty}</span>}
+            {totalQty>0 && <span style={{position:'absolute',top:-6,right:-6,background:'var(--brand)',color:'#fff',borderRadius:'50%',width:15,height:15,fontSize:8,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,border:'2px solid var(--bg)'}}>{totalQty}</span>}
           </div>
           <span>Cart</span>
         </div>
