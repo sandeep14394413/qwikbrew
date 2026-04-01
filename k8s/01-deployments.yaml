@@ -12,7 +12,8 @@ data:
     spring.main.allow-bean-definition-overriding=true
     spring.cloud.discovery.enabled=false
     spring.cloud.discovery.reactive.enabled=false
-    spring.cloud.gateway.discovery.locator.enabled=false
+    # Use the new non-deprecated key (old key logged a migration warning)
+    spring.cloud.gateway.server.webflux.discovery.locator.enabled=false
     spring.cloud.gateway.server.webflux.route-refresh-listener.enabled=false
     spring.cloud.gateway.server.webflux.predicate.weight.enabled=false
 
@@ -88,20 +89,28 @@ spec:
           resources:
             requests: { cpu: 100m, memory: 256Mi }
             limits:   { cpu: 300m, memory: 512Mi }
+          # ── Probes ───────────────────────────────────────────────────────────
+          # api-gateway (Spring Boot + Cloud Gateway) takes ~53 s to start.
+          # startupProbe must not fire until after that window or kubelet logs
+          # "connection refused" failures and the ELB health-check fails.
+          #
+          # Budget: 60 s head-start + (12 × 10 s) = 180 s (3 min) total.
+          # readiness/liveness only activate after startupProbe succeeds.
           startupProbe:
             httpGet: { path: /actuator/health/liveness, port: 8080 }
+            initialDelaySeconds: 60   # wait for Spring Boot to finish starting
             periodSeconds: 10
             timeoutSeconds: 5
-            failureThreshold: 30
+            failureThreshold: 12      # 60 + 120 s = 3 min total startup budget
           readinessProbe:
             httpGet: { path: /actuator/health/readiness, port: 8080 }
-            initialDelaySeconds: 20
-            periodSeconds: 10
+            initialDelaySeconds: 65   # slight buffer after startupProbe passes
+            periodSeconds: 15
             timeoutSeconds: 5
-            failureThreshold: 6
+            failureThreshold: 4
           livenessProbe:
             httpGet: { path: /actuator/health/liveness, port: 8080 }
-            initialDelaySeconds: 60
+            initialDelaySeconds: 70
             periodSeconds: 20
             timeoutSeconds: 5
             failureThreshold: 3
