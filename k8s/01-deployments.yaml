@@ -417,6 +417,10 @@ spec: { type: ClusterIP, selector: { app: notification-service }, ports: [{ port
 # Nginx serving the React SPA.
 # Public access via its own NLB LoadBalancer (direct on port 80).
 # The ALB Ingress also routes / → frontend for HTTPS termination.
+#
+# imagePullPolicy: Always — REQUIRED when using :latest tags.
+# IfNotPresent causes the node to serve the cached old image even after
+# a new image has been pushed to ECR, so the pod never picks up updates.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -428,21 +432,24 @@ spec:
   progressDeadlineSeconds: 300
   strategy:
     type: RollingUpdate
-    rollingUpdate: { maxSurge: 1, maxUnavailable: 1 }
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
   selector: { matchLabels: { app: frontend } }
   template:
     metadata:
       labels: { app: frontend }
       annotations:
-        qwikbrew/ui-build-version: "2026-04-01-ui-r16"
+        # Bump this value (or use the pipeline SHA) to force a rollout even
+        # when only the ECR image digest changed (no manifest diff).
+        qwikbrew/ui-build-version: "2026-04-01-ui-r17"
     spec:
       containers:
         - name: frontend
           image: ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/qwikbrew/frontend:latest
-          imagePullPolicy: IfNotPresent
+          # Always pull — guarantees the freshest :latest from ECR on every rollout.
+          imagePullPolicy: Always
           env:
             - name: UI_BUILD_VERSION
-              value: "2026-04-01-ui-r16"
+              value: "2026-04-01-ui-r17"
           ports: [{ containerPort: 80 }]
           resources:
             requests: { cpu: 50m, memory: 64Mi }
@@ -450,9 +457,13 @@ spec:
           readinessProbe:
             httpGet: { path: /, port: 80 }
             initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 6
           livenessProbe:
             httpGet: { path: /, port: 80 }
             initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
 ---
 # frontend — internet-facing NLB (direct public access on port 80).
 # Also reachable via ALB Ingress at / for HTTPS.
