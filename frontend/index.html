@@ -307,7 +307,7 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const {useState, useEffect, useCallback, useRef} = React;
+const {useState, useEffect} = React;
 
 // ── API ───────────────────────────────────────────────────────────
 const LOCAL_HOSTS = new Set(['localhost','127.0.0.1','::1']);
@@ -521,6 +521,12 @@ function AuthScreen({onLogin}){
   );
 }
 
+// ── Meal Label helper ─────────────────────────────────────────────
+function MEAL_LABEL(t){
+  var labels={breakfast:'Breakfast',lunch:'Lunch',snacks:'Snack',beverages:'Beverages',desserts:'Desserts',all:"Today's"};
+  return labels[t]||'';
+}
+
 // ── Home Tab ──────────────────────────────────────────────────────
 function HomeTab({user, cart, onAdd, onInc, onDec, setTab}){
   const [mealTab,setMealTab]=useState(activeMealTab());
@@ -607,7 +613,7 @@ function HomeTab({user, cart, onAdd, onInc, onDec, setTab}){
 
         {/* Menu List */}
         <div className="section-header">
-          <span className="section-title">{search?`Results for "${search}"`:(category==='all'?MEAL_LABEL(mealTab)+' Menu':'Category: '+CATEGORIES.find(c=>c.id===category)?.label)}</span>
+          <span className="section-title">{search?('Results for "'+search+'"'):(category==='all'?MEAL_LABEL(mealTab)+' Menu':'Category: '+(CATEGORIES.find(function(c){return c.id===category;})||{label:''}).label)}</span>
           <span style={{fontSize:11,color:'var(--muted)',fontWeight:500}}>{filtered.length} items</span>
         </div>
         <div className="menu-list">
@@ -621,7 +627,6 @@ function HomeTab({user, cart, onAdd, onInc, onDec, setTab}){
     </>
   );
 }
-function MEAL_LABEL(t){return {breakfast:'Breakfast',lunch:'Lunch',snacks:'Snack',beverages:'Beverages',desserts:'Desserts',all:'Today\'s'}[t]||'';}
 
 // ── Cart Tab ──────────────────────────────────────────────────────
 function CartTab({cart, onInc, onDec, onRemove, user, onOrderPlaced, setTab}){
@@ -999,7 +1004,7 @@ function App(){
   }
 
   if(phase==='splash') return <div className="app-shell"><SplashScreen onDone={()=>setPhase('auth')}/></div>;
-  if(phase==='auth') return <div className="app-shell"><AuthScreen onLogin={u=>{setUser(u);setPhase('app');}}/></div>;
+  if(phase==='auth'||!user) return <div className="app-shell"><AuthScreen onLogin={u=>{setUser(u);setPhase('app');}}/></div>;
 
   const NAV = [
     {id:'home',icon:'fa-home',label:'Home'},
